@@ -1,0 +1,1886 @@
+{
+  "id": "synthetic-cabt-demo",
+  "title": "Synthetic CABT Demo",
+  "info": {
+    "TeamNames": [
+      "Demo Green",
+      "Demo Fighting"
+    ],
+    "EpisodeId": "demo"
+  },
+  "visualize": [
+    {
+      "logs": [
+        {
+          "type": "TurnStart",
+          "playerIndex": 0
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 1,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": false,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 46,
+            "discard": [],
+            "handCount": 5,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 340,
+                "maxHp": 340,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [],
+            "benchMax": 5,
+            "deckCount": 46,
+            "discard": [],
+            "handCount": 5,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Draw",
+          "playerIndex": 0,
+          "cardId": 1,
+          "serial": 101
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 1,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": false,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 45,
+            "discard": [],
+            "handCount": 4,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 340,
+                "maxHp": 340,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [],
+            "benchMax": 5,
+            "deckCount": 46,
+            "discard": [],
+            "handCount": 5,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Attach",
+          "playerIndex": 0,
+          "cardId": 1,
+          "serial": 101
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 1,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": false,
+        "stadiumPlayed": false,
+        "energyAttached": true,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 44,
+            "discard": [],
+            "handCount": 3,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 340,
+                "maxHp": 340,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [],
+            "benchMax": 5,
+            "deckCount": 45,
+            "discard": [],
+            "handCount": 4,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Play",
+          "playerIndex": 1,
+          "cardId": 150,
+          "serial": 21
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 1,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": false,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 43,
+            "discard": [],
+            "handCount": 2,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 340,
+                "maxHp": 340,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 44,
+            "discard": [],
+            "handCount": 3,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Attach",
+          "playerIndex": 1,
+          "cardId": 6,
+          "serial": 201
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 2,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": false,
+        "stadiumPlayed": false,
+        "energyAttached": true,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 42,
+            "discard": [],
+            "handCount": 1,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 340,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 43,
+            "discard": [],
+            "handCount": 2,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Play",
+          "playerIndex": 0,
+          "cardId": 1205,
+          "serial": 31
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 2,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 41,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 340,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 42,
+            "discard": [],
+            "handCount": 1,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Attack",
+          "playerIndex": 0,
+          "cardId": 96,
+          "serial": 10,
+          "attackId": 120
+        },
+        {
+          "type": "HpChange",
+          "playerIndex": 1,
+          "cardId": 678,
+          "serial": 20,
+          "value": -60
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 2,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 40,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 280,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 41,
+            "discard": [],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Play",
+          "playerIndex": 1,
+          "cardId": 1145,
+          "serial": 32
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 2,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 39,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 280,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 40,
+            "discard": [
+              {
+                "id": 1145,
+                "serial": 32,
+                "playerIndex": 1,
+                "name": "Mega Signal"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Attack",
+          "playerIndex": 0,
+          "cardId": 96,
+          "serial": 10,
+          "attackId": 120
+        },
+        {
+          "type": "HpChange",
+          "playerIndex": 1,
+          "cardId": 678,
+          "serial": 20,
+          "value": -60
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 3,
+        "yourIndex": 0,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 210,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 220,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 39,
+            "discard": [
+              {
+                "id": 1145,
+                "serial": 32,
+                "playerIndex": 1,
+                "name": "Mega Signal"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Attack",
+          "playerIndex": 1,
+          "cardId": 678,
+          "serial": 20,
+          "attackId": 982
+        },
+        {
+          "type": "HpChange",
+          "playerIndex": 0,
+          "cardId": 96,
+          "serial": 10,
+          "value": -60
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 3,
+        "yourIndex": 1,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 150,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 220,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1145,
+                "serial": 32,
+                "playerIndex": 1,
+                "name": "Mega Signal"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "TurnEnd",
+          "playerIndex": 1
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 3,
+        "yourIndex": 1,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 150,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 220,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1145,
+                "serial": 32,
+                "playerIndex": 1,
+                "name": "Mega Signal"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "Attack",
+          "playerIndex": 1,
+          "cardId": 678,
+          "serial": 20,
+          "attackId": 982
+        },
+        {
+          "type": "HpChange",
+          "playerIndex": 0,
+          "cardId": 96,
+          "serial": 10,
+          "value": -60
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 3,
+        "yourIndex": 1,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": -1,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 90,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 220,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1145,
+                "serial": 32,
+                "playerIndex": 1,
+                "name": "Mega Signal"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    },
+    {
+      "logs": [
+        {
+          "type": "MoveCard",
+          "playerIndex": 0,
+          "cardId": 1,
+          "serial": 301,
+          "fromArea": 6,
+          "toArea": 2
+        },
+        {
+          "type": "Result",
+          "playerIndex": 0
+        }
+      ],
+      "select": {
+        "type": "Main",
+        "context": "Main"
+      },
+      "current": {
+        "turn": 4,
+        "yourIndex": 1,
+        "firstPlayer": 0,
+        "supporterPlayed": true,
+        "stadiumPlayed": false,
+        "energyAttached": false,
+        "retreated": false,
+        "result": 0,
+        "stadium": [],
+        "players": [
+          {
+            "active": [
+              {
+                "id": 96,
+                "serial": 10,
+                "playerIndex": 0,
+                "name": "Teal Mask Ogerpon ex",
+                "hp": 90,
+                "maxHp": 210,
+                "energyCards": [
+                  {
+                    "id": 1,
+                    "serial": 101,
+                    "playerIndex": 0,
+                    "name": "Basic {G} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "bench": [
+              {
+                "id": 710,
+                "serial": 11,
+                "playerIndex": 0,
+                "name": "Meganium",
+                "hp": 160,
+                "maxHp": 160,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1205,
+                "serial": 31,
+                "playerIndex": 0,
+                "name": "Cyrano"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          },
+          {
+            "active": [
+              {
+                "id": 678,
+                "serial": 20,
+                "playerIndex": 1,
+                "name": "Mega Lucario ex",
+                "hp": 220,
+                "maxHp": 340,
+                "energyCards": [
+                  {
+                    "id": 6,
+                    "serial": 201,
+                    "playerIndex": 1,
+                    "name": "Basic {F} Energy"
+                  }
+                ],
+                "tools": [],
+                "preEvolution": [
+                  {
+                    "id": 677,
+                    "serial": 19,
+                    "playerIndex": 1,
+                    "name": "Riolu"
+                  }
+                ]
+              }
+            ],
+            "bench": [
+              {
+                "id": 150,
+                "serial": 21,
+                "playerIndex": 1,
+                "name": "Hydrapple ex",
+                "hp": 330,
+                "maxHp": 330,
+                "energyCards": [],
+                "tools": [],
+                "preEvolution": []
+              }
+            ],
+            "benchMax": 5,
+            "deckCount": 38,
+            "discard": [
+              {
+                "id": 1145,
+                "serial": 32,
+                "playerIndex": 1,
+                "name": "Mega Signal"
+              }
+            ],
+            "handCount": 0,
+            "hand": null,
+            "prize": [
+              null,
+              null,
+              null,
+              null,
+              null,
+              null
+            ],
+            "poisoned": false,
+            "burned": false,
+            "asleep": false,
+            "paralyzed": false,
+            "confused": false
+          }
+        ]
+      }
+    }
+  ]
+}

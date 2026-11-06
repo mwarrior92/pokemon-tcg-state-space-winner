@@ -1,0 +1,28 @@
+Pokémon: 12
+4 Raging Bolt ex TEF 123
+3 Teal Mask Ogerpon ex TWM 25
+2 Teal Mask Ogerpon DRI 26
+1 Raging Bolt SCR 111
+1 Meowth ex POR 62
+1 Fezandipiti ex ASC 142
+
+Trainer: 30
+4 Lillie's Determination MEG 119
+3 Crispin SCR 133
+3 Boss's Orders MEG 114
+4 Ultra Ball MEG 131
+4 Energy Switch MEG 115
+2 Night Stretcher MEG 173
+2 Switch MEG 130
+2 Pokégear 3.0 BLK 84
+1 Energy Retrieval CRI 108
+1 Max Rod PRE 116
+2 Ancient Booster Energy Capsule TEF 140
+2 Lively Stadium SSP 180
+
+Energy: 18
+9 Grass Energy MEE 9
+5 Lightning Energy MEE 12
+4 Fighting Energy MEE 14
+
+Total Cards: 60

@@ -1,0 +1,24 @@
+Pokémon: 10
+4 Seviper PFL 62
+4 Mega Darkrai ex PBL 48
+1 Inkay PBL 51
+1 Meowth ex POR 62
+
+Trainer: 31
+4 Janine's Secret Art SFA 59
+3 Brock's Scouting JTG 146
+3 Lillie's Determination MEG 119
+2 Boss's Orders MEG 114
+4 Ultra Ball MEG 131
+4 Poké Pad ASC 198
+1 Buddy-Buddy Poffin MEG 167
+1 Master Ball TEF 153
+4 Dark Bell PBL 75
+3 Switch MEG 130
+1 Night Stretcher MEG 173
+1 Pokégear 3.0 BLK 84
+
+Energy: 19
+19 Darkness Energy MEE 15
+
+Total Cards: 60

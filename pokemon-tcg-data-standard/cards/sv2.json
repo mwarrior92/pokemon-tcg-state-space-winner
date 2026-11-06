@@ -1,0 +1,40 @@
+[
+ {
+  "id": "sv2-278",
+  "name": "Basic Grass Energy",
+  "supertype": "Energy",
+  "subtypes": [
+   "Basic"
+  ],
+  "number": "278",
+  "rarity": "Hyper Rare",
+  "legalities": {
+   "unlimited": "Legal",
+   "standard": "Legal",
+   "expanded": "Legal"
+  },
+  "images": {
+   "small": "https://images.pokemontcg.io/sv2/278.png",
+   "large": "https://images.pokemontcg.io/sv2/278_hires.png"
+  }
+ },
+ {
+  "id": "sv2-279",
+  "name": "Basic Water Energy",
+  "supertype": "Energy",
+  "subtypes": [
+   "Basic"
+  ],
+  "number": "279",
+  "rarity": "Hyper Rare",
+  "legalities": {
+   "unlimited": "Legal",
+   "standard": "Legal",
+   "expanded": "Legal"
+  },
+  "images": {
+   "small": "https://images.pokemontcg.io/sv2/279.png",
+   "large": "https://images.pokemontcg.io/sv2/279_hires.png"
+  }
+ }
+]

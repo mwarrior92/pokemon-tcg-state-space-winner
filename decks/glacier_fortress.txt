@@ -1,0 +1,26 @@
+Pokémon: 16
+4 Cetoddle DRI 64
+4 Cetitan ex DRI 65
+3 Wellspring Mask Ogerpon DRI 67
+2 Deerling TEF 16
+2 Sawsbuck TEF 17
+1 Meowth ex POR 62
+
+Trainer: 30
+4 Dawn PFL 87
+4 Misty's Vitality PBL 80
+3 Lillie's Determination MEG 119
+1 Boss's Orders MEG 114
+3 Ultra Ball MEG 131
+3 Poké Pad ASC 198
+3 Switch MEG 130
+2 Pokégear 3.0 BLK 84
+1 Buddy-Buddy Poffin MEG 167
+1 Night Stretcher MEG 173
+1 Maximum Belt TEF 154
+4 Surfing Beach MEG 129
+
+Energy: 14
+14 Water Energy MEE 11
+
+Total Cards: 60

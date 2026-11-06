@@ -1,0 +1,33 @@
+# Built around: Hydrapple ex (SCR 14)
+# Archetype Style: High-Velocity Consistency Engine | Preferred Seat: GOING_FIRST
+# Blended Score: 70.62/100 (73.4% WR) | Going First: 70.74 (73.7% WR) | Going Second: 70.51 (73.1% WR)
+
+Pokémon: 24
+4 Applin TWM 17
+3 Teal Mask Ogerpon ex TWM 25
+3 Dipplin TWM 18
+3 Hydrapple ex SCR 14
+2 Chikorita ASC 8
+2 Dunsparce TEF 128
+2 Dudunsparce TEF 129
+2 Meganium MEG 10
+1 Mega Kangaskhan ex MEG 104
+1 Shaymin DRI 10
+1 Bayleef MEG 9
+
+Trainer: 29
+4 Boss's Orders MEG 114
+4 Bug Catching Set TWM 143
+4 Poké Pad POR 81
+3 Forest of Vitality MEG 117
+3 Judge POR 76
+3 Lillie's Determination MEG 119
+3 Night Stretcher ASC 196
+3 Ultra Ball MEG 131
+1 Buddy-Buddy Poffin TEF 144
+1 Maximum Belt TEF 154
+
+Energy: 7
+7 Grass Energy MEE 9
+
+Total Cards: 60

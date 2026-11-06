@@ -1,0 +1,29 @@
+Pokémon: 10
+4 Team Rocket's Ekans DRI 112
+4 Team Rocket's Arbok DRI 113
+2 Team Rocket's Murkrow ASC 126
+
+Trainer: 34
+4 Lillie's Determination MEG 119
+2 Team Rocket's Proton ASC 208
+2 Team Rocket's Petrel ASC 207
+2 Team Rocket's Ariana ASC 202
+2 Janine's Secret Art SFA 59
+2 Boss's Orders MEG 114
+4 Buddy-Buddy Poffin MEG 167
+4 Poké Pad ASC 198
+3 Ultra Ball MEG 131
+2 Night Stretcher MEG 173
+2 Switch MEG 130
+2 Team Rocket's Transceiver ASC 209
+1 Hero's Cape TEF 152
+2 Team Rocket's Factory ASC 203
+
+Energy: 16
+4 Team Rocket's Energy ASC 217
+12 Darkness Energy MEE 15
+
+Total Cards: 60
+
+# Simulated (scripts/duel.py, calibrated opponents): ~10% vs Dragapult, ~4% vs Basic Box, ~47% vs N's Zoroark.
+# Set codes per pokemon-tcg-data (ASC = Ascended Heroes, DRI = Destined Rivals).

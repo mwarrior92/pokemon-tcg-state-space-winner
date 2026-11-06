@@ -1,0 +1,1900 @@
+{
+  "large_scale_archive_telemetry": {
+    "total_games_censused": 154153,
+    "total_expert_decisions_analyzed": 1266868,
+    "terminal_win_conditions": {
+      "PRIZE_RACE_COMPLETION": 0.778,
+      "BENCH_OUT_WIPED_BOARD": 0.124,
+      "DECK_OUT_MILL_STALL": 0.098
+    },
+    "first_player_win_rate": 0.532,
+    "avg_cards_seen_per_game": 19.32,
+    "avg_bench_size_observed": 3.0,
+    "full_5_bench_rate": 0.259,
+    "supporter_skipped_turn_penalty_auc_delta": 0.0173,
+    "board_wipe_risk_per_game": 0.1932,
+    "dead_hand_fraction_main_phase": 0.43
+  },
+  "hf_500_games_summary": {
+    "source": "hf_500_games_turn_by_turn.csv",
+    "total_games": 500,
+    "total_turn_states": 6738,
+    "median_plies": 13,
+    "mean_plies": 13.48,
+    "window_stats": {
+      "T1_OPENING (Ply 1-2)": {
+        "observations": 1000,
+        "avg_my_bench": 1.55,
+        "avg_opp_bench": 1.56,
+        "avg_my_prizes_left": 6.0,
+        "avg_opp_prizes_left": 6.0,
+        "avg_my_active_hp_ratio": 0.883,
+        "avg_opp_active_hp_ratio": 1.0,
+        "avg_hand_size": 4.37,
+        "action_distribution": {
+          "ATTACH_ENERGY": 0.465,
+          "PLAY_SUPPORTER": 0.222,
+          "ATTACK": 0.22,
+          "RETREAT": 0.043,
+          "PLAY_BASIC_TO_BENCH": 0.027,
+          "PASS_TURN": 0.023
+        }
+      },
+      "T2_FIRST_STRIKE (Ply 3-4)": {
+        "observations": 963,
+        "avg_my_bench": 1.57,
+        "avg_opp_bench": 1.57,
+        "avg_my_prizes_left": 5.99,
+        "avg_opp_prizes_left": 5.92,
+        "avg_my_active_hp_ratio": 0.581,
+        "avg_opp_active_hp_ratio": 0.841,
+        "avg_hand_size": 3.87,
+        "action_distribution": {
+          "ATTACK": 0.449,
+          "PLAY_SUPPORTER": 0.271,
+          "RETREAT": 0.107,
+          "ATTACH_ENERGY": 0.08,
+          "PASS_TURN": 0.065,
+          "PLAY_BASIC_TO_BENCH": 0.028
+        }
+      },
+      "T3_4_MIDGAME_TRADE (Ply 5-8)": {
+        "observations": 1625,
+        "avg_my_bench": 1.54,
+        "avg_opp_bench": 1.5,
+        "avg_my_prizes_left": 5.84,
+        "avg_opp_prizes_left": 5.61,
+        "avg_my_active_hp_ratio": 0.54,
+        "avg_opp_active_hp_ratio": 0.769,
+        "avg_hand_size": 2.68,
+        "action_distribution": {
+          "PLAY_SUPPORTER": 0.437,
+          "ATTACK": 0.194,
+          "RETREAT": 0.162,
+          "PASS_TURN": 0.161,
+          "ATTACH_ENERGY": 0.026,
+          "PLAY_BASIC_TO_BENCH": 0.02
+        }
+      },
+      "T5_PLUS_ENDGAME (Ply 9+)": {
+        "observations": 3150,
+        "avg_my_bench": 1.26,
+        "avg_opp_bench": 1.43,
+        "avg_my_prizes_left": 5.68,
+        "avg_opp_prizes_left": 4.55,
+        "avg_my_active_hp_ratio": 0.42,
+        "avg_opp_active_hp_ratio": 0.768,
+        "avg_hand_size": 0.55,
+        "action_distribution": {
+          "PASS_TURN": 0.47,
+          "RETREAT": 0.28,
+          "PLAY_SUPPORTER": 0.123,
+          "ATTACK": 0.093,
+          "ATTACH_ENERGY": 0.024,
+          "PLAY_BASIC_TO_BENCH": 0.009
+        }
+      }
+    }
+  },
+  "cabt_engine_replays": [
+    {
+      "source": "cabt_lucario_vs_carm.json",
+      "format": "CABT_ENGINE_REPLAY",
+      "rewards": [
+        -1,
+        1
+      ],
+      "num_turns": 10,
+      "turns": [
+        {
+          "turn": 1,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 6,
+            "deck_count": 46,
+            "discard_count": 0,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 0,
+            "bench_energies": 0
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 3,
+            "hand_count": 6,
+            "deck_count": 44,
+            "discard_count": 0,
+            "active_id": 676,
+            "active_name": "",
+            "active_hp": 110,
+            "active_max_hp": 110,
+            "active_energies": 0,
+            "bench_energies": 0
+          },
+          "main_actions": [
+            {
+              "type": "END_TURN",
+              "card": null
+            },
+            {
+              "type": "END_TURN",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 2,
+          "active_player": 1,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 2,
+            "hand_count": 5,
+            "deck_count": 45,
+            "discard_count": 1,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 0,
+            "bench_energies": 0
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 3,
+            "hand_count": 7,
+            "deck_count": 43,
+            "discard_count": 0,
+            "active_id": 676,
+            "active_name": "",
+            "active_hp": 110,
+            "active_max_hp": 110,
+            "active_energies": 0,
+            "bench_energies": 0
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACH_ENERGY_OR_TOOL",
+              "card": null
+            },
+            {
+              "type": "ATTACH_ENERGY_OR_TOOL",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "RETREAT",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 3,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 6,
+            "deck_count": 44,
+            "discard_count": 2,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 0,
+            "bench_energies": 0
+          },
+          "p1": {
+            "prizes": 5,
+            "bench_count": 5,
+            "hand_count": 5,
+            "deck_count": 38,
+            "discard_count": 5,
+            "active_id": 676,
+            "active_name": "",
+            "active_hp": 110,
+            "active_max_hp": 110,
+            "active_energies": 1,
+            "bench_energies": 0
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACK",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACK",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 4,
+          "active_player": 1,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 2,
+            "hand_count": 6,
+            "deck_count": 41,
+            "discard_count": 3,
+            "active_id": 741,
+            "active_name": "",
+            "active_hp": 50,
+            "active_max_hp": 50,
+            "active_energies": 0,
+            "bench_energies": 1
+          },
+          "p1": {
+            "prizes": 5,
+            "bench_count": 5,
+            "hand_count": 6,
+            "deck_count": 37,
+            "discard_count": 5,
+            "active_id": 676,
+            "active_name": "",
+            "active_hp": 110,
+            "active_max_hp": 110,
+            "active_energies": 1,
+            "bench_energies": 0
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "EVOLVE",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "EVOLVE",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 5,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 7,
+            "deck_count": 40,
+            "discard_count": 4,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 0,
+            "bench_energies": 1
+          },
+          "p1": {
+            "prizes": 4,
+            "bench_count": 5,
+            "hand_count": 6,
+            "deck_count": 28,
+            "discard_count": 13,
+            "active_id": 676,
+            "active_name": "",
+            "active_hp": 110,
+            "active_max_hp": 110,
+            "active_energies": 1,
+            "bench_energies": 1
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "END_TURN",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 6,
+          "active_player": 1,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 2,
+            "hand_count": 5,
+            "deck_count": 39,
+            "discard_count": 6,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 0,
+            "bench_energies": 1
+          },
+          "p1": {
+            "prizes": 4,
+            "bench_count": 5,
+            "hand_count": 7,
+            "deck_count": 27,
+            "discard_count": 13,
+            "active_id": 678,
+            "active_name": "",
+            "active_hp": 340,
+            "active_max_hp": 340,
+            "active_energies": 1,
+            "bench_energies": 1
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACK",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACH_ENERGY_OR_TOOL",
+              "card": null
+            },
+            {
+              "type": "ATTACH_ENERGY_OR_TOOL",
+              "card": null
+            },
+            {
+              "type": "ATTACH_ENERGY_OR_TOOL",
+              "card": null
+            },
+            {
+              "type": "ATTACK",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 7,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 6,
+            "deck_count": 38,
+            "discard_count": 7,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 1,
+            "bench_energies": 0
+          },
+          "p1": {
+            "prizes": 3,
+            "bench_count": 5,
+            "hand_count": 5,
+            "deck_count": 21,
+            "discard_count": 16,
+            "active_id": 678,
+            "active_name": "",
+            "active_hp": 340,
+            "active_max_hp": 340,
+            "active_energies": 2,
+            "bench_energies": 4
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACK",
+              "card": null
+            },
+            {
+              "type": "RETREAT",
+              "card": null
+            },
+            {
+              "type": "END_TURN",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 8,
+          "active_player": 1,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 5,
+            "deck_count": 41,
+            "discard_count": 5,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 0,
+            "bench_energies": 1
+          },
+          "p1": {
+            "prizes": 3,
+            "bench_count": 5,
+            "hand_count": 6,
+            "deck_count": 20,
+            "discard_count": 16,
+            "active_id": 678,
+            "active_name": "",
+            "active_hp": 340,
+            "active_max_hp": 340,
+            "active_energies": 2,
+            "bench_energies": 4
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACK",
+              "card": null
+            },
+            {
+              "type": "END_TURN",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 9,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 0,
+            "hand_count": 6,
+            "deck_count": 40,
+            "discard_count": 6,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 1,
+            "bench_energies": 0
+          },
+          "p1": {
+            "prizes": 2,
+            "bench_count": 5,
+            "hand_count": 5,
+            "deck_count": 10,
+            "discard_count": 29,
+            "active_id": 674,
+            "active_name": "",
+            "active_hp": 80,
+            "active_max_hp": 150,
+            "active_energies": 3,
+            "bench_energies": 2
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "END_TURN",
+              "card": null
+            }
+          ]
+        },
+        {
+          "turn": 10,
+          "active_player": 1,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 0,
+            "hand_count": 5,
+            "deck_count": 40,
+            "discard_count": 7,
+            "active_id": 305,
+            "active_name": "",
+            "active_hp": 70,
+            "active_max_hp": 70,
+            "active_energies": 1,
+            "bench_energies": 0
+          },
+          "p1": {
+            "prizes": 2,
+            "bench_count": 5,
+            "hand_count": 6,
+            "deck_count": 9,
+            "discard_count": 29,
+            "active_id": 676,
+            "active_name": "",
+            "active_hp": 110,
+            "active_max_hp": 110,
+            "active_energies": 1,
+            "bench_energies": 4
+          },
+          "main_actions": [
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            },
+            {
+              "type": "ATTACK",
+              "card": null
+            },
+            {
+              "type": "PLAY_HAND_CARD",
+              "card": null
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": "cabt_match_1.json",
+      "format": "CABT_ENGINE_REPLAY",
+      "rewards": null,
+      "num_turns": 4,
+      "turns": [
+        {
+          "turn": 1,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 5,
+            "deck_count": 46,
+            "active_hp": 210,
+            "active_max_hp": 210,
+            "active_energies": 0
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 0,
+            "hand_count": 5,
+            "deck_count": 46,
+            "active_hp": 340,
+            "active_max_hp": 340,
+            "active_energies": 0
+          },
+          "main_actions": []
+        },
+        {
+          "turn": 2,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 1,
+            "deck_count": 42,
+            "active_hp": 210,
+            "active_max_hp": 210,
+            "active_energies": 0
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 2,
+            "deck_count": 43,
+            "active_hp": 340,
+            "active_max_hp": 340,
+            "active_energies": 0
+          },
+          "main_actions": []
+        },
+        {
+          "turn": 3,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 0,
+            "deck_count": 38,
+            "active_hp": 210,
+            "active_max_hp": 210,
+            "active_energies": 0
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 0,
+            "deck_count": 39,
+            "active_hp": 220,
+            "active_max_hp": 340,
+            "active_energies": 0
+          },
+          "main_actions": []
+        },
+        {
+          "turn": 4,
+          "active_player": 1,
+          "p0": {
+            "prizes": 5,
+            "bench_count": 1,
+            "hand_count": 0,
+            "deck_count": 38,
+            "active_hp": 90,
+            "active_max_hp": 210,
+            "active_energies": 0
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 0,
+            "deck_count": 38,
+            "active_hp": 220,
+            "active_max_hp": 340,
+            "active_energies": 0
+          },
+          "main_actions": []
+        }
+      ]
+    },
+    {
+      "source": "cabt_match_2.json",
+      "format": "CABT_ENGINE_REPLAY",
+      "rewards": null,
+      "num_turns": 2,
+      "turns": [
+        {
+          "turn": 1,
+          "active_player": 0,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 6,
+            "deck_count": 46,
+            "active_hp": 90,
+            "active_max_hp": 90,
+            "active_energies": 0
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 0,
+            "hand_count": 6,
+            "deck_count": 47,
+            "active_hp": 90,
+            "active_max_hp": 90,
+            "active_energies": 0
+          },
+          "main_actions": []
+        },
+        {
+          "turn": 2,
+          "active_player": 1,
+          "p0": {
+            "prizes": 6,
+            "bench_count": 1,
+            "hand_count": 5,
+            "deck_count": 44,
+            "active_hp": 90,
+            "active_max_hp": 90,
+            "active_energies": 1
+          },
+          "p1": {
+            "prizes": 6,
+            "bench_count": 0,
+            "hand_count": 7,
+            "deck_count": 46,
+            "active_hp": 90,
+            "active_max_hp": 90,
+            "active_energies": 0
+          },
+          "main_actions": []
+        }
+      ]
+    }
+  ],
+  "ptcgl_battle_logs": [
+    {
+      "source": "ptcgl_gardevoir_vs_miraidon.txt",
+      "format": "PTCGL_BATTLE_LOG",
+      "num_half_turns": 12,
+      "turns": [
+        {
+          "half_turn": 1,
+          "ptcgl_turn_num": 1,
+          "player": "Shinwrld",
+          "actions": [
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Shinwrld attached Basic Psychic Energy to Drifloon in the Active Spot."
+            }
+          ],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 1,
+          "energies_attached": 1,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 2,
+          "ptcgl_turn_num": 1,
+          "player": "gklinsing",
+          "actions": [
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "gklinsing's Raikou V used Fleet-Footed."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Ultra Ball."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "gklinsing played Miraidon ex to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "gklinsing's Miraidon ex used Tandem Unit."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- gklinsing drew 2 cards and played them to the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "gklinsing attached Basic Lightning Energy to Raikou V in the Active Spot."
+            }
+          ],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 2,
+          "energies_attached": 1,
+          "evolutions": 0,
+          "abilities_used": 2
+        },
+        {
+          "half_turn": 3,
+          "ptcgl_turn_num": 2,
+          "player": "Shinwrld",
+          "actions": [
+            {
+              "type": "EVOLVE",
+              "raw": "Shinwrld evolved Ralts to Kirlia on the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Kirlia used Refinement."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Shinwrld played Radiant Greninja to the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Shinwrld played Iono."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Radiant Greninja used Concealed Cards."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Shinwrld attached Basic Psychic Energy to Drifloon in the Active Spot."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 10,
+              "raw": "Shinwrld's Drifloon used Gust on gklinsing\u2019s Raikou V for 10 damage."
+            }
+          ],
+          "damage_dealt": 10,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 17,
+          "energies_attached": 1,
+          "evolutions": 1,
+          "abilities_used": 2
+        },
+        {
+          "half_turn": 4,
+          "ptcgl_turn_num": 2,
+          "player": "gklinsing",
+          "actions": [
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "gklinsing's Miraidon ex used Tandem Unit."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- gklinsing drew 2 cards and played them to the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Electric Generator."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- gklinsing attached Basic Lightning Energy to Raikou V on the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- gklinsing attached Basic Lightning Energy to Raikou V on the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Electric Generator."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- gklinsing attached Basic Lightning Energy to Iron Hands ex on the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- gklinsing attached Basic Lightning Energy to Iron Hands ex on the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Boss's Orders."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "gklinsing attached Basic Lightning Energy to Raikou V in the Active Spot."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 340,
+              "raw": "gklinsing's Raikou V used Lightning Rondo on Shinwrld\u2019s Radiant Greninja for 340 damage. Shinwrld's Radiant Greninja took 170 more damage because of Lightning Weakness."
+            }
+          ],
+          "damage_dealt": 340,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 2,
+          "energies_attached": 5,
+          "evolutions": 0,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 5,
+          "ptcgl_turn_num": 3,
+          "player": "Shinwrld",
+          "actions": [
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Shinwrld played Ralts to the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Shinwrld played Boss's Orders."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Kirlia used Refinement."
+            },
+            {
+              "type": "PLAY_STADIUM",
+              "raw": "Shinwrld played Artazon to the Stadium spot."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Shinwrld played Artazon."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- Shinwrld drew Mimikyu and played it to the Bench."
+            },
+            {
+              "type": "RETREAT",
+              "raw": "Shinwrld retreated Drifloon to the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Shinwrld attached Basic Psychic Energy to Mimikyu in the Active Spot."
+            }
+          ],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 3,
+          "energies_attached": 1,
+          "evolutions": 0,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 6,
+          "ptcgl_turn_num": 3,
+          "player": "gklinsing",
+          "actions": [
+            {
+              "type": "PLAY_STADIUM",
+              "raw": "gklinsing played Area Zero Underdepths to the Stadium spot."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "gklinsing's Miraidon ex used Tandem Unit."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "gklinsing attached Basic Lightning Energy to Iron Hands ex on the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Boss's Orders."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "gklinsing's Raikou V used Star Alchemy."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Switch Cart."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 190,
+              "raw": "gklinsing's Raikou V used Lightning Rondo on Shinwrld\u2019s Kirlia for 190 damage."
+            }
+          ],
+          "damage_dealt": 190,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 0,
+          "energies_attached": 1,
+          "evolutions": 0,
+          "abilities_used": 2
+        },
+        {
+          "half_turn": 7,
+          "ptcgl_turn_num": 4,
+          "player": "Shinwrld",
+          "actions": [
+            {
+              "type": "EVOLVE",
+              "raw": "Shinwrld evolved Ralts to Kirlia on the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Shinwrld played Arven."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Shinwrld played Nest Ball."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- Shinwrld drew Lumineon V and played it to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Kirlia used Refinement."
+            }
+          ],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 5,
+          "energies_attached": 0,
+          "evolutions": 1,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 8,
+          "ptcgl_turn_num": 4,
+          "player": "gklinsing",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Ultra Ball."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "gklinsing played Iron Bundle to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "gklinsing's Iron Bundle used Hyper Blower."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "gklinsing attached Basic Lightning Energy to Zapdos on the Bench."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 190,
+              "raw": "gklinsing's Raikou V used Lightning Rondo on Shinwrld\u2019s Drifloon for 190 damage."
+            }
+          ],
+          "damage_dealt": 190,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 0,
+          "energies_attached": 1,
+          "evolutions": 0,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 9,
+          "ptcgl_turn_num": 5,
+          "player": "Shinwrld",
+          "actions": [
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Shinwrld played Drifloon to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Kirlia used Refinement."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Shinwrld played Nest Ball."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- Shinwrld drew Mew ex and played it to the Bench."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "Shinwrld evolved Kirlia to Gardevoir ex on the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Shinwrld played Judge."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Shinwrld attached Basic Psychic Energy to Mimikyu in the Active Spot."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Shinwrld played Ralts to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Mew ex used Restart."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Mimikyu used Ghost Eye."
+            }
+          ],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 12,
+          "energies_attached": 1,
+          "evolutions": 1,
+          "abilities_used": 3
+        },
+        {
+          "half_turn": 10,
+          "ptcgl_turn_num": 5,
+          "player": "gklinsing",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Nest Ball."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- gklinsing drew Fezandipiti ex and played it to the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Arven."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "gklinsing played Electric Generator."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- gklinsing attached Basic Lightning Energy to Zapdos on the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "gklinsing attached Basic Lightning Energy to Zapdos on the Bench."
+            },
+            {
+              "type": "RETREAT",
+              "raw": "gklinsing retreated Raikou V to the Bench."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 110,
+              "raw": "gklinsing's Zapdos used Electric Ball on Shinwrld\u2019s Mimikyu for 110 damage."
+            }
+          ],
+          "damage_dealt": 110,
+          "kos": 2,
+          "prizes_taken": 2,
+          "cards_drawn": 2,
+          "energies_attached": 2,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 11,
+          "ptcgl_turn_num": 6,
+          "player": "Shinwrld",
+          "actions": [
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Shinwrld attached Basic Psychic Energy to Drifloon in the Active Spot."
+            },
+            {
+              "type": "RETREAT",
+              "raw": "Shinwrld retreated Drifloon to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Shinwrld's Gardevoir ex used Psychic Embrace."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- Shinwrld attached Basic Psychic Energy to Mew ex in the Active Spot."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- Shinwrld attached Basic Psychic Energy to Mew ex in the Active Spot."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- Shinwrld attached Basic Psychic Energy to Mew ex in the Active Spot."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 200,
+              "raw": "Shinwrld's Mew ex used Genome Hacking on gklinsing\u2019s Raikou V for 200 damage."
+            }
+          ],
+          "damage_dealt": 200,
+          "kos": 1,
+          "prizes_taken": 2,
+          "cards_drawn": 1,
+          "energies_attached": 4,
+          "evolutions": 0,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 12,
+          "ptcgl_turn_num": 6,
+          "player": "gklinsing",
+          "actions": [
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "gklinsing played Radiant Greninja to the Bench."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 200,
+              "raw": "gklinsing's Raikou V used Lightning Rondo on Shinwrld\u2019s Mew ex for 200 damage."
+            }
+          ],
+          "damage_dealt": 200,
+          "kos": 1,
+          "prizes_taken": 2,
+          "cards_drawn": 0,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 0
+        }
+      ]
+    },
+    {
+      "source": "ptcgl_charizard_vs_incineroar.txt",
+      "format": "PTCGL_BATTLE_LOG",
+      "num_half_turns": 17,
+      "turns": [
+        {
+          "half_turn": 1,
+          "ptcgl_turn_num": 1,
+          "player": "GBD999",
+          "actions": [],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 1,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 2,
+          "ptcgl_turn_num": 1,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Paldean Student."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Ratstail91 played Bidoof to the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Ratstail91 attached Basic Fire Energy to Litten in the Active Spot."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 10,
+              "raw": "Ratstail91's Litten used Gnaw on GBD999\u2019s Bidoof for 10 damage."
+            }
+          ],
+          "damage_dealt": 10,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 0,
+          "energies_attached": 1,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 3,
+          "ptcgl_turn_num": 2,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "GBD999 played Arven."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "GBD999 played Rare Candy."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "- GBD999 evolved Charmander to Charizard ex on the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "GBD999's Charizard ex used Infernal Reign."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- GBD999 attached Basic Fire Energy to Charizard ex on the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- GBD999 attached Basic Fire Energy to Charizard ex on the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "GBD999 attached Basic Fire Energy to Bidoof in the Active Spot."
+            },
+            {
+              "type": "RETREAT",
+              "raw": "GBD999 retreated Bidoof to the Bench."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "GBD999 evolved Bidoof to Bibarel on the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "GBD999's Bibarel used Industrious Incisors."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 180,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Litten for 180 damage."
+            }
+          ],
+          "damage_dealt": 180,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 3,
+          "energies_attached": 3,
+          "evolutions": 2,
+          "abilities_used": 2
+        },
+        {
+          "half_turn": 4,
+          "ptcgl_turn_num": 2,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Paldean Student."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "Ratstail91 evolved Bidoof to Bibarel in the Active Spot."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Ratstail91 played Litten to the Bench."
+            }
+          ],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 2,
+          "energies_attached": 0,
+          "evolutions": 1,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 5,
+          "ptcgl_turn_num": 3,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "PLAY_STADIUM",
+              "raw": "GBD999 played Collapsed Stadium to the Stadium spot."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 180,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Bibarel for 180 damage."
+            }
+          ],
+          "damage_dealt": 180,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 1,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 6,
+          "ptcgl_turn_num": 3,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Paldean Student."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "Ratstail91 evolved Litten to Torracat in the Active Spot."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Ratstail91 played Litten to the Bench."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Ratstail91 played Bidoof to the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Ratstail91 attached Basic Fire Energy to Litten on the Bench."
+            }
+          ],
+          "damage_dealt": 0,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 3,
+          "energies_attached": 1,
+          "evolutions": 1,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 7,
+          "ptcgl_turn_num": 4,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "GBD999 played Super Rod."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 180,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Torracat for 180 damage."
+            }
+          ],
+          "damage_dealt": 180,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 1,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 8,
+          "ptcgl_turn_num": 4,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Arven."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Ultra Ball."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "Ratstail91 evolved Bidoof to Bibarel on the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Bibarel used Industrious Incisors."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Ratstail91 played Litten to the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Ultra Ball."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "Ratstail91 evolved Litten to Torracat in the Active Spot."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Ratstail91 attached Basic Fire Energy to Torracat in the Active Spot."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 40,
+              "raw": "Ratstail91's Torracat used Gritty Claws on GBD999\u2019s Charizard ex for 40 damage."
+            }
+          ],
+          "damage_dealt": 40,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 5,
+          "energies_attached": 1,
+          "evolutions": 2,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 9,
+          "ptcgl_turn_num": 5,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "GBD999 played Charmander to the Bench."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "GBD999 played Charmander to the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "GBD999 played Boss's Orders."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 180,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Litten for 180 damage."
+            }
+          ],
+          "damage_dealt": 180,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 1,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 10,
+          "ptcgl_turn_num": 5,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Ratstail91 played Radiant Tsareena to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Bibarel used Industrious Incisors."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Super Rod."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Buddy-Buddy Poffin."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- Ratstail91 drew Litten and played it to the Bench."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- Ratstail91 drew Litten and played it to the Bench."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 40,
+              "raw": "Ratstail91's Torracat used Gritty Claws on GBD999\u2019s Charizard ex for 40 damage."
+            }
+          ],
+          "damage_dealt": 40,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 5,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 11,
+          "ptcgl_turn_num": 6,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "GBD999 played Rare Candy."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "- GBD999 evolved Charmander to Charizard ex on the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "GBD999's Charizard ex used Infernal Reign."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- GBD999 attached Basic Fire Energy to Charizard ex on the Bench."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- GBD999 attached Basic Fire Energy to Charizard ex on the Bench."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 70,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Torracat for 70 damage."
+            }
+          ],
+          "damage_dealt": 70,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 1,
+          "energies_attached": 2,
+          "evolutions": 1,
+          "abilities_used": 1
+        },
+        {
+          "half_turn": 12,
+          "ptcgl_turn_num": 6,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Damage Pump."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Ultra Ball."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "Ratstail91 evolved Litten to Torracat on the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Bibarel used Industrious Incisors."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Pal Pad."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Pok\u00e9gear 3.0."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Boss's Orders."
+            },
+            {
+              "type": "EVOLVE",
+              "raw": "Ratstail91 evolved Torracat to Incineroar in the Active Spot."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Radiant Tsareena used Elegant Heal."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 70,
+              "raw": "Ratstail91's Incineroar used Secret Attack on GBD999\u2019s Charmander for 70 damage."
+            }
+          ],
+          "damage_dealt": 70,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 5,
+          "energies_attached": 0,
+          "evolutions": 2,
+          "abilities_used": 2
+        },
+        {
+          "half_turn": 13,
+          "ptcgl_turn_num": 7,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "ATTACK",
+              "damage": 210,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Incineroar for 210 damage."
+            }
+          ],
+          "damage_dealt": 210,
+          "kos": 1,
+          "prizes_taken": 1,
+          "cards_drawn": 1,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 14,
+          "ptcgl_turn_num": 7,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Roxanne."
+            },
+            {
+              "type": "PLAY_STADIUM",
+              "raw": "Ratstail91 played Magma Basin to the Stadium spot."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Ultra Ball."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "Ratstail91 played Jirachi to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Bibarel used Industrious Incisors."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Magma Basin."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- Ratstail91 attached Basic Fire Energy to Litten on the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Energy Search."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "Ratstail91 attached Basic Fire Energy to Torracat in the Active Spot."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Energy Switch."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- Ratstail91 attached Basic Fire Energy to Torracat in the Active Spot."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Radiant Tsareena used Elegant Heal."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 40,
+              "raw": "Ratstail91's Torracat used Gritty Claws on GBD999\u2019s Charizard ex for 40 damage."
+            }
+          ],
+          "damage_dealt": 40,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 11,
+          "energies_attached": 3,
+          "evolutions": 0,
+          "abilities_used": 2
+        },
+        {
+          "half_turn": 15,
+          "ptcgl_turn_num": 8,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "GBD999 played Pidgey to the Bench."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 70,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Torracat for 70 damage."
+            }
+          ],
+          "damage_dealt": 70,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 1,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 0
+        },
+        {
+          "half_turn": 16,
+          "ptcgl_turn_num": 8,
+          "player": "Ratstail91",
+          "actions": [
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Miriam."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Magma Basin."
+            },
+            {
+              "type": "ATTACH_ENERGY",
+              "raw": "- Ratstail91 attached Basic Fire Energy to Litten on the Bench."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Pal Pad."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "Ratstail91 played Buddy-Buddy Poffin."
+            },
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "- Ratstail91 drew Litten and played it to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Bibarel used Industrious Incisors."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "Ratstail91's Radiant Tsareena used Elegant Heal."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 40,
+              "raw": "Ratstail91's Torracat used Gritty Claws on GBD999\u2019s Charizard ex for 40 damage."
+            }
+          ],
+          "damage_dealt": 40,
+          "kos": 0,
+          "prizes_taken": 0,
+          "cards_drawn": 5,
+          "energies_attached": 1,
+          "evolutions": 0,
+          "abilities_used": 2
+        },
+        {
+          "half_turn": 17,
+          "ptcgl_turn_num": 9,
+          "player": "GBD999",
+          "actions": [
+            {
+              "type": "SETUP_BASIC_BENCH",
+              "raw": "GBD999 played Mimikyu to the Bench."
+            },
+            {
+              "type": "USE_ABILITY_OR_EFFECT",
+              "raw": "GBD999's Bibarel used Industrious Incisors."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "GBD999 played Arven."
+            },
+            {
+              "type": "PLAY_TRAINER",
+              "raw": "GBD999 played Super Rod."
+            },
+            {
+              "type": "ATTACK",
+              "damage": 210,
+              "raw": "GBD999's Charizard ex used Burning Darkness on Ratstail91\u2019s Torracat for 210 damage."
+            }
+          ],
+          "damage_dealt": 210,
+          "kos": 1,
+          "prizes_taken": 3,
+          "cards_drawn": 4,
+          "energies_attached": 0,
+          "evolutions": 0,
+          "abilities_used": 1
+        }
+      ]
+    }
+  ]
+}

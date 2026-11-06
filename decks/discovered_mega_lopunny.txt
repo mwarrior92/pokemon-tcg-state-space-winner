@@ -1,0 +1,36 @@
+# Built around: Mega Lopunny ex (PFL 84)
+# Archetype Style: Disruption & Anti-Meta Control | Preferred Seat: GOING_FIRST
+# Blended Score: 68.27/100 (67.4% WR) | Going First: 70.20 (72.4% WR) | Going Second: 66.33 (62.5% WR)
+
+Pokémon: 17
+4 Buneary PFL 83
+3 Mega Lopunny ex PFL 84
+2 Budew ASC 16
+2 Latias ex SSP 76
+2 Munkidori TWM 95
+1 Fezandipiti ex ASC 142
+1 Mega Kangaskhan ex MEG 104
+1 Meowth ex POR 62
+1 Shaymin DRI 10
+
+Trainer: 35
+4 Boss's Orders MEG 114
+4 Buddy-Buddy Poffin TEF 144
+4 Lillie's Determination MEG 119
+4 Poké Pad POR 81
+4 Ultra Ball MEG 131
+3 Air Balloon ASC 181
+3 Judge POR 76
+2 Night Stretcher ASC 196
+2 Special Red Card CRI 82
+2 Switch MEG 130
+1 Ciphermaniac's Codebreaking TEF 145
+1 Dawn PFL 87
+1 Unfair Stamp TWM 165
+
+Energy: 8
+3 Grass Energy MEE 9
+3 Jet Energy SSP 252
+2 Darkness Energy MEE 15
+
+Total Cards: 60

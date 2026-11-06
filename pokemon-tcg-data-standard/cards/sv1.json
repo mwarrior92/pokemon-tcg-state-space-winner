@@ -1,0 +1,40 @@
+[
+ {
+  "id": "sv1-257",
+  "name": "Basic Lightning Energy",
+  "supertype": "Energy",
+  "subtypes": [
+   "Basic"
+  ],
+  "number": "257",
+  "rarity": "Hyper Rare",
+  "legalities": {
+   "unlimited": "Legal",
+   "standard": "Legal",
+   "expanded": "Legal"
+  },
+  "images": {
+   "small": "https://images.pokemontcg.io/sv1/257.png",
+   "large": "https://images.pokemontcg.io/sv1/257_hires.png"
+  }
+ },
+ {
+  "id": "sv1-258",
+  "name": "Basic Fighting Energy",
+  "supertype": "Energy",
+  "subtypes": [
+   "Basic"
+  ],
+  "number": "258",
+  "rarity": "Hyper Rare",
+  "legalities": {
+   "unlimited": "Legal",
+   "standard": "Legal",
+   "expanded": "Legal"
+  },
+  "images": {
+   "small": "https://images.pokemontcg.io/sv1/258.png",
+   "large": "https://images.pokemontcg.io/sv1/258_hires.png"
+  }
+ }
+]

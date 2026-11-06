@@ -1,0 +1,43 @@
+# Built around: Archeops (WHT 51)
+# Archetype Style: Fossil Devolution Lock (Ancient Wing + Judge) | Preferred Seat: GOING_FIRST
+# Blended Score: 79.28/100 (88.3% WR) | Going First: 80.12 (89.3% WR) | Going Second: 78.44 (87.3% WR)
+# Plan: Antique Plume Fossil -> Archen -> Archeops; keep Archeops Active, devolve the
+#       opponent's best evolved Pokemon with Ancient Wing, then KO the low-HP pre-evolution
+#       (Rock Throw 100 + Premium Power Pro 30/60 + Brave Bangle 30 vs ex) and shuffle the
+#       returned evolution card away with Judge / Ciphermaniac pressure.
+# Bench protection split:
+#   - 2 Battle Cage (PFL 85): blocks damage counters placed on Benched Pokemon by effects of
+#     attacks (Dragapult ex Phantom Dive) and Abilities (Dusknoir Cursed Blast / Munkidori).
+#   - 1 Shaymin (DRI 10): blocks attack damage to Benched non-Rule-Box Pokemon (Slowking
+#     Kyurem Trifrost / N's Zoroark ex Flamebody Cannon).
+# Fossil access: Team Rocket's Petrel (any Trainer) and Ciphermaniac's Codebreaking.
+
+Pokémon: 19
+4 Antique Plume Fossil WHT 79
+3 Archen WHT 50
+3 Archeops WHT 51
+3 Solrock MEG 75
+3 Munkidori TWM 95
+2 Lunatone MEG 74
+1 Shaymin DRI 10
+
+Trainer: 31
+4 Lillie's Determination MEG 119
+3 Judge POR 76
+3 Rare Candy MEG 125
+3 Poké Pad POR 81
+3 Night Stretcher ASC 196
+2 Boss's Orders MEG 114
+2 Dawn PFL 87
+2 Premium Power Pro MEG 124
+2 Brave Bangle WHT 80
+2 Team Rocket's Petrel DRI 176
+2 Ciphermaniac's Codebreaking TEF 145
+2 Battle Cage PFL 85
+1 Prime Catcher TEF 157
+
+Energy: 10
+8 Fighting Energy MEE 14
+2 Darkness Energy MEE 15
+
+Total Cards: 60

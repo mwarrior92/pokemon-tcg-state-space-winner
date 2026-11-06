@@ -1,0 +1,289 @@
+Setup
+GBD999 chose heads for the opening coin flip.
+GBD999 won the coin toss.
+Ratstail91 decided to go second.
+GBD999 drew 7 cards for the opening hand.
+- 7 drawn cards.
+Ratstail91 drew 7 cards for the opening hand.
+- 7 drawn cards.
+   • Paldean Student, Paldean Student, Damage Pump, Litten, Boss's Orders, Arven, Paldean Student
+GBD999 played Bidoof to the Active Spot.
+GBD999 played Charmander to the Bench.
+Ratstail91 played Litten to the Active Spot.
+
+Turn # 1 - GBD999's Turn
+GBD999 drew a card.
+GBD999 ended their turn.
+
+Turn # 1 - Ratstail91's Turn
+Ratstail91 drew Basic Fire Energy.
+Ratstail91 played Paldean Student.
+- Ratstail91 drew Bidoof.
+- Ratstail91 shuffled their deck.
+Ratstail91 played Bidoof to the Bench.
+Ratstail91 attached Basic Fire Energy to Litten in the Active Spot.
+Ratstail91's Litten used Gnaw on GBD999’s Bidoof for 10 damage.
+
+Turn # 2 - GBD999's Turn
+GBD999 drew a card.
+GBD999 played Arven.
+- GBD999 drew Rare Candy.
+- GBD999 shuffled their deck.
+GBD999 played Rare Candy.
+- GBD999 evolved Charmander to Charizard ex on the Bench.
+GBD999's Charizard ex used Infernal Reign.
+- GBD999 attached Basic Fire Energy to Charizard ex on the Bench.
+- GBD999 attached Basic Fire Energy to Charizard ex on the Bench.
+GBD999 attached Basic Fire Energy to Bidoof in the Active Spot.
+GBD999 retreated Bidoof to the Bench.
+- Basic Fire Energy was discarded from GBD999's Bidoof.
+GBD999's Charizard ex is now in the Active Spot.
+GBD999 evolved Bidoof to Bibarel on the Bench.
+GBD999's Bibarel used Industrious Incisors.
+- GBD999 drew 2 cards.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Litten for 180 damage.
+Ratstail91's Litten was Knocked Out!
+Basic Fire Energy was discarded from Ratstail91's Litten.
+Ratstail91's Bidoof is now in the Active Spot.
+GBD999 took a Prize card.
+A card was added to GBD999's hand.
+
+Turn # 2 - Ratstail91's Turn
+Ratstail91 drew Incineroar.
+Ratstail91 played Paldean Student.
+- Ratstail91 drew 2 cards.
+   • Bibarel, Litten
+- Ratstail91 shuffled their deck.
+Ratstail91 evolved Bidoof to Bibarel in the Active Spot.
+Ratstail91 played Litten to the Bench.
+Ratstail91 ended their turn.
+
+Turn # 3 - GBD999's Turn
+GBD999 drew a card.
+GBD999 played Collapsed Stadium to the Stadium spot.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Bibarel for 180 damage.
+Ratstail91's Bibarel was Knocked Out!
+Bidoof was discarded from Ratstail91's Bibarel.
+Ratstail91's Litten is now in the Active Spot.
+GBD999 took a Prize card.
+A card was added to GBD999's hand.
+
+Turn # 3 - Ratstail91's Turn
+Ratstail91 drew Basic Fire Energy.
+Ratstail91 played Paldean Student.
+- Ratstail91 drew 3 cards.
+   • Bidoof, Torracat, Litten
+- Ratstail91 shuffled their deck.
+Ratstail91 evolved Litten to Torracat in the Active Spot.
+Ratstail91 played Litten to the Bench.
+Ratstail91 played Bidoof to the Bench.
+Ratstail91 attached Basic Fire Energy to Litten on the Bench.
+Ratstail91 ended their turn.
+
+Turn # 4 - GBD999's Turn
+GBD999 drew a card.
+GBD999 played Super Rod.
+- GBD999 shuffled Basic Fire Energy into their deck.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Torracat for 180 damage.
+Ratstail91's Torracat was Knocked Out!
+Litten was discarded from Ratstail91's Torracat.
+Ratstail91's Litten is now in the Active Spot.
+GBD999 took a Prize card.
+A card was added to GBD999's hand.
+
+Turn # 4 - Ratstail91's Turn
+Ratstail91 drew Roseanne's Backup.
+Ratstail91 played Arven.
+- Ratstail91 drew 2 cards.
+   • Ultra Ball, Hero's Cape
+- Ratstail91 shuffled their deck.
+Ratstail91 attached Hero's Cape to Bidoof on the Bench.
+Ratstail91 played Ultra Ball.
+- Ratstail91 discarded 2 cards.
+   • Incineroar, Boss's Orders
+- Ratstail91 drew Bibarel.
+- Ratstail91 shuffled their deck.
+Ratstail91 evolved Bidoof to Bibarel on the Bench.
+Ratstail91's Bibarel used Industrious Incisors.
+- Ratstail91 drew 3 cards.
+   • Ultra Ball, Basic Fire Energy, Litten
+Ratstail91 played Litten to the Bench.
+Ratstail91 played Ultra Ball.
+- Ratstail91 discarded 2 cards.
+   • Roseanne's Backup, Damage Pump
+- Ratstail91 drew Torracat.
+- Ratstail91 shuffled their deck.
+Ratstail91 evolved Litten to Torracat in the Active Spot.
+Ratstail91 attached Basic Fire Energy to Torracat in the Active Spot.
+Ratstail91's Torracat used Gritty Claws on GBD999’s Charizard ex for 40 damage.
+
+Turn # 5 - GBD999's Turn
+GBD999 drew a card.
+GBD999 played Charmander to the Bench.
+GBD999 played Charmander to the Bench.
+GBD999 played Boss's Orders.
+- Ratstail91's Litten was switched with Ratstail91's Torracat to become the Active Pokémon.
+Ratstail91's Litten is now in the Active Spot.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Litten for 180 damage.
+Ratstail91's Litten was Knocked Out!
+Ratstail91's Torracat is now in the Active Spot.
+GBD999 took a Prize card.
+A card was added to GBD999's hand.
+
+Turn # 5 - Ratstail91's Turn
+Ratstail91 drew Radiant Tsareena.
+Ratstail91 played Radiant Tsareena to the Bench.
+Ratstail91's Bibarel used Industrious Incisors.
+- Ratstail91 drew 5 cards.
+   • Switch, Ultra Ball, Damage Pump, Super Rod, Buddy-Buddy Poffin
+Ratstail91 played Super Rod.
+- Ratstail91 shuffled 2 cards into their deck.
+   • Litten, Torracat
+- Ratstail91 moved Ratstail91's Litten to their deck.
+Ratstail91 played Buddy-Buddy Poffin.
+- Ratstail91 drew Litten and played it to the Bench.
+- Ratstail91 drew Litten and played it to the Bench.
+- Ratstail91 shuffled their deck.
+Ratstail91's Torracat used Gritty Claws on GBD999’s Charizard ex for 40 damage.
+
+Turn # 6 - GBD999's Turn
+GBD999 drew a card.
+GBD999 attached Defiance Band to Charizard ex in the Active Spot.
+GBD999 played Rare Candy.
+- GBD999 evolved Charmander to Charizard ex on the Bench.
+GBD999's Charizard ex used Infernal Reign.
+- GBD999 attached Basic Fire Energy to Charizard ex on the Bench.
+- GBD999 attached Basic Fire Energy to Charizard ex on the Bench.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Torracat for 70 damage.
+
+Turn # 6 - Ratstail91's Turn
+Ratstail91 drew Switch.
+Ratstail91 played Damage Pump.
+- Ratstail91 moved 2 damage counters from Ratstail91's Torracat to Ratstail91's Radiant Tsareena.
+Ratstail91 played Ultra Ball.
+- Ratstail91 discarded 2 cards.
+   • Switch, Switch
+- Ratstail91 drew Torracat.
+- Ratstail91 shuffled their deck.
+Ratstail91 evolved Litten to Torracat on the Bench.
+Ratstail91's Bibarel used Industrious Incisors.
+- Ratstail91 drew 5 cards.
+   • Paldean Student, Pal Pad, Buddy-Buddy Poffin, Incineroar, Pokégear 3.0
+Ratstail91 played Pal Pad.
+- Ratstail91 shuffled 2 cards into their deck.
+   • Boss's Orders, Arven
+Ratstail91 played Pokégear 3.0.
+- Ratstail91 drew Boss's Orders.
+- Ratstail91 shuffled their deck.
+Ratstail91 played Boss's Orders.
+- GBD999's Charmander was switched with GBD999's Charizard ex to become the Active Pokémon.
+GBD999's Charmander is now in the Active Spot.
+Ratstail91 evolved Torracat to Incineroar in the Active Spot.
+Ratstail91's Radiant Tsareena used Elegant Heal.
+- Ratstail91's Incineroar healed 20 damage.
+- Ratstail91's Radiant Tsareena healed 20 damage.
+Ratstail91's Incineroar used Secret Attack on GBD999’s Charmander for 70 damage.
+- Ratstail91 chose Combustion.
+GBD999's Charmander was Knocked Out!
+GBD999's Charizard ex is now in the Active Spot.
+Ratstail91 took a Prize card.
+Emergency Jelly was added to Ratstail91's hand.
+
+Turn # 7 - GBD999's Turn
+GBD999 drew a card.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Incineroar for 210 damage.
+Ratstail91's Incineroar was Knocked Out!
+- 4 cards were discarded from Ratstail91's Incineroar.
+   • Basic Fire Energy, Basic Fire Energy, Torracat, Litten
+Ratstail91's Torracat is now in the Active Spot.
+GBD999 took a Prize card.
+A card was added to GBD999's hand.
+
+Turn # 7 - Ratstail91's Turn
+Ratstail91 drew Roxanne.
+Ratstail91 attached Emergency Jelly to Radiant Tsareena on the Bench.
+Ratstail91 played Roxanne.
+- Ratstail91 shuffled 2 cards into their deck.
+   • Paldean Student, Buddy-Buddy Poffin
+- GBD999 moved GBD999's 6 cards to their deck.
+- GBD999 moved GBD999's a card to their deck.
+- Ratstail91 drew 6 cards.
+   • Paldean Student, Ultra Ball, Magma Basin, Miriam, Roxanne, Magma Basin
+- GBD999 drew 2 cards.
+Ratstail91 played Magma Basin to the Stadium spot.
+- GBD999 discarded Collapsed Stadium.
+Ratstail91 played Ultra Ball.
+- Ratstail91 discarded 2 cards.
+   • Paldean Student, Magma Basin
+- Ratstail91 drew Jirachi.
+- Ratstail91 shuffled their deck.
+Ratstail91 played Jirachi to the Bench.
+Ratstail91's Bibarel used Industrious Incisors.
+- Ratstail91 drew 3 cards.
+   • Buddy-Buddy Poffin, Energy Search, Energy Switch
+Ratstail91 played Magma Basin.
+- Ratstail91 attached Basic Fire Energy to Litten on the Bench.
+- Ratstail91 put 2 damage counters on Ratstail91's Litten.
+Ratstail91 played Energy Search.
+- Ratstail91 drew Basic Fire Energy.
+- Ratstail91 shuffled their deck.
+Ratstail91 attached Basic Fire Energy to Torracat in the Active Spot.
+Ratstail91 played Energy Switch.
+- Ratstail91 attached Basic Fire Energy to Torracat in the Active Spot.
+Ratstail91's Radiant Tsareena used Elegant Heal.
+- Ratstail91's Litten healed 20 damage.
+Ratstail91's Torracat used Gritty Claws on GBD999’s Charizard ex for 40 damage.
+
+Turn # 8 - GBD999's Turn
+GBD999 drew a card.
+GBD999 played Pidgey to the Bench.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Torracat for 70 damage.
+
+Turn # 8 - Ratstail91's Turn
+Ratstail91 drew Emergency Jelly.
+Ratstail91 played Miriam.
+- Ratstail91 shuffled 2 cards into their deck.
+   • Litten, Torracat
+- Ratstail91 moved Ratstail91's 3 cards to their deck.
+   • Incineroar, Litten, Incineroar
+- Ratstail91 drew 3 cards.
+   • Pal Pad, Boss's Orders, Arven
+Ratstail91 attached Emergency Jelly to Torracat in the Active Spot.
+Ratstail91 played Magma Basin.
+- Ratstail91 attached Basic Fire Energy to Litten on the Bench.
+- Ratstail91 put 2 damage counters on Ratstail91's Litten.
+Ratstail91 played Pal Pad.
+- Ratstail91 shuffled 2 cards into their deck.
+   • Miriam, Paldean Student
+Ratstail91 played Buddy-Buddy Poffin.
+- Ratstail91 drew Litten and played it to the Bench.
+- Ratstail91 shuffled their deck.
+Ratstail91's Bibarel used Industrious Incisors.
+- Ratstail91 drew 2 cards.
+   • Incineroar, Energy Search
+Ratstail91's Radiant Tsareena used Elegant Heal.
+- Ratstail91's Torracat healed 20 damage.
+- Ratstail91's Litten healed 20 damage.
+Ratstail91's Torracat used Gritty Claws on GBD999’s Charizard ex for 40 damage.
+Emergency Jelly was activated.
+- Ratstail91's Torracat healed 120 damage.
+- Emergency Jelly was discarded from Ratstail91's Torracat.
+
+Turn # 9 - GBD999's Turn
+GBD999 drew a card.
+GBD999 played Mimikyu to the Bench.
+GBD999's Bibarel used Industrious Incisors.
+- GBD999 drew 3 cards.
+GBD999 played Arven.
+- GBD999 drew Super Rod.
+- GBD999 shuffled their deck.
+GBD999 played Super Rod.
+- GBD999 shuffled Charmander into their deck.
+GBD999's Charizard ex used Burning Darkness on Ratstail91’s Torracat for 210 damage.
+Ratstail91's Torracat was Knocked Out!
+- 3 cards were discarded from Ratstail91's Torracat.
+   • Basic Fire Energy, Basic Fire Energy, Litten
+GBD999 took a Prize card.
+A card was added to GBD999's hand.
+Opponent took all of their Prize cards. GBD999 wins.
+

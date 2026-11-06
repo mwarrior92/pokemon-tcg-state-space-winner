@@ -1,0 +1,39 @@
+Pokémon: 21
+4 Larvitar JTG 80
+1 Pupitar JTG 81
+3 Tyranitar JTG 95
+1 Shieldon PBL 61
+2 Bastiodon PBL 62
+3 Rellor DRI 24
+2 Rabsca TEF 24
+3 Deino SSP 117
+2 Zweilous SSP 118
+
+Trainer: 31
+4 Rare Candy MEG 125
+3 Poké Pad ASC 198
+2 Ultra Ball MEG 131
+2 Buddy-Buddy Poffin MEG 167
+2 Antique Armor Fossil PBL 72
+2 Night Stretcher MEG 173
+1 Sacred Ash POR 115
+2 Switch MEG 130
+1 Air Balloon MEG 166
+2 Delicious Rice Balls DLR 101
+3 Dawn PFL 87
+2 Xerosic's Machinations SFA 64
+1 Boss's Orders MEG 114
+1 Lillie's Determination MEG 119
+1 Aarune DLR 89
+1 Neutralization Zone SFA 60
+1 Fossil Quarry PBL 76
+
+Energy: 8
+8 Darkness Energy MEE 15
+
+Total Cards: 60
+
+# Before Delta Reign is tournament-legal (or on TCG Live before Nov 5):
+#   2 Delicious Rice Balls -> 1 Pokémon Center Lady MEG 123 + 1 Super Potion
+#   1 Aarune              -> 1 Team Rocket's Petrel ASC 207 (searches any Trainer)
+# Delta Reign English card names were taken from pre-release lists and may change.
