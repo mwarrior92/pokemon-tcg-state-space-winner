@@ -65,6 +65,52 @@ PRIZE_CONTEXTS = [
 ]
 
 
+# ---------------------------------------------------------------------------
+# Situational card-condition liveness
+# ---------------------------------------------------------------------------
+# Probability that a game-state condition printed on a card ("You can use this card only
+# if ...") holds when we want to play it, by phase window. These follow competitive prize-race
+# tempo (first KOs on T2, ~2 Prizes per turn afterwards, checkmate at T5+), matching the phase
+# definitions above. NOTE: matches/hf_500_games_turn_by_turn.csv was considered but rejected for
+# this purpose: it is a slow, low-skill simulation (at ply 9+ a player has <=3 Prizes left only
+# ~7% of the time), which would make staples like Special Red Card look unplayable.
+CONDITION_LIVENESS: dict[str, dict[str, float]] = {
+    "BEHIND_ON_PRIZES":  {"T1_OPENING": 0.00, "T2_FIRST_STRIKE": 0.30, "T3_4_MIDGAME_TRADE": 0.45, "T5_PLUS_ENDGAME": 0.50},
+    "AFTER_OWN_KO":      {"T1_OPENING": 0.00, "T2_FIRST_STRIKE": 0.30, "T3_4_MIDGAME_TRADE": 0.55, "T5_PLUS_ENDGAME": 0.65},
+    "OPP_PRIZES_LE_3":   {"T1_OPENING": 0.00, "T2_FIRST_STRIKE": 0.00, "T3_4_MIDGAME_TRADE": 0.25, "T5_PLUS_ENDGAME": 0.75},
+    "OPP_PRIZES_LE_2":   {"T1_OPENING": 0.00, "T2_FIRST_STRIKE": 0.00, "T3_4_MIDGAME_TRADE": 0.10, "T5_PLUS_ENDGAME": 0.60},
+    "OPP_PRIZES_EQ_2":   {"T1_OPENING": 0.00, "T2_FIRST_STRIKE": 0.00, "T3_4_MIDGAME_TRADE": 0.08, "T5_PLUS_ENDGAME": 0.30},
+    "LAST_CARD_IN_HAND": {"T1_OPENING": 0.05, "T2_FIRST_STRIKE": 0.15, "T3_4_MIDGAME_TRADE": 0.25, "T5_PLUS_ENDGAME": 0.30},
+    "NOT_FIRST_TURN":    {"T1_OPENING": 0.00, "T2_FIRST_STRIKE": 1.00, "T3_4_MIDGAME_TRADE": 1.00, "T5_PLUS_ENDGAME": 1.00},
+    # Abilities that only work while the Pokemon is Active (Mega Kangaskhan ex Run Errand).
+    "ACTIVE_ONLY":       {"T1_OPENING": 0.40, "T2_FIRST_STRIKE": 0.40, "T3_4_MIDGAME_TRADE": 0.40, "T5_PLUS_ENDGAME": 0.40},
+}
+
+
+def condition_live(cond: str, s: "BoardStateScenario") -> float:
+    """Liveness in [0, 1] of a card condition key on board state `s`."""
+    if cond in CONDITION_LIVENESS:
+        return CONDITION_LIVENESS[cond].get(s.phase, 0.0)
+    if cond == "VS_OPP_EX":
+        return 1.0 if s.opp_active_is_ex else 0.0
+    if cond == "VS_BENCH_SPREAD":
+        return 1.0 if s.opp_incoming_bench_spread > 0 else 0.0
+    if cond == "VS_BENCH_COUNTERS":
+        return 1.0 if (s.opp_incoming_bench_spread > 0 and s.opp_bench_spread_is_counters) else 0.0
+    if cond == "VS_BENCH_ATTACK_DAMAGE":
+        return 1.0 if (s.opp_incoming_bench_spread > 0 and not s.opp_bench_spread_is_counters) else 0.0
+    if cond == "VS_DRAGON":
+        return 1.0 if "Dragapult" in s.archetype_source else 0.0
+    return 1.0
+
+
+def conditions_live(conds: tuple[str, ...] | None, s: "BoardStateScenario") -> float:
+    live = 1.0
+    for c in conds or ():
+        live *= condition_live(c, s)
+    return live
+
+
 @dataclass
 class BoardStateScenario:
     state_id: str

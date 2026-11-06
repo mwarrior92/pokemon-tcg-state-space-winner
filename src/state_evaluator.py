@@ -14,8 +14,35 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
-from card_compiler import BASIC_ENERGY_MAP, MACRO_ACTIONS, CompiledCard, StandardCardDatabase
-from state_space import BoardStateScenario, build_competitive_state_space
+from card_compiler import BASIC_ENERGY_MAP, MACRO_ACTIONS, CompiledCard, StandardCardDatabase, card_matches_filter
+from state_space import BoardStateScenario, build_competitive_state_space, conditions_live
+
+# Saturation scale per macro action (raw copy-weighted sum at which capability reaches ~63%).
+NORM_SCALES = {
+    "SETUP_BASIC": 5.5,
+    "EVOLVE_LINE": 3.5,
+    "DRAW_REFRESH": 5.5,
+    "TUTOR_SEARCH": 5.5,
+    "ACCEL_ENERGY": 3.2,
+    "STRIKE_LIGHT": 2.5,
+    "STRIKE_MID": 2.5,
+    "STRIKE_HEAVY": 2.5,
+    "SPREAD_BENCH": 2.2,
+    "GUST_TARGET": 2.4,
+    "DISRUPT_HAND": 2.2,
+    "LOCK_STALL": 2.0,
+    "WALL_BREAKER": 2.2,
+    "MOBILITY_PIVOT": 2.5,
+    "RECOVER_CYCLE": 2.0,
+    "TANK_SURVIVE": 2.5,
+}
+
+# Win-rate calibration. Scores are only meaningful RELATIVE to the real tournament field:
+# a deck that scores like the average 512-list tournament deck is a ~50% deck against that
+# field. `FIELD_WR_SPREAD` is the win-rate standard deviation assigned to a one-standard-
+# deviation score difference among real tournament decks (top archetypes sit at ~43-61%).
+FIELD_WR_SPREAD = 0.05
+LEGACY_WR_CENTER, LEGACY_WR_SCALE = 62.0, 8.5   # used only when no field decklists are supplied
 
 
 def hypergeom_prob_at_least(n_total: int, k_success: int, n_draws: int, min_hits: int = 1) -> float:
@@ -71,12 +98,112 @@ class DeckEvaluationReport:
     worst_states: list[tuple[str, str, float, float]]  # (state_id, name, weight, score)
     best_states: list[tuple[str, str, float, float]]
     missing_demands: dict[str, float]       # Bottleneck macro-actions most needed to improve EV
+    field_percentile: float | None = None   # Share of real tournament decks scoring below this deck [0..100]
+    dead_cards: list[tuple[str, int, str]] = field(default_factory=list)  # (card, copies, reason)
 
 
 class StateSpaceEvaluator:
-    def __init__(self, db: StandardCardDatabase, scenarios: list[BoardStateScenario]):
+    def __init__(
+        self,
+        db: StandardCardDatabase,
+        scenarios: list[BoardStateScenario],
+        field_decklists: Path | list[dict[str, Any]] | None = None,
+    ):
+        """
+        `field_decklists` (the tournament decklist JSON, or its parsed list) calibrates win
+        rates against the real field: without it, win rates use legacy constants and are
+        NOT comparable to real-world win rates.
+        """
         self.db = db
         self.scenarios = scenarios
+        w_tot = sum(s.state_weight for s in scenarios) or 1.0
+        self._cond_avg_cache: dict[tuple[str, ...], float] = {}
+        self._w_tot = w_tot
+        self._field_source = field_decklists
+        self._field_scores: list[float] | None = None
+        self._wr_center, self._wr_scale = LEGACY_WR_CENTER, LEGACY_WR_SCALE
+
+    # ------------------------------------------------------------------
+    # Field calibration
+    # ------------------------------------------------------------------
+    def _ensure_calibrated(self) -> None:
+        if self._field_source is None or self._field_scores is not None:
+            return
+        src = self._field_source
+        self._field_scores = []  # set first: evaluate_deck below must not recurse into calibration
+        if isinstance(src, (str, Path)):
+            with open(src, encoding="utf-8") as f:
+                src = json.load(f)
+        scores = []
+        for d in src:
+            deck: dict[CompiledCard, int] = defaultdict(int)
+            for c in d.get("cards", []):
+                cc = self.db.resolve_card(c["name"], c.get("set"), str(c.get("num", "")))
+                if cc:
+                    deck[cc] += int(c["count"])
+            if sum(deck.values()) == 60:
+                scores.append(self._raw_scores(dict(deck))[0])
+        if len(scores) >= 20:
+            mu = sum(scores) / len(scores)
+            sd = math.sqrt(sum((x - mu) ** 2 for x in scores) / (len(scores) - 1)) or 1.0
+            self._wr_center = mu
+            # logistic((score - mu) / T) == 0.5 + FIELD_WR_SPREAD at one standard deviation
+            self._wr_scale = sd / math.log((0.5 + FIELD_WR_SPREAD) / (0.5 - FIELD_WR_SPREAD))
+            self._field_scores = sorted(scores)
+
+    def _win_rate(self, score: float) -> float:
+        return 1.0 / (1.0 + math.exp(-(score - self._wr_center) / self._wr_scale))
+
+    def _field_percentile(self, score: float) -> float | None:
+        if not self._field_scores:
+            return None
+        below = sum(1 for x in self._field_scores if x < score)
+        return round(100.0 * below / len(self._field_scores), 1)
+
+    # ------------------------------------------------------------------
+    # Generic card-effect checks (requirements & situational conditions)
+    # ------------------------------------------------------------------
+    def avg_condition_live(self, conds: tuple[str, ...] | None) -> float:
+        """State-weighted average liveness of a condition tuple across the meta state space."""
+        if not conds:
+            return 1.0
+        if conds not in self._cond_avg_cache:
+            self._cond_avg_cache[conds] = sum(
+                s.state_weight * conditions_live(conds, s) for s in self.scenarios
+            ) / self._w_tot
+        return self._cond_avg_cache[conds]
+
+    @staticmethod
+    def requirement_satisfaction(card: CompiledCard, deck: dict[CompiledCard, int]) -> dict[str | None, float]:
+        """
+        Per-macro-action satisfaction [0..1] of `card`'s deck-composition requirements.
+        Key None holds the satisfaction for actions not explicitly listed.
+        E.g. Rosa's Encouragement needs Stage 2 Pokemon: 0 Stage 2 copies -> 0.0 (dead card).
+        """
+        if not card.requirements:
+            return {None: 1.0}
+        per_req: list[tuple[float, list[str] | None]] = []
+        for r in card.requirements:
+            matching = sum(cnt for c, cnt in deck.items() if cnt > 0 and card_matches_filter(c, r["filter"]))
+            per_req.append((min(1.0, matching / max(1, r.get("min", 3))), r.get("acts")))
+
+        def _combine(vals: list[float]) -> float:
+            if not vals:
+                return 1.0
+            if card.requirement_mode == "any":
+                return max(vals)
+            if card.requirement_mode == "mean":
+                return sum(vals) / len(vals)
+            return min(vals)
+
+        out: dict[str | None, float] = {None: _combine([v for v, acts in per_req if acts is None])}
+        for act in card.action_vector:
+            out[act] = _combine([v for v, acts in per_req if acts is None or act in acts])
+        return out
+
+    def card_action_weight(self, card: CompiledCard, act: str, sat: dict[str | None, float]) -> float:
+        """Expected usefulness [0..1] of `card` for `act`: requirement satisfaction x condition liveness."""
+        return sat.get(act, sat[None]) * self.avg_condition_live(card.action_conditions.get(act))
 
     def check_legality(self, deck: dict[CompiledCard, int]) -> tuple[bool, list[str]]:
         issues = []
@@ -143,7 +270,6 @@ class StateSpaceEvaluator:
         fossil_basics = 0
         fossil_tutors = 0
         devolution_control = 0
-        fighting_dmg_boost = 0
 
         energy_counts: dict[str, int] = defaultdict(int)
         total_energy = 0
@@ -193,7 +319,7 @@ class StateSpaceEvaluator:
                 total_energy += cnt
                 if card.primary_energy_type:
                     energy_counts[card.primary_energy_type] += cnt
-                elif "Luminous" in card.name or "Legacy" in card.name or "Neo Upper" in card.name:
+                elif "Luminous" in card.name or "Legacy" in card.name or "Neo Upper" in card.name or "provides every type of energy" in card.rules_text.lower():
                     for et in BASIC_ENERGY_MAP:
                         energy_counts[et] += cnt
                 else:
@@ -201,57 +327,81 @@ class StateSpaceEvaluator:
 
         if has_damage_counter_primary:
             has_direct_damage_attacker = False
+        # Primary attacker scales with OUR hand size (Alakazam Powerful Hand): symmetric hand
+        # resets (Judge, Unfair Stamp) shrink our own hand too, so they are mostly anti-synergy.
+        hand_size_primary = any(
+            cnt >= 3 and "SCALES_HAND_SIZE" in c.synergy_hooks for c, cnt in deck.items() if c.supertype == "Pokémon"
+        )
 
         distinct_basic_energy_types = sum(1 for et in BASIC_ENERGY_MAP if energy_counts.get(et, 0) > 0)
 
-        # Second pass: accumulate conditional Trainer/Energy/Ability capabilities
+        # Second pass: accumulate conditional Trainer/Energy/Ability capabilities.
+        # Every card is checked GENERICALLY against its compiled requirements (e.g. Rosa's
+        # Encouragement -> needs Stage 2 Pokemon) and situational conditions (e.g. Rosa only
+        # when behind on Prizes); gated contributions go to `cond_macro` and are only credited
+        # in board states where the condition is live (see `_state_capabilities`).
         OFFENSIVE_ACTIONS = {"STRIKE_LIGHT", "STRIKE_MID", "STRIKE_HEAVY", "WALL_BREAKER"}
         dead_card_count = 0
+        dead_cards: list[tuple[str, int, str]] = []
+        cond_macro: dict[tuple[str, ...], dict[str, float]] = defaultdict(lambda: defaultdict(float))
+        damage_bonuses: list[dict[str, Any]] = []
+
+        def _mark_dead(card: CompiledCard, n: int, reason: str) -> None:
+            nonlocal dead_card_count
+            dead_card_count += n
+            dead_cards.append((card.name, n, reason))
 
         for card, cnt in deck.items():
             if cnt <= 0:
                 continue
             copy_eff = cnt ** 0.82
+            sat = self.requirement_satisfaction(card, deck)
+            if hand_size_primary and "SYMMETRIC_HAND_RESET" in card.tags:
+                sat = {k: v * 0.35 for k, v in sat.items()}
 
-            # Check conditional Trainer validity
+            def w(act: str) -> float:
+                return self.card_action_weight(card, act, sat)
+
+            # Generic requirement check: a Trainer (or attach-restricted Special Energy) whose
+            # every capability needs Pokemon the deck doesn't run is a dead card.
+            if card.requirements and (card.supertype == "Trainer" or "can only be attached to" in card.rules_text.lower()):
+                acts = list(card.action_vector) or [None]
+                if all(sat.get(a, sat[None]) <= 0.0 for a in acts):
+                    needs = " / ".join(
+                        ",".join(f"{k}={v}" for k, v in r["filter"].items()) for r in card.requirements
+                    )
+                    _mark_dead(card, cnt, f"requires Pokemon matching [{needs}] (none in deck)")
+                    continue
+
+            # Card-specific checks the generic parser can't express
             if card.supertype == "Trainer":
-                if card.name.startswith("Team Rocket's") and card.name not in ("Team Rocket's Petrel", "Team Rocket's Watchtower"):
-                    if team_rocket_poke_count < 4:
-                        dead_card_count += cnt
-                        continue
-                if card.name in ("Forest of Vitality", "Bug Catching Set") and not has_grass_poke:
-                    dead_card_count += cnt
-                    continue
-                if card.name == "Rare Candy" and not has_stage2_poke:
-                    dead_card_count += cnt
-                    continue
                 if card.name in ("Janine's Secret Art", "Dark Bell") and (not has_dark_poke or energy_counts.get("Darkness", 0) < 3):
-                    dead_card_count += cnt
+                    _mark_dead(card, cnt, "needs Darkness Pokemon + 3+ Basic Darkness Energy")
                     continue
                 if card.name == "Crispin" and distinct_basic_energy_types < 2:
-                    dead_card_count += cnt
-                    continue
-                if "DAMAGE_MOD_TOOL" in card.tags:
-                    # Damage-modifying tools (Maximum Belt, Brave Bangle, Vitality Band) DO NOT apply to effect/damage-counter attacks (like Alakazam)!
-                    if not has_direct_damage_attacker:
-                        dead_card_count += cnt
-                        continue
-                    if card.name == "Brave Bangle" and not has_non_rule_box_direct_attacker:
-                        dead_card_count += cnt
-                        continue
-                if "FIGHTING_DAMAGE_BOOST" in card.tags and not has_fighting_direct_attacker:
-                    dead_card_count += cnt
+                    _mark_dead(card, cnt, "needs 2+ Basic Energy types")
                     continue
                 if "poisoned" in card.rules_text.lower() and not has_poison_source:
-                    dead_card_count += cnt
+                    _mark_dead(card, cnt, "needs a Poison source")
                     continue
                 if card.name == "Risky Ruins" and not has_dark_poke and not (name_counts.get("Munkidori", 0) > 0 and energy_counts.get("Darkness", 0) >= 2):
-                    dead_card_count += cnt
+                    _mark_dead(card, cnt, "needs Darkness Pokemon (or Munkidori + Darkness Energy)")
                     continue
+                if card.damage_bonus:
+                    damage_bonuses.append({
+                        **card.damage_bonus,
+                        "card": card.name,
+                        "copies": cnt,
+                        "conds": card.action_conditions.get("STRIKE_HEAVY") or card.action_conditions.get("STRIKE_MID"),
+                    })
 
             for act, val in card.action_vector.items():
                 if card.supertype == "Pokémon" and act in OFFENSIVE_ACTIONS:
                     # Pokemon offensive actions are added ONLY in the attacker pass below if their energy & lineage are met!
+                    continue
+                if card.damage_bonus and act in OFFENSIVE_ACTIONS:
+                    # Damage modifiers have no offense of their own: their value flows ONLY through
+                    # the attackers they actually boost (see `_damage_bonus` / attacker pass).
                     continue
                 if card.supertype == "Pokémon" and act == "SPREAD_BENCH" and not (
                     "SELF_KO_BOMBER" in card.tags or "DAMAGE_MOVER" in card.tags or "PASSIVE_SPREAD" in card.tags
@@ -260,6 +410,7 @@ class StateSpaceEvaluator:
                     continue
                 if card.supertype == "Pokémon" and "DAMAGE_MOVER" in card.tags and energy_counts.get("Darkness", 0) == 0:
                     continue
+                eff = copy_eff
                 if (
                     card.supertype == "Pokémon"
                     and act == "TANK_SURVIVE"
@@ -267,9 +418,15 @@ class StateSpaceEvaluator:
                     and "BENCH_COUNTER_BARRIER" not in card.tags
                 ):
                     # Flower Curtain (Shaymin) does not stack; 87/87 tournament decks play 1 copy.
-                    raw_macro[act] += val * 1.0
+                    eff = 1.0
+                contrib = val * eff * sat.get(act, sat[None])
+                if contrib <= 0:
                     continue
-                raw_macro[act] += val * copy_eff
+                conds = card.action_conditions.get(act)
+                if conds:
+                    cond_macro[conds][act] += contrib
+                else:
+                    raw_macro[act] += contrib
 
             if card.supertype == "Pokémon":
                 if card.stage == 0:
@@ -277,7 +434,7 @@ class StateSpaceEvaluator:
                     if card.hp <= 70:
                         poffin_basics += cnt
                 if "DRAW_ENGINE_POKEMON" in card.tags:
-                    draw_engine_pokemon += cnt
+                    draw_engine_pokemon += cnt * w("DRAW_REFRESH")
                     if "Colorless" in card.types:
                         colorless_ability_pokemon += cnt
                 if "ENERGY_ACCEL_POKEMON" in card.tags or "ENERGY_DOUBLER" in card.tags:
@@ -293,7 +450,7 @@ class StateSpaceEvaluator:
                     ):
                         # Extra copies of a pure attack-damage bench barrier (Shaymin) do not stack
                         # and clog opening hands / bench slots.
-                        dead_card_count += cnt - 1
+                        _mark_dead(card, cnt - 1, "extra copies of a non-stacking bench barrier")
                 if "BENCH_COUNTER_BARRIER" in card.tags:
                     bench_counter_barrier += cnt
                 if "DRAGON_SLAYER" in card.tags or card.name == "Lillie's Clefairy ex":
@@ -313,15 +470,13 @@ class StateSpaceEvaluator:
                     fossil_basics += cnt
                 if card.name in ("Team Rocket's Petrel", "Ciphermaniac's Codebreaking", "Secret Box"):
                     fossil_tutors += cnt
-                if "FIGHTING_DAMAGE_BOOST" in card.tags:
-                    fighting_dmg_boost = max(fighting_dmg_boost, 30.0 * min(2.0, float(cnt)))
                 if "SUPPORTER" in card.tags:
                     if card.action_vector.get("DRAW_REFRESH", 0) >= 0.5:
-                        draw_supporters += cnt
+                        draw_supporters += cnt * w("DRAW_REFRESH")
                     if card.action_vector.get("TUTOR_SEARCH", 0) >= 0.5:
-                        search_supporters += cnt
+                        search_supporters += cnt * w("TUTOR_SEARCH")
                 if "ITEM" in card.tags and (card.action_vector.get("SETUP_BASIC", 0) >= 0.5 or card.action_vector.get("TUTOR_SEARCH", 0) >= 0.5):
-                    ball_tutors += cnt
+                    ball_tutors += cnt * max(w("SETUP_BASIC"), w("TUTOR_SEARCH"))
                 if card.name == "Rare Candy" and has_stage2_poke:
                     rare_candies += cnt
                 if card.name == "Forest of Vitality" and has_grass_poke:
@@ -333,46 +488,22 @@ class StateSpaceEvaluator:
                 if "STADIUM" in card.tags:
                     stadiums += cnt
                 if card.action_vector.get("GUST_TARGET", 0) >= 0.5:
-                    gust_cards += cnt
+                    gust_cards += cnt * w("GUST_TARGET")
                 if card.action_vector.get("DISRUPT_HAND", 0) >= 0.5:
-                    disrupt_cards += cnt
+                    disrupt_cards += cnt * w("DISRUPT_HAND")
                 if card.action_vector.get("MOBILITY_PIVOT", 0) >= 0.5:
-                    switch_pivots += cnt
+                    switch_pivots += cnt * w("MOBILITY_PIVOT")
                 if card.action_vector.get("RECOVER_CYCLE", 0) >= 0.5:
-                    recovery_cards += cnt
+                    recovery_cards += cnt * w("RECOVER_CYCLE")
                 if card.action_vector.get("ACCEL_ENERGY", 0) >= 0.5:
-                    energy_accel_cards += cnt
+                    energy_accel_cards += cnt * w("ACCEL_ENERGY")
             elif card.supertype == "Energy":
                 if card.action_vector.get("SETUP_BASIC", 0) >= 0.5:
-                    ball_tutors += cnt
+                    ball_tutors += cnt * w("SETUP_BASIC")
                 if card.action_vector.get("ACCEL_ENERGY", 0) >= 0.5:
-                    energy_accel_cards += cnt
+                    energy_accel_cards += cnt * w("ACCEL_ENERGY")
                 if card.action_vector.get("MOBILITY_PIVOT", 0) >= 0.5:
-                    switch_pivots += cnt
-
-        # Compute saturated macro capability vector [0..1]
-        norm_scales = {
-            "SETUP_BASIC": 5.5,
-            "EVOLVE_LINE": 3.5,
-            "DRAW_REFRESH": 5.5,
-            "TUTOR_SEARCH": 5.5,
-            "ACCEL_ENERGY": 3.2,
-            "STRIKE_LIGHT": 2.5,
-            "STRIKE_MID": 2.5,
-            "STRIKE_HEAVY": 2.5,
-            "SPREAD_BENCH": 2.2,
-            "GUST_TARGET": 2.4,
-            "DISRUPT_HAND": 2.2,
-            "LOCK_STALL": 2.0,
-            "WALL_BREAKER": 2.2,
-            "MOBILITY_PIVOT": 2.5,
-            "RECOVER_CYCLE": 2.0,
-            "TANK_SURVIVE": 2.5,
-        }
-        macro_cap = {
-            act: round(subadditive_saturate(raw_macro[act], norm_scales[act]), 4)
-            for act in MACRO_ACTIONS
-        }
+                    switch_pivots += cnt * w("MOBILITY_PIVOT")
 
         # Opening hand probabilities (distinguishing Going First vs Going Second rules!)
         p_open_basic = hypergeom_prob_at_least(60, total_basics, 7, 1)
@@ -388,23 +519,29 @@ class StateSpaceEvaluator:
         # Evaluate candidate attackers in the deck
         # Count passive/ability spread support (e.g. Dusknoir Cursed Blast, Munkidori Adrena-Brain, Froslass)
         ability_spread_support = 0.0
-        tool_dmg_bonus = 0.0
+        bomber_burst, bomber_avail = 0.0, 0.0
         for c2, cnt2 in deck.items():
             if cnt2 <= 0:
                 continue
             if "SELF_KO_BOMBER" in c2.tags:
-                # Check if Duskull is present
-                if name_counts.get("Duskull", 0) > 0:
+                # Check the bomber's evolution line is actually present (e.g. Duskull for Dusknoir)
+                root = self.db.get_evolution_chain(c2.name, walk_up=False)[0]
+                if name_counts.get(root, 0) > 0:
                     ability_spread_support += 45.0 * min(1.0, cnt2 / 2.0)
+                    # Cursed Blast can also target the ACTIVE Pokemon to finish a KO
+                    # (Mega Lopunny ex 230 + Dusknoir 130 = 360 one-shots any Mega ex).
+                    m_dc = re.search(r"put (\d+) damage counters", " ".join(ab.get("text", "") for ab in c2.abilities).lower())
+                    burst = 10.0 * int(m_dc.group(1)) if m_dc else 50.0
+                    avail = min(0.9, 0.35 * cnt2)
+                    if burst * avail > bomber_burst * bomber_avail:
+                        bomber_burst, bomber_avail = burst, avail
             elif "DAMAGE_MOVER" in c2.tags:
                 if energy_counts.get("Darkness", 0) > 0:
                     ability_spread_support += 25.0 * min(1.0, cnt2 / 2.0)
                 else:
-                    dead_card_count += cnt2
+                    _mark_dead(c2, cnt2, "Adrena-Brain needs Darkness Energy")
             elif "PASSIVE_SPREAD" in c2.tags:
                 ability_spread_support += 20.0 * min(1.0, cnt2 / 2.0)
-            elif c2.supertype == "Trainer" and "DAMAGE_MOD_TOOL" in c2.tags and has_direct_damage_attacker:
-                tool_dmg_bonus = max(tool_dmg_bonus, 30.0 * min(1.0, cnt2 / 2.0))
 
         attackers = []
         for card, cnt in deck.items():
@@ -413,7 +550,10 @@ class StateSpaceEvaluator:
             # Check lineage reachability using hypergeometric tutor density
             line_prob = 1.0
             tutor_boost = min(12, ball_tutors + search_supporters * 2)
-            if card.stage == 1 and card.evolves_from:
+            if card.stage == 0:
+                # A Basic attacker still has to be found: a 1-of is not "always available".
+                line_prob = hypergeom_prob_at_least(60, cnt + tutor_boost, 11, 1)
+            elif card.stage == 1 and card.evolves_from:
                 b_cnt = name_counts.get(card.evolves_from, 0)
                 b_is_fossil = "Fossil" in card.evolves_from
                 if b_cnt == 0 and not b_is_fossil:
@@ -465,13 +605,13 @@ class StateSpaceEvaluator:
                 if not en_ok:
                     continue
 
-                # Synergy adjustment for conditional attacks
-                # Tools that add attack damage ONLY apply to direct damage attacks, NEVER to damage-counter placement effects!
-                applicable_tool_bonus = 0.0 if atk.is_damage_counter_effect else tool_dmg_bonus
-                if not atk.is_damage_counter_effect and "Fighting" in card.types:
-                    # Premium Power Pro stacks +30 per copy for Fighting attackers.
-                    applicable_tool_bonus += fighting_dmg_boost
-                eff_dmg = atk.expected_damage + applicable_tool_bonus
+                # Synergy adjustment for conditional attacks.
+                # `eff_dmg` excludes Trainer damage modifiers: those depend on the target
+                # (most only hit Pokemon ex) and are applied per board state in
+                # `_damage_bonus`. They NEVER apply to damage-counter placement effects.
+                applicable_tool_bonus = 0.0
+                bonus_mult = 1.0
+                eff_dmg = atk.expected_damage
                 eff_spread = atk.bench_spread_damage + ability_spread_support
                 if atk.requires_discard_trait == "Hide 'n' Sneak":
                     # Requires >= 4 Hide 'n' Sneak Pokemon in discard
@@ -493,6 +633,7 @@ class StateSpaceEvaluator:
                         stad_mult = min(1.0, festival_grounds_count / 3.0)
                         base_single = atk.expected_damage / 1.85
                         eff_dmg = (base_single + applicable_tool_bonus) * (1.0 + 0.90 * stad_mult)
+                        bonus_mult = 1.0 + 0.90 * stad_mult
                         # Double attack can also overflow KO onto a second Pokemon (effectively bench/secondary spread!)
                         eff_spread = max(eff_spread, 45.0 * stad_mult)
                 elif atk.scales_with == "TOPDECK_ATTACK_COPY":
@@ -517,11 +658,16 @@ class StateSpaceEvaluator:
                     en_mult = min(1.15, (total_energy + energy_accel_cards * 1.5) / 14.0)
                     eff_dmg = atk.expected_damage * en_mult
 
+                bonus_terms = [b for b in damage_bonuses if not atk.is_damage_counter_effect and card_matches_filter(card, b["filter"])]
+                avg_bonus = self._damage_bonus(card, atk, bonus_terms) * bonus_mult
                 attackers.append({
+                    "bonus_terms": bonus_terms,
                     "card": card,
                     "copies": cnt,
                     "attack": atk,
-                    "eff_dmg": eff_dmg,
+                    "eff_dmg_base": eff_dmg,       # before Trainer damage modifiers
+                    "bonus_mult": bonus_mult,
+                    "eff_dmg": eff_dmg + avg_bonus,  # state-averaged, for capability classification
                     "eff_spread": eff_spread,
                     "line_prob": line_prob,
                     "en_prob": en_prob,
@@ -549,14 +695,23 @@ class StateSpaceEvaluator:
             else:
                 # Non-attacker Pokemon: check if it's a valid evolution pre-stage, draw/tutor/accel/wall/spread support, or Slowking/Zoroark copy target
                 is_pre_evo = any(c2.evolves_from == card.name for c2 in deck)
-                is_support = bool(card.tags & {"DRAW_ENGINE_POKEMON", "TUTOR_POKEMON", "ENERGY_ACCEL_POKEMON", "ENERGY_DOUBLER", "SELF_KO_BOMBER", "DAMAGE_MOVER", "PASSIVE_SPREAD", "BENCH_BARRIER", "IMMUNITY_WALL", "FREE_RETREAT_AURA", "DRAGON_SLAYER"}) or ("HIDE_N_SNEAK" in card.synergy_hooks)
+                # Any Ability is a role (Chien-Pao stadium removal, Genesect ACE SPEC lock, ...),
+                # even if the compiler can't quantify it.
+                is_support = bool(card.abilities) or bool(card.tags & {"DRAW_ENGINE_POKEMON", "TUTOR_POKEMON", "ENERGY_ACCEL_POKEMON", "ENERGY_DOUBLER", "SELF_KO_BOMBER", "DAMAGE_MOVER", "PASSIVE_SPREAD", "BENCH_BARRIER", "IMMUNITY_WALL", "FREE_RETREAT_AURA", "DRAGON_SLAYER"}) or ("HIDE_N_SNEAK" in card.synergy_hooks)
                 is_copy_target = (academy_at_night_count >= 2 and not card.is_rule_box) or (card.name.startswith("N's ") and any(c2.name == "N's Zoroark ex" for c2 in deck))
                 if not (is_pre_evo or is_support or is_copy_target):
-                    dead_card_count += cnt
+                    _mark_dead(card, cnt, "Pokemon with no reachable attack or support role")
 
-        # Recompute saturated macro capability vector [0..1] now that verified attackers are included
+        # Expected (state-averaged) saturated capability vector, for reporting & bottlenecks.
+        # Per-state capabilities (with situational cards switched on/off) come from `_state_capabilities`.
+        cond_macro_plain = {k: dict(v) for k, v in cond_macro.items()}
+        expected_raw = dict(raw_macro)
+        for conds, acts in cond_macro_plain.items():
+            live = self.avg_condition_live(conds)
+            for act, v in acts.items():
+                expected_raw[act] += live * v
         macro_cap = {
-            act: round(subadditive_saturate(raw_macro[act], norm_scales[act]), 4)
+            act: round(subadditive_saturate(expected_raw[act], NORM_SCALES[act]), 4)
             for act in MACRO_ACTIONS
         }
 
@@ -620,7 +775,12 @@ class StateSpaceEvaluator:
             "fossil_basics": fossil_basics,
             "fossil_tutors": fossil_tutors,
             "devolution_control": devolution_control,
-            "fighting_dmg_boost": fighting_dmg_boost,
+            "damage_bonuses": damage_bonuses,
+            "bomber_burst": bomber_burst,
+            "bomber_avail": bomber_avail,
+            "raw_macro": dict(raw_macro),
+            "cond_macro": cond_macro_plain,
+            "dead_cards": dead_cards,
             "total_energy": total_energy,
             "energy_counts": dict(energy_counts),
             "macro_cap": macro_cap,
@@ -640,6 +800,50 @@ class StateSpaceEvaluator:
             "attackers": attackers,
         }
 
+    def _damage_bonus(
+        self,
+        card: CompiledCard,
+        atk: Any,
+        bonuses: list[dict[str, Any]],
+        s: BoardStateScenario | None = None,
+    ) -> float:
+        """
+        Attack-damage bonus from Trainer modifiers for `card`'s attack `atk` on state `s`
+        (or averaged over the state space when `s` is None).
+        - Only direct attack damage is boosted, never damage-counter effects (Alakazam).
+        - Attacker filters apply (Brave Bangle: no Rule Box; Premium Power Pro: Fighting).
+        - Most modifiers only hit an Active Pokemon ex (Maximum Belt, Black Belt's Training, Kieran).
+        - Only 1 Tool per Pokemon and 1 Supporter per turn; Item boosts can stack.
+        """
+        if atk.is_damage_counter_effect or not bonuses:
+            return 0.0
+        best_tool = best_supp = items = 0.0
+        for b in bonuses:
+            if not card_matches_filter(card, b["filter"]):
+                continue
+            live = self.avg_condition_live(b["conds"]) if s is None else conditions_live(b["conds"], s)
+            if live <= 0:
+                continue
+            n = b["copies"]
+            if b["kind"] == "TOOL":
+                best_tool = max(best_tool, b["amount"] * min(1.0, n / 2.0) * live)
+            elif b["kind"] == "SUPPORTER":
+                best_supp = max(best_supp, b["amount"] * min(1.0, n / 3.0) * live)
+            else:
+                items += b["amount"] * min(1.5, n / 2.0) * live
+        return best_tool + best_supp + items
+
+    def _state_capabilities(self, ds: dict[str, Any], s: BoardStateScenario) -> dict[str, float]:
+        """Saturated capability vector on state `s`: situational cards count only where live."""
+        raw = dict(ds["raw_macro"])
+        for conds, acts in ds["cond_macro"].items():
+            live = conditions_live(conds, s)
+            if live <= 0:
+                continue
+            for act, v in acts.items():
+                raw[act] += live * v
+        return {act: subadditive_saturate(raw[act], NORM_SCALES[act]) for act in MACRO_ACTIONS}
+
     def evaluate_deck_on_state(self, ds: dict[str, Any], s: BoardStateScenario, seat: str = "first") -> float:
         """
         Compute expected performance score [0..1] of deck structure `ds` on board state `s`
@@ -654,7 +858,7 @@ class StateSpaceEvaluator:
               * CAN Attack on Turn 1 (Budew Itchy Pollen, Dhelmise 1-energy 170 dmg, Basic Box Turbo),
               * Suffers opponent's Turn 1 setup / stadium / evolution-first tempo on Turn 2+.
         """
-        cap = dict(ds["macro_cap"])
+        cap = self._state_capabilities(ds, s)
         is_first = (seat == "first")
 
         # 1. Adjust capabilities for opponent's active Lock Condition & Seat Order in state `s`
@@ -742,7 +946,10 @@ class StateSpaceEvaluator:
                 phase_reach = att["combined_ready"] * max(0.25, phase_turn_budget / turns_to_arm)
 
             # Calculate effective damage against opponent active in state `s`
-            dmg = att["eff_dmg"]
+            # (Trainer damage modifiers depend on the target: most only boost vs Pokemon ex).
+            dmg = att["eff_dmg_base"] + (
+                att["bonus_mult"] * self._damage_bonus(card, atk, att["bonus_terms"], s) if att["bonus_terms"] else 0.0
+            )
             spread = att["eff_spread"]
 
             # Check Crustle / Ex-Immunity Wall! (Prevents DAMAGE from Pokemon ex; does not prevent damage-counter effects unless Mist Energy)
@@ -778,17 +985,20 @@ class StateSpaceEvaluator:
                 target_prizes = s.opp_active_prizes
 
             # Turns for us to KO opponent active
-            turns_to_ko_opp = max(1.0, math.ceil(target_hp / max(20.0, dmg))) if dmg > 0 else 5.0
-            if spread >= s.opp_bench_lowest_hp:
-                turns_to_ko_opp = max(1.0, turns_to_ko_opp - 0.45)
+            def _turns_to_ko(hp_left: float) -> float:
+                t = max(1.0, math.ceil(hp_left / max(20.0, dmg))) if dmg > 0 else 5.0
+                if spread >= s.opp_bench_lowest_hp:
+                    t = max(1.0, t - 0.45)
+                # Seat tempo modifier on Prize Race:
+                # Going First gets first evolution attack on T2 (-0.18 turns to KO for Stage 1/2 decks);
+                # Going Second gets T1 attack/item-lock initiative (-0.22 turns to KO for Basic/1-energy decks).
+                if is_first and card.stage >= 1:
+                    t = max(0.85, t - 0.16)
+                elif not is_first and card.stage == 0 and ds["has_t1_going_second_attack"]:
+                    t = max(0.85, t - 0.20 * ds["t1_going_second_power"])
+                return t
 
-            # Seat tempo modifier on Prize Race:
-            # Going First gets first evolution attack on T2 (-0.18 turns to KO for Stage 1/2 decks);
-            # Going Second gets T1 attack/item-lock initiative (-0.22 turns to KO for Basic/1-energy decks).
-            if is_first and card.stage >= 1:
-                turns_to_ko_opp = max(0.85, turns_to_ko_opp - 0.16)
-            elif not is_first and card.stage == 0 and ds["has_t1_going_second_attack"]:
-                turns_to_ko_opp = max(0.85, turns_to_ko_opp - 0.20 * ds["t1_going_second_power"])
+            turns_to_ko_opp = _turns_to_ko(target_hp)
 
             # Turns for opponent to KO our active
             opp_dmg = max(20.0, s.opp_incoming_active_dmg)
@@ -828,6 +1038,14 @@ class StateSpaceEvaluator:
             my_prize_rate = target_prizes / turns_to_ko_opp
             opp_prize_rate = effective_my_liability / turns_opp_kos_us
             trade_ratio = my_prize_rate / max(0.25, opp_prize_rate)
+            # Self-KO bomber finish (Dusknoir Cursed Blast on the Active): worth it only when it
+            # saves a whole attack, and it hands the opponent 1 Prize per use.
+            if ds["bomber_burst"] > 0 and dmg > 0 and not devolve_active:
+                t_burst = _turns_to_ko(max(0.0, target_hp - ds["bomber_burst"]))
+                if t_burst < turns_to_ko_opp:
+                    tr_burst = (target_prizes / t_burst) / max(0.25, opp_prize_rate + 1.0 / t_burst)
+                    if tr_burst > trade_ratio:
+                        trade_ratio = ds["bomber_avail"] * tr_burst + (1.0 - ds["bomber_avail"]) * trade_ratio
             copy_weight = min(1.0, 0.55 + 0.15 * att["copies"])
             combat_val = min(1.0, (trade_ratio / 1.75) * phase_reach * en_resilience * bench_survival_mod * copy_weight)
 
@@ -837,14 +1055,16 @@ class StateSpaceEvaluator:
         # 4. Combine Seat-Specific Consistency, Macro-Action Alignment, and Combat Prize-Trade Tempo
         clutter_penalty = 1.0 - 0.04 * max(0, ds.get("num_attacker_lines", 1) - 3)
         trap_penalty = max(0.80, 1.0 - (0.045 if is_first else 0.06) * ds.get("avg_retreat_trap", 0.0))
-        dead_penalty = max(0.50, 1.0 - 0.04 * ds.get("dead_card_count", 0)) * clutter_penalty * trap_penalty
+        # A dead card is roughly a blank slot: ~2% per card, applied once (it used to be applied
+        # twice at 4%, so a single false "dead" flag cost a real deck ~3 points).
+        dead_penalty = max(0.60, 1.0 - 0.02 * ds.get("dead_card_count", 0)) * clutter_penalty * trap_penalty
 
         if is_first:
             c_t1 = 0.45 * ds["p_open_basic"] + 0.30 * ds["p_two_basics_t1_first"] + 0.25 * ds["p_draw_t1_t2_first"]
         else:
             c_t1 = 0.45 * ds["p_open_basic"] + 0.30 * ds["p_two_basics_t1_second"] + 0.25 * ds["p_draw_t1_t2_second"]
 
-        consistency_factor = c_t1 * dead_penalty
+        consistency_factor = c_t1
         raw_state_score = (
             0.25 * consistency_factor
             + 0.35 * macro_alignment
@@ -852,7 +1072,11 @@ class StateSpaceEvaluator:
         ) * dead_penalty
         return round(max(0.0, min(1.0, raw_state_score)), 4)
 
+    def _raw_scores(self, deck: dict[CompiledCard, int]) -> tuple[float]:
+        return (self.evaluate_deck(deck).overall_score,)
+
     def evaluate_deck(self, deck: dict[CompiledCard, int]) -> DeckEvaluationReport:
+        self._ensure_calibrated()
         is_legal, issues = self.check_legality(deck)
         ds = self._analyze_deck_structure(deck)
 
@@ -905,8 +1129,8 @@ class StateSpaceEvaluator:
         going_second_score = round(100.0 * weighted_second * legality_mult, 2)
         overall_score = round(0.5 * (going_first_score + going_second_score), 2)
 
-        going_first_wr = 1.0 / (1.0 + math.exp(-(going_first_score - 62.0) / 8.5))
-        going_second_wr = 1.0 / (1.0 + math.exp(-(going_second_score - 62.0) / 8.5))
+        going_first_wr = self._win_rate(going_first_score)
+        going_second_wr = self._win_rate(going_second_score)
         calibrated_wr = 0.5 * (going_first_wr + going_second_wr)
 
         preferred_seat = "GOING_FIRST" if going_first_score >= going_second_score else "GOING_SECOND"
@@ -976,6 +1200,8 @@ class StateSpaceEvaluator:
             worst_states=worst_states,
             best_states=best_states,
             missing_demands=top_missing,
+            field_percentile=self._field_percentile(overall_score),
+            dead_cards=ds["dead_cards"],
         )
 
 

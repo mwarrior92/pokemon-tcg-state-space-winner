@@ -106,6 +106,18 @@ class CompiledCard:
     tags: set[str] = field(default_factory=set)
     synergy_hooks: set[str] = field(default_factory=set)
     meta_play_rate: float = 0.0     # Empirical play rate in 512 tournament decks
+    # ---- Structured effect profile (see `_extract_requirements` / `_extract_play_conditions`) ----
+    # Deck-composition prerequisites: the card only does something if the deck contains
+    # Pokemon matching `filter` (e.g. Rosa's Encouragement -> {"stage": 2}). Each entry:
+    #   {"filter": {...}, "min": <copies for full value>, "acts": [macro actions gated] | None (= all)}
+    requirements: list[dict[str, Any]] = field(default_factory=list)
+    requirement_mode: str = "all"   # "all" (every req), "any" (one of them), "mean" (partial, e.g. Dawn)
+    # Situational gates per macro action, e.g. {"ACCEL_ENERGY": ("BEHIND_ON_PRIZES",)}.
+    # Gated actions only count in board states where the condition is live (see CONDITION_LIVENESS).
+    action_conditions: dict[str, tuple[str, ...]] = field(default_factory=dict)
+    # Attack-damage modifier (Brave Bangle, Black Belt's Training, Premium Power Pro, ...).
+    # {"amount": int, "vs_ex": bool, "filter": {...attacker filter...}, "kind": "TOOL"|"ITEM"|"SUPPORTER"}
+    damage_bonus: dict[str, Any] | None = None
 
     def __hash__(self) -> int:
         return hash(self.uid)
@@ -119,6 +131,190 @@ def _parse_int(val: Any, default: int = 0) -> int:
         return default
     m = re.search(r"\d+", str(val))
     return int(m.group(0)) if m else default
+
+
+# ---------------------------------------------------------------------------
+# Structured effect parsing: requirements, play conditions, damage modifiers
+# ---------------------------------------------------------------------------
+
+POKEMON_TYPE_WORDS = {
+    "grass", "fire", "water", "lightning", "psychic", "fighting", "darkness", "metal", "dragon", "colorless",
+}
+_POKEMON_RE = re.compile(r"pok[eé]mon")
+_WORD_RE = re.compile(r"[a-z0-9'é-]+")
+_REMINDER_RE = re.compile(r"\((?:pok[eé]mon ex|pok[eé]mon v|existing effects|damage is not|damage from attacks|apply weakness|don't apply)[^)]*\)")
+
+# Situational play conditions ("You can use this card only if ...") -> condition key.
+PLAY_CONDITION_PATTERNS: list[tuple[str, str]] = [
+    (r"more prize cards remaining than your opponent", "BEHIND_ON_PRIZES"),
+    (r"your opponent has exactly 2 prize cards remaining", "OPP_PRIZES_EQ_2"),
+    (r"your opponent has 2 or fewer prize cards remaining", "OPP_PRIZES_LE_2"),
+    (r"your opponent has 3 or fewer prize cards remaining", "OPP_PRIZES_LE_3"),
+    (r"knocked out during your opponent's last turn", "AFTER_OWN_KO"),
+    (r"last card in your hand", "LAST_CARD_IN_HAND"),
+    (r"can't use this card during your first turn", "NOT_FIRST_TURN"),
+]
+# Ability gates ("Once during your turn, if this Pokemon is in the Active Spot, ...").
+ABILITY_CONDITION_PATTERNS: list[tuple[str, str]] = [
+    (r"if this pok[eé]mon is in the active spot", "ACTIVE_ONLY"),
+    (r"knocked out during your opponent's last turn", "AFTER_OWN_KO"),
+    (r"more prize cards remaining than your opponent", "BEHIND_ON_PRIZES"),
+]
+
+
+def card_matches_filter(card: "CompiledCard", f: dict[str, Any]) -> bool:
+    """True if Pokemon `card` satisfies the structured requirement filter `f`."""
+    if card.supertype != "Pokémon":
+        return False
+    if "stage" in f and card.stage != f["stage"]:
+        return False
+    if f.get("evolution") and card.stage < 1:
+        return False
+    if "ptype" in f and f["ptype"] not in card.types:
+        return False
+    if "owner" in f and not card.name.lower().startswith(f["owner"]):
+        return False
+    if f.get("rule_box") is False and card.is_rule_box:
+        return False
+    if f.get("ex") and "ex" not in card.subtypes:
+        return False
+    if f.get("mega") and "MEGA" not in card.subtypes:
+        return False
+    for st in ("Tera", "Ancient", "Future"):
+        if f.get(st.lower()) and st not in card.subtypes:
+            return False
+    if "name" in f and card.name.lower() != f["name"]:
+        return False
+    if "max_hp" in f and card.hp > f["max_hp"]:
+        return False
+    if f.get("direct_attacker") and not any(
+        not a.is_damage_counter_effect and max(a.expected_damage, float(a.printed_damage)) >= 60
+        for a in card.attacks
+    ):
+        return False
+    return True
+
+
+def _parse_pokemon_descriptor(prefix: str, suffix: str) -> dict[str, Any] | None:
+    """
+    Parse the words immediately before an occurrence of "Pokemon" (and a short suffix)
+    into a filter, e.g. "1 of your Benched Psychic" -> {"ptype": "Psychic"}.
+    Returns None when the phrase targets the opponent's Pokemon (not a deck requirement).
+    """
+    words = _WORD_RE.findall(prefix)[-6:]
+    f: dict[str, Any] = {}
+    i = len(words) - 1
+    while i >= 0:
+        w = words[i]
+        if w in POKEMON_TYPE_WORDS:
+            f["ptype"] = w.capitalize()
+        elif w in ("1", "2") and i > 0 and words[i - 1] == "stage":
+            f["stage"] = int(w)
+            i -= 1
+        elif w == "basic":
+            f["stage"] = 0
+        elif w == "evolution":
+            if i > 0 and words[i - 1] == "mega":
+                f["mega"] = True
+                i -= 1
+            else:
+                f["evolution"] = True
+        elif w == "mega":
+            f["mega"] = True
+        elif w in ("tera", "ancient", "future"):
+            f[w] = True
+        elif w in ("benched", "active"):
+            pass
+        elif w == "opponent's":
+            return None
+        elif w.endswith("'s") and w not in ("player's", "boss's"):
+            if w == "rocket's" and i > 0 and words[i - 1] == "team":
+                f["owner"] = "team rocket's"
+                i -= 1
+            else:
+                f["owner"] = w
+        else:
+            break
+        i -= 1
+    suf = suffix[:70]
+    if re.match(r"\s+ex\b", suf):
+        f["ex"] = True
+    if "doesn't have a rule box" in suf or "don't have a rule box" in suf:
+        f["rule_box"] = False
+    m_hp = re.match(r"\s+with (\d+) hp or less", suf)
+    if m_hp:
+        f["max_hp"] = int(m_hp.group(1))
+    return f
+
+
+def _extract_requirements(rules_low: str, subtypes: list[str]) -> tuple[list[dict[str, Any]], str]:
+    """
+    Extract deck-composition prerequisites from Trainer / Special Energy text.
+    Only phrases about *your* Pokemon count; symmetric stadium effects
+    ("both yours and your opponent's") and opponent targets are ignored.
+    """
+    if not rules_low or "both yours and your opponent's" in rules_low:
+        return [], "all"
+    text = _REMINDER_RE.sub("", rules_low)
+    # "Play this card as if it were a 60-HP Basic Colorless Pokemon" (fossils) describes the card itself.
+    text = re.sub(r"as if it were an? [^.]*?pok[eé]mon", "", text)
+    reqs: list[dict[str, Any]] = []
+    seen: set[tuple] = set()
+
+    def _add(f: dict[str, Any], acts: list[str] | None = None, min_copies: int = 3) -> None:
+        key = (tuple(sorted(f.items())), tuple(acts or ()))
+        if f and key not in seen:
+            seen.add(key)
+            reqs.append({"filter": f, "min": min_copies, "acts": acts})
+
+    for m in _POKEMON_RE.finditer(text):
+        after = text[m.end():]
+        if re.match(r"\s+(tool|center|card)", after):
+            continue
+        f = _parse_pokemon_descriptor(text[:m.start()], after)
+        if f:
+            _add(f)
+    # "If you have a Stage 2 card in your hand" (Rare Candy) / "attached to a Stage 2 Pokemon" (Neo Upper)
+    if "stage 2 card" in text:
+        _add({"stage": 2})
+    # Named attachment targets: "the Pikachu ex this card is attached to" (Light Ball, Core Memory)
+    for m in re.finditer(r"the ([a-z0-9' .-]+?) this card is attached to", text):
+        target = m.group(1).strip()
+        if not _POKEMON_RE.search(target):
+            _add({"name": target})
+
+    if "in any combination of" in text or re.search(r"pok[eé]mon or (?:a |an |1 )?(?:basic|evolution|stage)", text) \
+            or re.search(r"energy card or a basic", text):
+        mode = "any"
+    elif "search your deck for" in text and len(reqs) > 1:
+        mode = "mean"
+    else:
+        mode = "all"
+    return reqs, mode
+
+
+def _extract_play_conditions(text_low: str, patterns: list[tuple[str, str]]) -> tuple[str, ...]:
+    return tuple(cond for pat, cond in patterns if re.search(pat, text_low))
+
+
+def _extract_damage_bonus(rules_low: str, subtypes: list[str]) -> dict[str, Any] | None:
+    """Parse "+N damage to your opponent's Active Pokemon (ex)" modifiers on Trainers."""
+    m = re.search(r"(\d+) more damage to your opponent's active pok[eé]mon( ex)?", rules_low)
+    if not m:
+        return None
+    before = rules_low[:m.start()]
+    attacker: dict[str, Any] = {"direct_attacker": True}
+    for pm in _POKEMON_RE.finditer(before):
+        f = _parse_pokemon_descriptor(before[:pm.start()], before[pm.end():])
+        if f:
+            attacker.update(f)
+    if "doesn't have a rule box" in before or "don't have a rule box" in before:
+        attacker["rule_box"] = False
+    m_name = re.search(r"the ([a-z0-9' .-]+?) this card is attached to", before)
+    if m_name and not _POKEMON_RE.search(m_name.group(1)):
+        attacker["name"] = m_name.group(1).strip()
+    kind = "TOOL" if "Pokémon Tool" in subtypes else ("SUPPORTER" if "Supporter" in subtypes else "ITEM")
+    return {"amount": int(m.group(1)), "vs_ex": bool(m.group(2)), "filter": attacker, "kind": kind}
 
 
 def _analyze_attack(atk: dict[str, Any], card_abilities: list[dict[str, str]]) -> AttackProfile:
@@ -188,6 +384,15 @@ def _analyze_attack(atk: dict[str, Any], card_abilities: list[dict[str, str]]) -
         bd = int(m_bench_dmg.group(1))
         targets = 3 if m_bench_dmg.group(2) == "each" else int(m_bench_dmg.group(2))
         bench_spread = max(bench_spread, float(bd * targets))
+    # Snipe attacks that can hit ANY of the opponent's Pokemon (Fezandipiti ex Cruel Arrow,
+    # Iron Crown ex Twin Shotels). This is attack damage (not damage counters), so it
+    # can target the Active for a KO or a Benched Pokemon.
+    m_snipe = re.search(r"does (\d+) damage to (\d+) of your opponent's pok[eé]mon", text_low)
+    if m_snipe and base_dmg == 0:
+        sd, n_tg = int(m_snipe.group(1)), int(m_snipe.group(2))
+        expected_dmg = max(expected_dmg, float(sd))
+        max_dmg = max(max_dmg, float(sd))
+        bench_spread = max(bench_spread, float(sd * (n_tg - 1)) if n_tg > 1 else sd * 0.5)
 
     # 3. Scaling formulas in attack text
     if "benched" in text_low and "for each" in text_low and "damage" in text_low:
@@ -402,6 +607,10 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
     vec = {act: 0.0 for act in MACRO_ACTIONS}
     tags: set[str] = set()
     hooks: set[str] = set()
+    action_conditions: dict[str, tuple[str, ...]] = {}
+    requirements: list[dict[str, Any]] = []
+    requirement_mode = "all"
+    damage_bonus: dict[str, Any] | None = None
 
     if is_ace_spec:
         tags.add("ACE_SPEC")
@@ -419,9 +628,12 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
             vec["EVOLVE_LINE"] += 0.25
 
         # Abilities analysis
+        cond_parts: dict[str, dict[tuple[str, ...], float]] = defaultdict(dict)
         for ab in abilities:
             ab_name = (ab.get("name") or "").lower()
             ab_text = (ab.get("text") or "").lower()
+            vec_before = dict(vec)
+            ab_conds = _extract_play_conditions(ab_text, ABILITY_CONDITION_PATTERNS)
             if "hide 'n' sneak" in ab_name:
                 hooks.add("HIDE_N_SNEAK")
                 vec["TANK_SURVIVE"] += 0.25
@@ -474,11 +686,14 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
                     # (such as Dragapult ex's Phantom Dive damage counters).
                     vec["TANK_SURVIVE"] += 0.65
                     tags.add("BENCH_COUNTER_BARRIER")
+                    ab_conds = ab_conds + ("VS_BENCH_SPREAD",)
                 else:
                     # Shaymin (Flower Curtain): blocks ONLY attack damage to benched non-Rule-Box
                     # Pokemon (e.g. Trifrost / Flamebody Cannon). Does NOT stop damage counters
                     # placed by effects of attacks (Phantom Dive) or Abilities (Cursed Blast / Adrena-Brain).
+                    # Its survival value therefore only exists against bench ATTACK DAMAGE.
                     vec["TANK_SURVIVE"] += 0.35
+                    ab_conds = ab_conds + ("VS_BENCH_ATTACK_DAMAGE",)
             # IMMUNITY_WALL is SELf-protection (Crustle, Sylveon, Farigiraf), not bench
             # protection. Shaymin's Flower Curtain also mentions "(Pokemon ex ...)" in its
             # reminder text, which used to mis-tag it as an unkillable attacker.
@@ -507,6 +722,12 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
             if "weakness of each of your opponent's dragon" in ab_text:
                 vec["STRIKE_HEAVY"] += 0.65
                 tags.add("DRAGON_SLAYER")
+                ab_conds = ab_conds + ("VS_DRAGON",)
+            if ab_conds:
+                for act, v in vec.items():
+                    delta = v - vec_before.get(act, 0.0)
+                    if delta > 0:
+                        cond_parts[act][ab_conds] = cond_parts[act].get(ab_conds, 0.0) + delta
 
         # Attacks analysis
         for atk in attacks:
@@ -542,6 +763,14 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
         if hp >= 300:
             vec["TANK_SURVIVE"] = max(vec["TANK_SURVIVE"], min(1.0, (hp - 220) / 140.0))
 
+        # Gate an action on its ability's condition only when ALL of that action's value
+        # came from conditional abilities (e.g. Mega Kangaskhan ex draws only while Active,
+        # Fezandipiti ex draws only after a KO); unconditional sources keep it live.
+        for act, parts in cond_parts.items():
+            cond_total = sum(parts.values())
+            if cond_total > 0 and cond_total >= vec[act] - 1e-6:
+                action_conditions[act] = max(parts.items(), key=lambda kv: kv[1])[0]
+
     elif supertype == "Trainer":
         rt = rules_text.lower()
         is_supp = "Supporter" in subtypes
@@ -559,9 +788,12 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
             tags.add("STADIUM")
 
         # Setup Basic
-        if "search your deck for" in rt and "basic" in rt and ("onto your bench" in rt or "into your hand" in rt):
+        if "search your deck for" in rt and re.search(r"basic (?:[\w']+ ){0,2}pok[eé]mon", rt) and ("onto your bench" in rt or "into your hand" in rt):
             vec["SETUP_BASIC"] += 0.90 if is_item or is_stad else 0.70
             vec["TUTOR_SEARCH"] += 0.45
+        if is_stad and re.search(r"search their deck for an? basic pok[eé]mon and put it onto their bench", rt):
+            vec["SETUP_BASIC"] += 0.80
+            vec["TUTOR_SEARCH"] += 0.35
         # Restored-Pokemon fossils are Items that enter play as 60-HP Basic Pokemon.
         if name in FOSSIL_ITEM_NAMES or ("as if it were" in rt and "basic" in rt and "hp" in rt):
             tags.add("FOSSIL_BASIC")
@@ -588,8 +820,13 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
                 hooks.add("DISCARDS_NON_RULE_BOX_POKEMON")
             vec["DRAW_REFRESH"] += min(1.0, nd / 7.0)
         # Tutor / Search
+        energy_only_search = bool(re.search(r"search your deck for [^.]*?energy card", rt)) and not re.search(r"search your deck for [^.]*?(?:pok[eé]mon|trainer|item|supporter)", rt)
         if "search your deck for" in rt and vec["TUTOR_SEARCH"] < 0.5:
-            vec["TUTOR_SEARCH"] += 0.85 if ("pokémon" in rt or "trainer" in rt or "any" in rt or "item" in rt) else 0.55
+            vec["TUTOR_SEARCH"] += 0.40 if energy_only_search else (0.85 if ("pokémon" in rt or "trainer" in rt or "any" in rt or "item" in rt) else 0.55)
+        m_look = re.search(r"look at the top (\d+) cards of your deck,? and put (?:up to )?(\d+) of them into your hand", rt)
+        if m_look:
+            vec["TUTOR_SEARCH"] += min(0.75, 0.10 * int(m_look.group(1)))
+            vec["DRAW_REFRESH"] += min(0.60, 0.20 * int(m_look.group(2)))
         if "look at the top" in rt and ("supporter" in rt or "put them back on top" in rt or "grass pok" in rt):
             vec["TUTOR_SEARCH"] += 0.75
             vec["DRAW_REFRESH"] += 0.40
@@ -598,22 +835,36 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
                 vec["EVOLVE_LINE"] += 0.55
                 vec["ACCEL_ENERGY"] += 0.45
         # Energy Acceleration / Switch
-        if ("attach" in rt or "move" in rt) and "energy" in rt and ("from your deck" in rt or "from your discard" in rt or "from your hand" in rt or "to another" in rt):
+        if ("attach" in rt or "move" in rt) and "energy" in rt and ("from your deck" in rt or "from your discard" in rt or "from your hand" in rt or "to another" in rt or "from your benched" in rt):
             vec["ACCEL_ENERGY"] += 0.85
         elif "search your deck for up to 2" in rt and "energy" in rt and "attach" in rt:
             vec["ACCEL_ENERGY"] += 0.95
-            vec["TUTOR_SEARCH"] += 0.45
+            vec["TUTOR_SEARCH"] = min(vec["TUTOR_SEARCH"] + 0.20, 0.60)
+        elif re.search(r"search your deck for an? basic \w+ energy card and attach it", rt):
+            # Janine's Secret Art: deck -> board energy acceleration, not a hand tutor.
+            vec["ACCEL_ENERGY"] += 0.90
+            vec["TUTOR_SEARCH"] = min(vec["TUTOR_SEARCH"], 0.30)
         # Gust
         if "switch in 1 of your opponent's benched" in rt or "switch 1 of your opponent's benched" in rt:
             vec["GUST_TARGET"] += 0.95
             if "also switch your active" in rt:
                 vec["MOBILITY_PIVOT"] += 0.65
         # Hand Disruption / Energy Denial
-        if "your opponent shuffles their hand" in rt or "each player shuffles their hand" in rt or "discards cards until they have" in rt or "choose 3 cards from their hand" in rt:
+        if (
+            "your opponent shuffles their hand" in rt
+            or "each player shuffles their hand" in rt
+            or re.search(r"discards? cards (?:from their hand )?until they have", rt)
+            or "choose 3 cards from their hand" in rt
+        ):
             if "both players" in rt or "each player" in rt:
                 vec["DRAW_REFRESH"] = max(vec["DRAW_REFRESH"], 0.55)
             vec["DISRUPT_HAND"] += 0.90
-        if "discard an energy from 1 of your opponent" in rt or "put an energy attached to 1 of your opponent" in rt:
+            if "each player shuffles their hand" in rt:
+                # Judge / Unfair Stamp also throw away OUR hand: anti-synergy with hand-size attackers.
+                tags.add("SYMMETRIC_HAND_RESET")
+        if "your opponent reveals their hand" in rt and "discard" in rt:
+            vec["DISRUPT_HAND"] += 0.60
+        if re.search(r"discard (?:an|a special|a pok[eé]mon tool and a special) energy from 1 of your opponent", rt) or "put an energy attached to 1 of your opponent" in rt:
             vec["DISRUPT_HAND"] += 0.70
             vec["LOCK_STALL"] += 0.40
         # Lock / Stadium Control
@@ -626,6 +877,9 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
             vec["LOCK_STALL"] += 0.35
             tags.add("BENCH_BARRIER")
             tags.add("BENCH_COUNTER_BARRIER")
+            # ...but it does nothing against bench ATTACK DAMAGE or decks without bench counters.
+            action_conditions["TANK_SURVIVE"] = ("VS_BENCH_COUNTERS",)
+            action_conditions["LOCK_STALL"] = ("VS_BENCH_COUNTERS",)
         if "bench" in rt and "8 pok" in rt:
             vec["SETUP_BASIC"] += 0.55
             hooks.add("EXPANDS_BENCH_8")
@@ -656,8 +910,34 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
             if "fighting pok" in rt:
                 tags.add("FIGHTING_DAMAGE_BOOST")
 
+        # ---- Structured effect profile ----
+        requirements, requirement_mode = _extract_requirements(rt, subtypes)
+        damage_bonus = _extract_damage_bonus(rt, subtypes)
+        if damage_bonus:
+            strike_acts = ["STRIKE_MID", "STRIKE_HEAVY"]
+            # The bonus is only worth anything with a qualifying DIRECT-damage attacker
+            # (never damage-counter attacks such as Alakazam's Powerful Hand).
+            requirements = [
+                r for r in requirements
+                if not set(r["filter"].items()) <= set(damage_bonus["filter"].items())
+            ]
+            requirements.append({"filter": damage_bonus["filter"], "min": 3, "acts": strike_acts})
+            if damage_bonus["vs_ex"]:
+                for act in strike_acts:
+                    action_conditions[act] = ("VS_OPP_EX",)
+            if "Choose 1:" in rules_text or "choose 1:" in rt:
+                # Modal cards (Kieran): other modes don't depend on the attacker requirement.
+                for r in requirements:
+                    r["acts"] = r["acts"] or strike_acts
+        play_conds = _extract_play_conditions(rt, PLAY_CONDITION_PATTERNS)
+        if play_conds:
+            for act in list(vec):
+                if vec[act] > 0:
+                    action_conditions[act] = tuple(dict.fromkeys(action_conditions.get(act, ()) + play_conds))
+
     elif supertype == "Energy":
         rt = rules_text.lower()
+        requirements, requirement_mode = _extract_requirements(rt, subtypes)
         if "Special" in subtypes:
             tags.add("SPECIAL_ENERGY")
             if "search your deck for up to 2 basic" in rt:
@@ -672,6 +952,9 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
                 vec["SPREAD_BENCH"] += 0.40
             if "1 fewer prize card" in rt:
                 vec["TANK_SURVIVE"] += 0.85
+            m_edraw = re.search(r"draw (\d+) cards", rt)
+            if m_edraw:
+                vec["DRAW_REFRESH"] += min(1.0, int(m_edraw.group(1)) / 7.0)
         else:
             tags.add("BASIC_ENERGY")
 
@@ -702,6 +985,10 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
         tags=tags,
         synergy_hooks=hooks,
         meta_play_rate=round(meta_rate, 4),
+        requirements=requirements,
+        requirement_mode=requirement_mode,
+        action_conditions={k: v for k, v in action_conditions.items() if vec.get(k, 0) > 0},
+        damage_bonus=damage_bonus,
     )
 
 
