@@ -416,5 +416,20 @@
    "symbol": "https://images.pokemontcg.io/zsv10pt5/symbol.png",
    "logo": "https://images.pokemontcg.io/zsv10pt5/logo.png"
   }
+ },
+ {
+  "id": "me6",
+  "name": "Delta Reign",
+  "series": "Mega Evolution",
+  "printedTotal": 103,
+  "total": 141,
+  "legalities": {
+   "unlimited": "Legal",
+   "standard": "Legal",
+   "expanded": "Legal"
+  },
+  "ptcgoCode": "DLR",
+  "releaseDate": "2026/11/06",
+  "updatedAt": "2026/11/06 00:00:00"
  }
 ]

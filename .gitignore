@@ -17,3 +17,10 @@ env/
 Thumbs.db
 .vscode/
 .idea/
+
+# downloaded Kaggle ladder replays (large; re-fetch with matches/fetch_kaggle_episodes.py)
+matches/kaggle_episodes/
+matches/state_graph.json.gz
+matches/regression_results/
+matches/race_sequences.jsonl
+matches/race_values.json

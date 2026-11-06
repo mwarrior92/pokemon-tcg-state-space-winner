@@ -535,6 +535,7 @@ class StateGuidedDeckOptimizer:
             )
 
         refined_candidates.sort(key=lambda r: r.report.overall_score, reverse=True)
+        self.last_candidates = refined_candidates   # shortlist, e.g. for re-ranking by simulated win rate
         winner = refined_candidates[0]
         winner.iterations_evaluated = eval_count
         return winner

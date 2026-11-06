@@ -90,6 +90,39 @@ def print_evaluation_report(title: str, rep) -> None:
         print(f"  [{sid}] w={sw*100:5.2f}% | Score={ssc*100:5.1f}/100 | {sname}")
 
 
+def run_gauntlet(db, deck, games: int):
+    from gauntlet import build_gauntlet, evaluate_gauntlet_engine
+    from cabt_bridge import CardMap, Engine
+
+    cmap = CardMap(Engine.get(), db)
+    opps = build_gauntlet(db, ROOT / "meta" / "decklists_2026-09-19_to_10-31.json",
+                          playable=lambda dk: not cmap.deck_ids(dk)[1])
+    return evaluate_gauntlet_engine(deck, opps, db, games_per_opp=games)
+
+
+def print_gauntlet_report(title: str, g) -> None:
+    print("\n" + "=" * 88)
+    print(f"SIMULATED GAUNTLET: {title}  [{g.state_values.get('engine')}]")
+    print("=" * 88)
+    print(f"Win rate vs meta : {g.win_rate*100:.1f}% ±{g.stderr*100:.1f}  "
+          f"(going first {g.win_rate_first*100:.1f}%, going second {g.win_rate_second*100:.1f}%, {g.games} games)")
+    for m in sorted(g.matchups, key=lambda m: -m.weight):
+        print(f"  vs {m.opponent:24s} (meta {m.weight*100:4.1f}%): {m.win_rate*100:5.1f}%  [{m.games} games]")
+    sv = g.state_values
+    if sv.get("first_player_in_play_at_opp_t1"):
+        print("\nP(first player wins | Pokemon it has in play when the opponent starts):")
+        for k, v in sv["first_player_in_play_at_opp_t1"].items():
+            print(f"  {k} in play: {v['p_first_wins']*100:5.1f}%  (seen in {v['freq']*100:4.1f}% of games)")
+    if sv.get("first_ko"):
+        print("P(win | first Knock Out):")
+        for k, v in sv["first_ko"].items():
+            print(f"  {k:52s} {v['p_win']*100:5.1f}%  (n={v['n']})")
+    if sv.get("prize_lead") or sv.get("prize_lead_after_our_turn"):
+        print("P(win | ever reached this Prize lead):")
+        for k, v in (sv.get("prize_lead") or sv.get("prize_lead_after_our_turn")).items():
+            print(f"  {k:+d}: {v['p_win']*100:5.1f}%  (n={v['n']})")
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Pokemon TCG State-Space Deck Discovery & Optimizer")
     parser.add_argument("--build", type=str, help="Pokemon or Trainer card name/ID to build a 60-card deck around")
@@ -97,6 +130,9 @@ def main() -> None:
     parser.add_argument("--save", type=str, help="Optional path to save the discovered PTCGL decklist")
     parser.add_argument("--states", action="store_true", help="Print the finite Board-State taxonomy and top prioritized states")
     parser.add_argument("--demo", action="store_true", help="Run a discovery benchmark across multiple Pokemon & Trainer cards")
+    parser.add_argument("--sim", action="store_true",
+                        help="Play real games in the CABT rules engine against the meta gauntlet (with --evaluate or --build)")
+    parser.add_argument("--games", type=int, default=12, help="Games per gauntlet opponent with --sim (default 12)")
     args = parser.parse_args()
 
     t0 = time.perf_counter()
@@ -110,7 +146,7 @@ def main() -> None:
         ROOT / "matches" / "parsed_turn_trajectories.json",
     )
     export_state_space(ROOT / "meta" / "competitive_board_states.json", scenarios)
-    evaluator = StateSpaceEvaluator(db, scenarios)
+    evaluator = StateSpaceEvaluator(db, scenarios, ROOT / "meta" / "decklists_2026-09-19_to_10-31.json")
     optimizer = StateGuidedDeckOptimizer(db, evaluator)
     load_ms = (time.perf_counter() - t0) * 1000.0
 
@@ -123,11 +159,22 @@ def main() -> None:
         deck = parse_ptcgl_decklist(dpath.read_text(encoding="utf-8"), db)
         rep = evaluator.evaluate_deck(deck)
         print_evaluation_report(dpath.name, rep)
+        if args.sim:
+            print_gauntlet_report(dpath.name, run_gauntlet(db, deck, args.games))
         return
 
     if args.build:
         t_start = time.perf_counter()
         res = optimizer.optimize_deck(args.build)
+        if args.sim:
+            # Re-rank the optimizer's shortlist by simulated win rate against the real meta.
+            sims = []
+            for cand in optimizer.last_candidates:
+                g = run_gauntlet(db, cand.deck, args.games)
+                sims.append((g.win_rate, cand, g))
+                print(f"  [sim] {cand.archetype_style:48s} heuristic={cand.report.overall_score:5.2f} "
+                      f"simWR={g.win_rate*100:5.1f}% ±{g.stderr*100:.1f}  ({g.state_values.get('engine')})")
+            _, res, best_g = max(sims, key=lambda x: x[0])
         elapsed_ms = (time.perf_counter() - t_start) * 1000.0
         header = (
             f"Built around: {res.seed_card.name} ({res.seed_card.uid})\n"
@@ -143,6 +190,8 @@ def main() -> None:
         print("DISCOVERED 60-CARD PTCGL DECKLIST")
         print("=" * 88)
         print(deck_txt)
+        if args.sim:
+            print_gauntlet_report(f"'{res.seed_card.name}' ({res.archetype_style})", best_g)
         if args.save:
             out_p = Path(args.save)
             out_p.parent.mkdir(parents=True, exist_ok=True)

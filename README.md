@@ -29,7 +29,29 @@ python discover_deck.py --demo
 
 # 5. Re-parse raw turn-by-turn match logs in matches/ into matches/parsed_turn_trajectories.json
 python matches/parse_matches.py
+
+# 6. Play real games against the meta gauntlet in the CABT rules engine (slower, seconds-minutes)
+python discover_deck.py --evaluate decks/discovered_alakazam_hand.txt --sim --games 12
+python discover_deck.py --build "Dragapult ex" --sim      # re-ranks the optimizer's shortlist by simulated win rate
 ```
+
+### Simulated gauntlet (CABT engine)
+
+- **Engine:** `vendor/cabt/` holds the CABT rules engine from Kaggle's Apache-2.0
+  [kaggle-environments](https://github.com/Kaggle/kaggle-environments) repo (`envs/cabt/cg`, Windows `cg.dll`),
+  the engine used by the Kaggle Pokémon TCG AI Battle Challenge. It implements every card effect and legal move.
+- **Bridge (`src/cabt_bridge.py`):** maps our cards to engine IDs (name normalization + attack/HP matching) and plays
+  games with `SearchAgent`, which uses the engine's forward search to step each main-phase option into the state it
+  leads to and picks the best-scoring resulting state. Hidden information is sampled from the known decklists.
+- **Gauntlet (`src/gauntlet.py`):** one best-placing real list per meta archetype, weighted by meta share; games
+  alternate who goes first. Reports win rate, matchups, and empirical P(win | state) tables (development when the
+  opponent starts, first Knock Out split by the opponent's comeback cards, Prize lead).
+- **Card coverage:** the engine's card pool is fixed. 452/512 tournament lists are fully playable; Mew ex,
+  Pokémon Center Lady, Unown (30C), Jirachi ex, Ancient Booster Energy Capsule and all of Delta Reign are not in the
+  engine. Decks using them automatically fall back to the Python simulator (`src/game_sim.py`, `src/sim_effects.py`),
+  and the report says which engine was used.
+- **Delta Reign (DLR, me6):** transcribed from the official card images into
+  `pokemon-tcg-data-standard/cards/me6.json` by `pokemon-tcg-data-standard/build_me6.py`.
 
 ---
 
