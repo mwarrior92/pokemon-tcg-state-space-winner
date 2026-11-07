@@ -168,10 +168,12 @@ def paired_regret(eng: Engine, agent: SearchAgent, ob: dict[str, Any], seat: int
 
 
 def run(split: str = "holdout", episodes: int = 0, regret_n: int = 30, playouts: int = 16, engine_version: int = 1,
-        seed: int = 0, agent_kwargs: dict[str, Any] | None = None, verbose: bool = True) -> dict[str, Any]:
+        seed: int = 0, agent_kwargs: dict[str, Any] | None = None, verbose: bool = True,
+        files: list[Path] | None = None, seats: Any = None) -> dict[str, Any]:
+    """`files` overrides the split; `seats(replay) -> list of seats` overrides the winner-only reference."""
     eng = Engine.get(engine_version)
     rng = random.Random(seed)
-    files = episode_files(split)
+    files = list(files) if files is not None else episode_files(split)
     if episodes:
         files = files[:episodes]
     agent_kwargs = agent_kwargs or {}
@@ -185,14 +187,15 @@ def run(split: str = "holdout", episodes: int = 0, regret_n: int = 30, playouts:
     for f in files:
         replay = json.loads(f.read_text(encoding="utf-8"))
         win = winner_seat(replay)
-        if win is None:
+        ref_seats = seats(replay) if seats else ([] if win is None else [win])
+        if not ref_seats:
             continue
         games += 1
-        expert_turn_actions: dict[int, set] = defaultdict(set)
-        points = list(decision_points(replay, only_seat=win))
+        expert_turn_actions: dict[tuple, set] = defaultdict(set)
+        points = [pt for st in ref_seats for pt in decision_points(replay, only_seat=st)]
         for i, seat, ob, expert, decks in points:
             if ob["select"]["type"] == ST_MAIN and expert:
-                expert_turn_actions[ob["current"]["turn"]].add(option_signature(ob, expert[0]))
+                expert_turn_actions[(seat, ob["current"]["turn"])].add(option_signature(ob, expert[0]))
         for i, seat, ob, expert, decks in points:
             sel = ob["select"]
             n = len(sel["option"])
@@ -216,7 +219,7 @@ def run(split: str = "holdout", episodes: int = 0, regret_n: int = 30, playouts:
                 by_opt[t]["agree"] += same
                 if ours:
                     turnset["n"] += 1
-                    reorder = option_signature(ob, ours[0]) in expert_turn_actions[ob["current"]["turn"]]
+                    reorder = option_signature(ob, ours[0]) in expert_turn_actions[(seat, ob["current"]["turn"])]
                     turnset["in"] += reorder
             if not same and not reorder:
                 disagreements.append((f.name, i, seat, ob, expert, ours, decks, kind))
@@ -234,7 +237,7 @@ def run(split: str = "holdout", episodes: int = 0, regret_n: int = 30, playouts:
         out["main_by_expert_action"][t] = {"n": c["n"], "agree": c["agree"] / c["n"]}
 
     if verbose:
-        print(f"Engine v{engine_version}, {split} split, {games} games, winner's decisions only, agent={agent_kwargs}, {errors} positions skipped")
+        print(f"Engine v{engine_version}, {split if seats is None else 'custom'} split, {games} games, {'winner' if seats is None else 'selected seat'}'s decisions only, agent={agent_kwargs}, {errors} positions skipped")
         print(f"{'decision type':22s} {'n':>6s} {'agree':>7s} {'chance':>7s}")
         for kind in sorted(stats, key=lambda k: -stats[k]["n"]):
             if stats[kind]["n"] < 10:

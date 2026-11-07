@@ -241,11 +241,199 @@ def _protected_damage(engine: Engine, attacker_card: dict[str, Any], attack: dic
     return dmg
 
 
-def _threat(engine: Engine, attacker: dict[str, Any] | None, target: dict[str, Any] | None) -> tuple[float, int]:
+_NUM = {"a": 1, "one": 1, "two": 2, "three": 3, "four": 4, "five": 5, "six": 6}
+
+
+def _count_phrase(engine: Engine, cur: dict[str, Any], side: int, attacker: dict[str, Any],
+                  defender: dict[str, Any] | None, phrase: str) -> float:
+    """How many of the things in an attack's 'for each ...' phrase there are on the board."""
+    p = phrase
+    me, op = cur["players"][side], cur["players"][1 - side]
+    mons = lambda pl: [m for m in (pl.get("active") or []) if m] + list(pl.get("bench") or [])
+    if "benched pokémon (both" in p or "each benched pokémon" in p and "your opponent's" not in p and "your benched" not in p:
+        return len(me.get("bench") or []) + len(op.get("bench") or [])
+    if "your opponent's benched pokémon" in p:
+        return len(op.get("bench") or [])
+    if "your benched pokémon" in p:
+        return len(me.get("bench") or [])
+    if "card in your opponent's hand" in p:
+        return op.get("handCount", 0)
+    if "card in your hand" in p:
+        return me.get("handCount", 0)
+    if "prize card your opponent has taken" in p:
+        return 6 - len(op.get("prize") or [])
+    if "prize card you have taken" in p:
+        return 6 - len(me.get("prize") or [])
+    if "energy attached to both active" in p:
+        return len(attacker.get("energies") or []) + len((defender or {}).get("energies") or [])
+    if "energy attached to your opponent's active" in p:
+        return len((defender or {}).get("energies") or [])
+    if "energy attached to all of your pokémon" in p or "energy attached to your pokémon" in p:
+        return sum(len(m.get("energies") or []) for m in mons(me))
+    if "energy attached to this pokémon" in p:
+        return len(attacker.get("energies") or [])
+    if "damage counter on this pokémon" in p:
+        return max(0, attacker.get("maxHp", 0) - attacker.get("hp", 0)) / 10
+    if "damage counter on your opponent's active" in p:
+        return max(0, (defender or {}).get("maxHp", 0) - (defender or {}).get("hp", 0)) / 10
+    if "discard pile" in p:
+        q = re.search(r"[“\"]([^”\"]+)[”\"]", p)
+        key = q.group(1) if q else re.sub(r"^(?:basic )?(.+?) cards? .*$", r"\1", p)
+        pile = [c if isinstance(c, int) else (c or {}).get("id") for c in (me.get("discard") or [])]
+        return sum(1 for cid in pile if key in _ntext(engine.cards.get(cid, {}).get("name")))
+    return 1.0
+
+
+_ATTACK_SPECS: dict[int, dict[str, Any]] = {}
+_REDUCTIONS: dict[int, list[str]] = {}
+_PROTECT_CACHE: dict[tuple, float] = {}
+
+
+def _attack_spec(engine: Engine, aid: int) -> dict[str, Any]:
+    """An attack's text parsed once into the pieces attack_estimate needs (cached per attack)."""
+    sp = _ATTACK_SPECS.get(aid)
+    if sp is not None:
+        return sp
+    a = engine.attacks.get(aid) or {}
+    t = _ntext(a.get("text"))
+    sp = {"base": float(a.get("damage") or 0), "cost": list(a.get("energies") or []), "name": _ntext(a.get("name")),
+          "for_each": [(int(m.group(1)), bool(m.group(2)), m.group(3))
+                       for m in re.finditer(r"(\d+) (more )?damage for each ([^.]+)", t) if "heads" not in m.group(3)],
+          "counters": None, "needs_bench": None, "needs_stadium": "if there is no stadium in play, this attack does nothing" in t,
+          "coins": None, "tails_nothing": bool(re.search(r"flip a coin\. if tails, this attack does nothing", t)), "moved": 0.0}
+    m = re.search(r"(?:place|put) (\d+) damage counters? on your opponent's active pokémon for each ([^.]+)", t)
+    if m:
+        sp["counters"] = (int(m.group(1)), m.group(2))
+    m = re.search(r"if you don't have ([a-z' -]+?) on your bench, this attack does nothing", t)
+    if m:
+        sp["needs_bench"] = m.group(1)
+    m = re.search(r"flip (\w+) coins?\. this attack does (\d+) damage for each heads", t)
+    if m:
+        k = _NUM.get(m.group(1), int(m.group(1)) if m.group(1).isdigit() else 1)
+        sp["coins"] = ("each", 0.5 * k * int(m.group(2)))
+    elif re.search(r"flip a coin until you get tails\. this attack does (\d+) more damage for each heads", t):
+        sp["coins"] = ("more", float(re.search(r"(\d+) more damage for each heads", t).group(1)))
+    elif re.search(r"flip a coin\. if heads, this attack does (\d+) more damage", t):
+        sp["coins"] = ("more", 0.5 * float(re.search(r"if heads, this attack does (\d+) more damage", t).group(1)))
+    m = re.search(r"if this pokémon moved from your bench to the active spot this turn, this attack does (\d+) more damage", t)
+    if m:
+        sp["moved"] = float(m.group(1))
+    _ATTACK_SPECS[aid] = sp
+    return sp
+
+
+def _reductions(engine: Engine, card_id: int) -> list[str]:
+    """Attack names this Pokemon's own text makes cheaper by {C} per Prize the opponent has taken."""
+    r = _REDUCTIONS.get(card_id)
+    if r is None:
+        r = []
+        for sk in engine.cards.get(card_id, {}).get("skills") or []:
+            m = re.search(r"(.+?) used by this pokémon costs \{c\} less for each prize card your opponent has taken",
+                          _ntext(sk.get("text")))
+            if m:
+                r.append(m.group(1))
+        _REDUCTIONS[card_id] = r
+    return r
+
+
+def _protected_cached(engine: Engine, ac: dict[str, Any], a: dict[str, Any], defender: dict[str, Any], dmg: float) -> float:
+    key = (ac.get("cardId"), a.get("attackId", id(a)), defender["id"], tuple(t.get("id") for t in defender.get("tools") or []),
+           defender.get("hp", 0) >= defender.get("maxHp", 0), dmg)
+    v = _PROTECT_CACHE.get(key)
+    if v is None:
+        v = _PROTECT_CACHE[key] = _protected_damage(engine, ac, a, defender, dmg)
+    return v
+
+
+def attack_estimate(engine: Engine, cur: dict[str, Any] | None, side: int, attacker: dict[str, Any],
+                    defender: dict[str, Any] | None, aid: int, from_bench: bool = False) -> tuple[float, int, int]:
+    """
+    (expected damage, Energy cost after reductions, Energy still missing) of one attack, read the way
+    the engine resolves its text (parsed once per attack by `_attack_spec`):
+      * 'N damage for each X' / 'N more damage for each X'  -> counted on the current board;
+      * 'place N damage counters on ... Active for each X'  -> counters (ignore Weakness and protections);
+      * coin flips at their expected value; 'if you don't have X on your Bench / no Stadium, does nothing';
+      * 'if this Pokemon moved from your Bench to the Active Spot this turn, N more' -> for Benched attackers;
+      * cost reductions printed on the attacker ('<attack> costs {C} less for each Prize card ...').
+    Then Weakness, Resistance and the defender's printed protections (`_protected_damage`).
+    """
+    sp = _attack_spec(engine, aid)
+    ac = engine.cards.get(attacker["id"], {})
+    base = sp["base"]
+    dmg, counters = base, 0.0
+    cost = sp["cost"]
+    have = attacker.get("energies") or []
+    if cur is not None:
+        red = _reductions(engine, attacker["id"])
+        if red and any(sp["name"] in r for r in red):
+            cost = list(cost)
+            for _ in range(6 - len(cur["players"][1 - side].get("prize") or [])):
+                if E_COLORLESS in cost:
+                    cost.remove(E_COLORLESS)
+        for n, more, phrase in sp["for_each"]:
+            k = n * _count_phrase(engine, cur, side, attacker, defender, phrase)
+            if more:
+                dmg += k
+            elif base == 0:
+                dmg = k
+        if sp["counters"]:
+            n, phrase = sp["counters"]
+            counters = 10 * n * _count_phrase(engine, cur, side, attacker, defender, phrase)
+        if sp["needs_bench"] and not any(sp["needs_bench"] in _ntext(engine.cards.get(b["id"], {}).get("name"))
+                                         for b in cur["players"][side].get("bench") or []):
+            return 0.0, len(cost), _missing_energy(cost, have)
+        if sp["needs_stadium"] and not cur.get("stadium"):
+            return 0.0, len(cost), _missing_energy(cost, have)
+    if sp["coins"]:
+        kind, x = sp["coins"]
+        dmg = x if kind == "each" else dmg + x
+    if sp["tails_nothing"]:
+        dmg *= 0.5
+    if sp["moved"] and from_bench:
+        dmg += sp["moved"]
+    miss = _missing_energy(cost, have)
+    if defender is None:
+        return dmg + counters, len(cost), miss
+    tc = engine.cards.get(defender["id"], {})
+    if dmg > 0:
+        if tc.get("weakness") is not None and tc.get("weakness") == ac.get("energyType"):
+            dmg *= 2
+        if tc.get("resistance") is not None and tc.get("resistance") == ac.get("energyType"):
+            dmg = max(0.0, dmg - 30)
+        dmg = _protected_cached(engine, ac, engine.attacks.get(aid) or {}, defender, dmg)
+    return dmg + counters, len(cost), miss
+
+
+def attack_plan(engine: Engine, cur: dict[str, Any] | None, side: int, attacker: dict[str, Any],
+                defender: dict[str, Any] | None, from_bench: bool = False) -> tuple[float, int, int]:
+    """The attacker's best attack vs `defender`: (damage, Energy cost, Energy missing). Among attacks
+    that do comparable damage, the cheaper / closer one wins."""
+    best = (0.0, 0, 0)
+    best_key = None
+    for aid in engine.cards.get(attacker["id"], {}).get("attacks", []):
+        dmg, cost, miss = attack_estimate(engine, cur, side, attacker, defender, aid, from_bench)
+        if dmg <= 0:
+            continue
+        key = dmg * (0.5 ** miss)                  # damage discounted by how far it is from being usable
+        if best_key is None or key > best_key:
+            best, best_key = (dmg, cost, miss), key
+    return best
+
+
+def _threat(engine: Engine, attacker: dict[str, Any] | None, target: dict[str, Any] | None,
+            cur: dict[str, Any] | None = None, side: int = 0, from_bench: bool = False) -> tuple[float, int]:
     """(best damage vs target among attacks, energy still missing for it), after Weakness,
-    Resistance and the target's protections."""
+    Resistance and the target's protections. With `cur`, attack text is resolved on the board
+    (`attack_estimate`)."""
     if not attacker or not target:
         return 0.0, 99
+    if cur is not None:
+        best, best_miss = 0.0, 99
+        for aid in engine.cards.get(attacker["id"], {}).get("attacks", []):
+            dmg, _, miss = attack_estimate(engine, cur, side, attacker, target, aid, from_bench)
+            if dmg > 0 and (miss, -dmg) < (best_miss, -best):
+                best, best_miss = dmg, miss
+        return best, best_miss
     ac = engine.cards.get(attacker["id"], {})
     tc = engine.cards.get(target["id"], {})
     best, best_miss = 0.0, 99
@@ -535,6 +723,20 @@ def turn_potential(engine: Engine, cur: dict[str, Any], attacker_side: int) -> d
     return best
 
 
+# Net value of having Pokemon in play (see evaluate_state)
+BODY_VALUE = (0.6, 1.2, 0.6, 0.25, 0.0)            # by count in play: Active, 2nd, 3rd, 4th, 5th+ (board-wipe insurance)
+BENCH_SLOT_COST = (0.0, 0.1, 0.3, 0.5, 0.7, 0.9)   # Bench slots 1..6+: rising cost of filling the Bench
+_EVOLVES_FROM: set[str] | None = None
+
+
+def _evolves_from_names(engine: Engine) -> set[str]:
+    """Names some card in the pool evolves from (so extra copies are evolution fodder, not clutter)."""
+    global _EVOLVES_FROM
+    if _EVOLVES_FROM is None:
+        _EVOLVES_FROM = {c.get("evolvesFrom") for c in engine.cards.values() if c.get("evolvesFrom")}
+    return _EVOLVES_FROM
+
+
 def evaluate_state(engine: Engine, cur: dict[str, Any], me: int, ko_model: bool = False) -> float:
     """
     Heuristic value of a board for player `me` (used to compare transitions):
@@ -565,7 +767,7 @@ def evaluate_state(engine: Engine, cur: dict[str, Any], me: int, ko_model: bool 
                 reach = 1.0 if i == 0 else 0.45          # benched attackers must be switched in
                 persp = 1.0 if side == me else 0.8
                 if not ko_model:      # (the KO classes replace this Active-only threat term)
-                    dmg, miss = _threat(engine, m, tgt)
+                    dmg, miss = _threat(engine, m, tgt, cur, side, from_bench=i > 0)
                     if dmg > 0 and miss <= 1:
                         ready = 1.0 if miss == 0 else 0.4
                         v += sign * 4.0 * pv * min(1.0, dmg / tgt_left) * reach * ready * persp
@@ -583,15 +785,44 @@ def evaluate_state(engine: Engine, cur: dict[str, Any], me: int, ko_model: bool 
         taken = 6 - len(p["prize"])            # Prizes this side has taken
         v += sign * 10.0 * taken
         mons = [m for m in (p.get("active") or []) if m] + list(p.get("bench") or [])
+        their_active = (cur["players"][1 - side].get("active") or [None])[0]
+        copies: Counter = Counter()
         for i, m in enumerate(mons):
             hp, mx = m.get("hp", 0), max(1, m.get("maxHp", 1))
             pv = _prize_value(engine, m["id"])
+            card = engine.cards.get(m["id"], {})
             # damage on a Pokemon = progress toward the opponent taking its Prizes
             v -= sign * 3.0 * pv * (1.0 - hp / mx)
-            # development: attached energy, evolution stage, threatening attackers
-            v += sign * (0.8 * len(m.get("energies") or []) + 1.0 * len(m.get("preEvolution") or []))
-            v += sign * 0.004 * min(250, _best_attack_damage(engine, m["id"])) * min(1.0, len(m.get("energies") or []) / 2.0)
-            v += sign * 0.6
+            # Energy counts toward this Pokemon's best attack (against the Pokemon it would actually hit);
+            # Energy beyond that cost, or on Pokemon with no damaging attack, is worth little.
+            en = len(m.get("energies") or [])
+            plan_dmg, need, miss = attack_plan(engine, cur, side, m, their_active, from_bench=i > 0)
+            useful = min(en, need)
+            v += sign * ((0.8 if i == 0 else 0.6) * useful + 0.15 * (en - useful))
+            v += sign * 1.0 * len(m.get("preEvolution") or [])
+            if need:
+                v += sign * 0.004 * min(250, plan_dmg) * (1.0 - miss / need)
+            # Presence is NET value: what this Pokemon does for us minus what it costs to have it in play.
+            name = card.get("name")
+            k = copies[name]
+            copies[name] += 1
+            # + board-wipe insurance: only the first few bodies matter
+            v += sign * BODY_VALUE[min(i, len(BODY_VALUE) - 1)]
+            # + role: evolution fodder, a (first-copy) Ability, or an attacker close to attacking
+            role = 0.0
+            if name in _evolves_from_names(engine):
+                role = max(role, (0.6, 0.45, 0.3, 0.15)[min(k, 3)])
+            if card.get("skills"):
+                role = max(role, 0.6 if k == 0 else 0.1)
+            if need and miss <= 1:
+                role = max(role, 0.5 if k == 0 else 0.2)
+            v += sign * role
+            if i > 0:
+                # - Prize exposure: a Benched Pokemon is Prizes the opponent can drag up and take;
+                #   worst for multi-Prize Pokemon that aren't close to attacking
+                v -= sign * 0.35 * pv * (1.0 if (not need or miss >= 2) else 0.5)
+                # - opportunity cost of the Bench slot: less room for better Pokemon later
+                v -= sign * BENCH_SLOT_COST[min(i - 1, len(BENCH_SLOT_COST) - 1)]
         if not mons:
             v -= sign * 50.0
         v += sign * 0.15 * min(8, p.get("handCount", 0))
@@ -800,8 +1031,9 @@ class SearchAgent:
         pick-several choice, the fixed-rule pick plus single swaps and the min/max-size variants."""
         sel = obs["select"]
         n, n_min, n_max = len(sel["option"]), sel["minCount"], sel["maxCount"]
+        self._last_ranked = list(range(n))           # static_choice may not rank this choice; never reuse a stale ranking
         base = self.static_choice(obs)
-        ranked = getattr(self, "_last_ranked", list(range(n)))
+        ranked = [i for i in getattr(self, "_last_ranked", []) if 0 <= i < n] or list(range(n))
         types = {o["type"] for o in sel["option"]}
         if n_max == 1 or types <= {OT_YES, OT_NO}:
             order = [base[0]] + [i for i in ranked if i != base[0]] if base else ranked
