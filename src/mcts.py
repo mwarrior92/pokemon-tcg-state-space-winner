@@ -27,7 +27,13 @@ Game-tree search over actions (Monte Carlo tree search), n turns deep.
   * `observe(obs)` lets the game loop pass every observation (both players' steps), so the opponent's
     actual turn can be classified from the engine's event log; without it, the change in our board is used.
 
+  * Optional shrinking horizon (`horizon_start`, `horizon_floor`): e.g. 9 turns on our first turn, one
+    less on each of our later turns, never below 3 - early decisions look furthest ahead; late in the
+    game the future is less uncertain and many paths end in a win or loss before the horizon anyway.
+    "Turns" count both players' turns.
+
   agent = MCTSAgent(engine, my_deck, opp_deck, rng, iterations=150, n_turns=3)
+  agent = MCTSAgent(engine, my_deck, opp_deck, rng, horizon_start=9, horizon_floor=3)
   action = agent(obs)
 """
 from __future__ import annotations
@@ -39,12 +45,16 @@ from typing import Any
 from cabt_bridge import (AREA_ACTIVE, AREA_BENCH, AREA_DECK, AREA_DISCARD, AREA_HAND, OT_ATTACH, OT_ATTACK, OT_END,
                          OT_EVOLVE, OT_PLAY, OT_RETREAT, OT_ABILITY, ST_MAIN, Engine, SearchAgent, evaluate_state)
 
-EVAL_SCALE = 30.0          # evaluation points that map to tanh(1) ~ 0.76
+EVAL_SCALE = 30.0          # fitted scores: tanh(value / 30) = 2 P(win) - 1 (calibrated, no centering)
+HAND_SCALE = 10.0          # hand-set scores: leaves are scored RELATIVE to the root position, on this scale,
+                           # so typical +-30..100 midgame values don't saturate tanh and erase differences
 
 
 def _card_at(ob: dict[str, Any], o: dict[str, Any]) -> int | None:
     """Card id an option refers to (by area + index), if it refers to one."""
     area, idx = o.get("area"), o.get("index")
+    if area is None and idx is not None and o.get("type") in (OT_PLAY, OT_ATTACH, OT_EVOLVE):
+        area = AREA_HAND                 # play / attach / evolve options give a hand index without an area
     if area is None or idx is None:
         return None
     cur = ob["current"]
@@ -91,11 +101,12 @@ class _Edge:
 
 
 class _Node:
-    __slots__ = ("n", "edges")
+    __slots__ = ("n", "edges", "prior")
 
     def __init__(self) -> None:
         self.n = 0
         self.edges: dict[tuple, _Edge] = {}
+        self.prior: dict[tuple, float] | None = None    # one-step greedy scores, for expansion order
 
 
 # rollout priorities for main-phase options (quick, sensible default play)
@@ -123,12 +134,22 @@ def _places_damage(engine: Engine, card_id: int | None) -> bool:
 
 class MCTSAgent:
     def __init__(self, engine: Engine, my_deck: list[int], opp_deck: list[int], rng: random.Random,
-                 iterations: int = 150, n_turns: int = 3, c_explore: float = 1.0, max_steps: int = 400,
-                 sub_cap: int = 6, reuse: bool = True, decay: float = 0.5) -> None:
+                 iterations: int = 150, n_turns: int = 3, c_explore: float = 0.1, max_steps: int = 400,
+                 sub_cap: int = 6, reuse: bool = True, decay: float = 0.5,
+                 horizon_start: int | None = None, horizon_floor: int = 3, greedy_turn: bool = True,
+                 n_guesses: int = 10, default_margin: float = 0.02) -> None:
         self.engine = engine
         self.rng = rng
         self.iterations = iterations
         self.n_turns = n_turns
+        self.greedy_turn = greedy_turn
+        self.default_margin = default_margin
+        self.n_guesses = n_guesses                 # shared hidden-card guesses per decision (paired comparisons)
+        self._guess_pool: list[tuple] = []
+        self.horizon_start = horizon_start
+        self.horizon_floor = horizon_floor
+        self._horizon_now = n_turns
+        self._root_value = 0.0
         self.c = c_explore
         self.max_steps = max_steps
         self.sub_cap = sub_cap
@@ -239,15 +260,53 @@ class MCTSAgent:
                 best, best_v = i, v
         return [best]
 
+    def _prior(self, state: dict[str, Any], keys: list[tuple], choices: list[list[int]], me: int) -> dict[tuple, float]:
+        """One-step greedy score of each option at a node (as the one-turn agent ranks them)."""
+        ob = state["observation"]
+        turn = ob["current"]["turn"]
+        out: dict[tuple, float] = {}
+        for key, ch in zip(keys, choices):
+            if key in out:
+                continue
+            nxt = self.engine.search_step(state["searchId"], ch)
+            if nxt is None:
+                out[key] = -1e18
+                continue
+            o = ob["select"]["option"][ch[0]] if ch else {}
+            out[key] = evaluate_state(self.engine, nxt["observation"]["current"], me, mid_turn=turn)                 - (0.5 if o.get("type") == OT_END else 0.0)
+        return out
+
+    def _greedy_choice(self, state: dict[str, Any], me: int) -> list[int] | None:
+        """One-step greedy main-phase choice for us (as the one-turn agent completes its turn): try each
+        option in the forward model and keep the one whose result scores best (ending the turn slightly
+        penalised so useful actions come first)."""
+        ob = state["observation"]
+        best, best_v = None, -1e18
+        for i, o in enumerate(ob["select"]["option"]):
+            ch = self.engine.search_step(state["searchId"], [i])
+            if ch is None:
+                continue
+            v = evaluate_state(self.engine, ch["observation"]["current"], me,
+                               mid_turn=ob["current"]["turn"]) - (0.5 if o["type"] == OT_END else 0.0)
+            if v > best_v:
+                best, best_v = [i], v
+        return best
+
     # ---- search ----
     def _leaf_value(self, cur: dict[str, Any], me: int) -> float:
         if cur.get("result", -1) >= 0:
             return 1.0 if cur["result"] == me else (-1.0 if cur["result"] == 1 - me else 0.0)
-        return math.tanh(evaluate_state(self.engine, cur, me) / EVAL_SCALE)
+        from cabt_bridge import _EVAL
+        v = evaluate_state(self.engine, cur, me)
+        if _EVAL.get("fitted"):
+            return math.tanh(v / EVAL_SCALE)
+        return math.tanh((v - self._root_value) / HAND_SCALE)
 
     def _iterate(self, obs: dict[str, Any], root: _Node, me: int) -> bool:
         eng = self.engine
-        state = eng.search_begin(obs, *self.helper._guesses(obs))
+        guess = self._guess_pool[self._iter_no % len(self._guess_pool)] if self._guess_pool else self.helper._guesses(obs)
+        self._iter_no += 1
+        state = eng.search_begin(obs, *guess)
         if state is None:
             return False
         path: list[tuple[_Node, int, tuple]] = []
@@ -269,7 +328,7 @@ class MCTSAgent:
                     boundaries += 1
                     last_turn = cur["turn"]
                     actions_this_turn = 0
-                if boundaries >= self.n_turns:
+                if boundaries >= self._horizon_now:
                     value = self._leaf_value(cur, me)
                     break
                 who = cur["yourIndex"]
@@ -312,16 +371,25 @@ class MCTSAgent:
                 if len(choices) == 1:
                     choice = choices[0]
                 elif node is None:
-                    choice = self._rollout_choice(ob, actions_this_turn)
+                    choice = None
+                    if (self.greedy_turn and cur["turn"] == obs["current"]["turn"] and ob["select"]["type"] == ST_MAIN
+                            and actions_this_turn < 12):
+                        choice = self._greedy_choice(state, me)       # the turn we're actually playing
+                    if choice is None:
+                        choice = self._rollout_choice(ob, actions_this_turn)
                 else:
                     keys = [choice_key(ob, c) for c in choices]
                     fresh = [k for k, key in enumerate(keys) if key not in node.edges]
                     if fresh:
-                        # expand one untried edge (rollout policy order breaks ties sensibly)
-                        pick = fresh[0] if len(fresh) == 1 else min(
-                            fresh, key=lambda k: -(_PRIORITY.get(ob["select"]["option"][choices[k][0]]["type"], 3.0)
-                                                   if ob["select"]["type"] == ST_MAIN and choices[k] else 0.0)
-                            - self.rng.random())
+                        # expand the most promising untried edge first: for our main-phase decisions by a
+                        # one-step greedy look (computed once per node), for card / target choices in the
+                        # static policy's ranked order (candidates come ranked)
+                        if ob["select"]["type"] == ST_MAIN and len(fresh) > 1:
+                            if node.prior is None:
+                                node.prior = self._prior(state, keys, choices, me)
+                            pick = max(fresh, key=lambda k: node.prior.get(keys[k], -1e18))
+                        else:
+                            pick = fresh[0]
                         node.edges[keys[pick]] = _Edge()
                         path.append((node, who, keys[pick]))
                         choice, node = choices[pick], None
@@ -431,6 +499,15 @@ class MCTSAgent:
             self.tree = e.child
             self._decay(self.tree)
 
+    def horizon(self, cur: dict[str, Any], me: int) -> int:
+        """Turns to look ahead from this decision: fixed `n_turns`, or `horizon_start` on our first turn,
+        one less on each later turn of ours, never below `horizon_floor`."""
+        if self.horizon_start is None:
+            return self.n_turns
+        first_turn = 1 if cur.get("firstPlayer", 0) == me else 2
+        ours_so_far = max(0, (cur.get("turn", 1) - first_turn) // 2)
+        return max(self.horizon_floor, self.horizon_start - ours_so_far)
+
     def __call__(self, obs: dict[str, Any]) -> list[int]:
         sel = obs.get("select")
         if not sel:
@@ -441,9 +518,15 @@ class MCTSAgent:
         me = obs["current"]["yourIndex"]
         self.me = me
         cur = obs["current"]
+        self._horizon_now = self.horizon(cur, me)
+        self._root_value = evaluate_state(self.engine, cur, me)
+        self.max_steps = max(self.max_steps, 60 * self._horizon_now)
         if self.reuse:
             self._follow_opponent(cur, me)
         root = self.tree if (self.reuse and self.tree is not None) else _Node()
+        # the same few hidden-card guesses, cycled, so every option is judged against the same hands
+        self._guess_pool = [self.helper._guesses(obs) for _ in range(max(1, self.n_guesses))]
+        self._iter_no = 0
         self.counts["reused" if root is self.tree else "fresh"] += 1
         done = 0
         for _ in range(self.iterations):
@@ -454,9 +537,22 @@ class MCTSAgent:
         keys = [choice_key(obs, c) for c in choices]
         scored = [(root.edges[k].n, root.edges[k].w / max(1, root.edges[k].n), i) for i, k in enumerate(keys) if k in root.edges]
         self.last_stats = {"iterations": done, "edges": len(scored), **self.counts}
+        self._last_root, self._last_keys, self._last_choices = root, keys, choices   # for diagnostics
         if not scored:
             return self.helper.static_choice(obs) if sel["type"] != ST_MAIN else choices[0]
-        _, _, i = max(scored)
+        # pick by value among options with a reasonable share of the visits (robust at small budgets)
+        top = max(n for n, _, _ in scored)
+        q_best, _, i = max((q, n, i) for n, q, i in scored if n >= 0.2 * top)
+        if sel["type"] != ST_MAIN:
+            # card / target choices: the board score can't tell most of them apart (it counts the hand,
+            # not which cards are in it), so keep the static policy's ranked pick unless another option
+            # is clearly better
+            default = self.helper.static_choice(obs)
+            dkey = choice_key(obs, default) if default is not None else None
+            for n, q, j in scored:
+                if keys[j] == dkey and q >= q_best - self.default_margin:
+                    i = j
+                    break
         if self.reuse:
             e = root.edges.get(keys[i])
             self.tree = e.child if e is not None else None

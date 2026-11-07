@@ -25,3 +25,7 @@ matches/regression_results/
 matches/race_sequences.jsonl
 matches/race_values.json
 matches/kaggle_episodes_deck/
+matches/eval_positions.jsonl.gz
+matches/choice_data.npz
+matches/eval_features.npz
+matches/choice_data_endturn.npz

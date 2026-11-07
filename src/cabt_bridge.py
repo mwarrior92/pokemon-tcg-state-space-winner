@@ -501,7 +501,7 @@ def _hand_pieces(engine: Engine, hand: list[dict[str, Any]] | None) -> dict[str,
         if cd.get("cardType") in (5, 6):
             energies.append(cd.get("energyType", E_COLORLESS))
         text = " ".join(_ntext(s.get("text")) for s in cd.get("skills") or [])
-        if "switch in 1 of your opponent's benched" in text:
+        if "switch in 1 of your opponent's benched" in text or "your opponent switches their active pokémon with 1 of their benched" in text:
             gust = True
         if "switch your active pokémon with 1 of your benched" in text:
             switch = True
@@ -723,6 +723,144 @@ def turn_potential(engine: Engine, cur: dict[str, Any], attacker_side: int) -> d
     return best
 
 
+# ---------------------------------------------------------------------------
+# Prize race: each side's chance of taking 1..n Prizes (or winning) on its next turn
+# ---------------------------------------------------------------------------
+
+def _snipe_amount(text: str) -> float:
+    m = re.search(r"(?:this attack )?does (\d+) damage to 1 of your opponent's (?:benched )?pokémon", text)
+    return float(m.group(1)) if m else 0.0
+
+
+def prize_routes(engine: Engine, cur: dict[str, Any], side: int) -> list[dict[str, Any]]:
+    """
+    Every route by which `side` Knocks Out something on its next turn: an attacker (Active, or Benched
+    and brought up), one of its attacks, a target (the Active, a gusted Benched Pokemon, or a snipe), plus
+    what the attack's spread and the side's self-KO counter-placers can finish. A route's `p` is the chance
+    its pieces are available - each extra action (attach the turn's Energy, switch the attacker in, gust
+    the target) multiplies in the chance of holding that piece (known for a visible hand, estimated for a
+    hidden one) - so routes needing more actions are less likely.
+    """
+    a, d = cur["players"][side], cur["players"][1 - side]
+    pieces = _hand_pieces(engine, a.get("hand"))
+    reach_active = _can_reach_active(engine, a, pieces)
+    bombers = _bombers(engine, a)
+    defenders = [(m, True) for m in (d.get("active") or []) if m] + [(m, False) for m in (d.get("bench") or [])]
+    attackers = [(m, True) for m in (a.get("active") or []) if m] + [(m, False) for m in (a.get("bench") or [])]
+    routes: list[dict[str, Any]] = []
+    if not defenders:
+        return routes
+    for am, a_active in attackers:
+        ac = engine.cards.get(am["id"], {})
+        for aid in ac.get("attacks", []):
+            atk = engine.attacks.get(aid)
+            if not atk:
+                continue
+            text = _ntext(atk.get("text"))
+            snipe_amt = _snipe_amount(text)
+            _, _, miss = attack_estimate(engine, cur, side, am, None, aid, from_bench=not a_active)
+            if miss >= 2:
+                continue
+            avail = 1.0
+            if miss == 1:
+                if pieces is None:
+                    avail *= HIDDEN_HAND_P["energy"]
+                else:
+                    cost = _attack_spec(engine, aid)["cost"]
+                    avail *= 1.0 if any(_missing_energy(cost, (am.get("energies") or []) + [t]) <= 0
+                                        for t in pieces["energies"]) else 0.25
+            if not a_active:
+                avail *= reach_active if reach_active > 0 else 0.25
+            spread_kind, spread_amt, spread_n = _attack_spread(text)
+            for dm, d_active in defenders:
+                route_p = avail
+                if d_active:
+                    dmg = attack_estimate(engine, cur, side, am, dm, aid, from_bench=not a_active)[0]
+                elif snipe_amt:
+                    dmg = 0.0 if engine.cards.get(dm["id"], {}).get("tera") else snipe_amt
+                else:
+                    route_p *= HIDDEN_HAND_P["gust"] if pieces is None else (1.0 if pieces["gust"] else 0.25)
+                    dmg = attack_estimate(engine, cur, side, am, dm, aid, from_bench=not a_active)[0]   # gusted up: now Active
+                if route_p <= 0:
+                    continue
+                left = {id(m): max(0.0, float(m["hp"])) for m, _ in defenders}
+                left[id(dm)] -= dmg
+                pool = spread_amt if spread_kind in ("counters", "counters_one") else 0.0
+                bomb_cost = sum(c for _, c in bombers)
+                pool_bombs = sum(b for b, _ in bombers)
+                if spread_kind == "damage":
+                    others = sorted([m for m, act in defenders if not act and m is not dm
+                                     and not engine.cards.get(m["id"], {}).get("tera")], key=lambda m: left[id(m)])
+                    for m in others[:spread_n]:
+                        left[id(m)] -= spread_amt
+                used_bombs = False
+                order = sorted(defenders, key=lambda x: (x[0] is not dm, left[id(x[0])] / max(1, _prize_value(engine, x[0]["id"]))))
+                for m, _ in order:
+                    need = left[id(m)]
+                    if need <= 0:
+                        continue
+                    if need <= pool:
+                        pool -= need
+                        left[id(m)] = 0.0
+                    elif need <= pool + pool_bombs:
+                        pool_bombs -= need - pool
+                        pool = 0.0
+                        left[id(m)] = 0.0
+                        used_bombs = True
+                kos = [m for m, _ in defenders if left[id(m)] <= 0]
+                if not kos:
+                    continue
+                prizes = sum(_prize_value(engine, m["id"]) for m in kos)
+                routes.append({"p": route_p, "prizes": prizes - (bomb_cost if used_bombs else 0),
+                               "gross": prizes, "kos": {m.get("serial") for m in kos}, "wipe": len(kos) >= len(defenders),
+                               "attacker": am.get("serial")})
+    return routes
+
+
+def _race_summary(routes: list[dict[str, Any]], prizes_left: int, survive: dict | None = None) -> dict[str, Any]:
+    """P(>= k Prizes) for k = 1..6 (best route reaching k), expected Prizes, P(win), and each defender's KO
+    chance. `survive` maps attacker serial -> chance it is still in play when this turn comes."""
+    p_ge = [0.0] * 7
+    p_win = 0.0
+    ko_p: dict[Any, float] = {}
+    for r in routes:
+        p = r["p"] * (survive.get(r["attacker"], 1.0) if survive else 1.0)
+        if p <= 0:
+            continue
+        for k in range(1, min(6, int(r["prizes"])) + 1):
+            p_ge[k] = max(p_ge[k], p)
+        if r["wipe"] or (prizes_left > 0 and r["gross"] >= prizes_left):
+            p_win = max(p_win, p)
+        for sr in r["kos"]:
+            ko_p[sr] = max(ko_p.get(sr, 0.0), p)
+    return {"p_ge": p_ge[1:], "expected": sum(p_ge[1:]), "win": p_win, "ko_p": ko_p}
+
+
+def prize_race(engine: Engine, cur: dict[str, Any]) -> dict[int, dict[str, Any]]:
+    """
+    Both sides' next-turn Prize potential, in turn order. The player to move acts first; the other side's
+    routes only count if its attacker survives that turn (1 - P(the mover Knocks it Out)) and the game is
+    still going (1 - P(the mover wins)). An empty deck about to be drawn from is a deck-out loss.
+    Returns {side: {"expected", "win", "p_ge", "ko_p"}}.
+    """
+    mover = cur.get("yourIndex", 0)
+    if mover not in (0, 1):
+        mover = 0
+    other = 1 - mover
+    pl = cur["players"]
+    m = _race_summary(prize_routes(engine, cur, mover), len(pl[mover].get("prize") or []))
+    if pl[other].get("deckCount", 60) == 0:
+        m["win"] = 1.0                                   # the other side can't draw for its next turn
+    survive = {sr: 1.0 - p for sr, p in m["ko_p"].items()}
+    o = _race_summary(prize_routes(engine, cur, other), len(pl[other].get("prize") or []), survive)
+    alive = 1.0 - m["win"]
+    o["expected"] *= alive
+    o["win"] *= alive
+    if pl[mover].get("deckCount", 60) == 0:
+        o["win"] = max(o["win"], alive)                  # the mover decks out at its following draw
+    return {mover: m, other: o}
+
+
 # Net value of having Pokemon in play (see evaluate_state)
 BODY_VALUE = (0.6, 1.2, 0.6, 0.25, 0.0)            # by count in play: Active, 2nd, 3rd, 4th, 5th+ (board-wipe insurance)
 BENCH_SLOT_COST = (0.0, 0.1, 0.3, 0.5, 0.7, 0.9)   # Bench slots 1..6+: rising cost of filling the Bench
@@ -737,41 +875,77 @@ def _evolves_from_names(engine: Engine) -> set[str]:
     return _EVOLVES_FROM
 
 
-def evaluate_state(engine: Engine, cur: dict[str, Any], me: int, ko_model: bool = False) -> float:
+FEATURES = ("threat", "spread", "taken", "damage", "energy_active", "energy_bench", "energy_excess", "evolved",
+            "readiness", "has_active", "no_pokemon", "body2", "body3", "body4", "body5", "role", "exposure",
+            "bench_slots", "bench_n", "hand", "deck_low", "pot", "win")
+
+# Hand-set weights (the original heuristic). Opponent-side threat / spread are discounted to 0.8.
+HAND_WEIGHTS: dict[str, float] = {}
+for _f, _w in {"threat": 4.0, "spread": 2.5, "taken": 10.0, "damage": -3.0, "energy_active": 0.8, "energy_bench": 0.6,
+               "energy_excess": 0.15, "evolved": 1.0, "readiness": 0.4, "has_active": 0.6, "no_pokemon": -50.0,
+               "body2": 1.2, "body3": 0.6, "body4": 0.25, "body5": 0.0, "role": 1.0, "exposure": -0.35,
+               "bench_slots": -1.0, "bench_n": 0.0, "hand": 0.15, "deck_low": -1.5,
+               "pot": 0.0, "win": 0.0}.items():
+    HAND_WEIGHTS["my_" + _f] = _w
+    HAND_WEIGHTS["op_" + _f] = -_w * (0.8 if _f in ("threat", "spread") else 1.0)
+HAND_WEIGHTS["bias"] = 0.0
+
+_EVAL = {"weights": HAND_WEIGHTS, "fitted": False}
+FITTED_SCALE = 15.0      # fitted log-odds x 15, so tanh(value / 30) = 2 * P(win) - 1 in the tree search
+
+
+def load_eval_weights(path: str | Path | None) -> None:
+    """Use fitted evaluation weights (src/fit_eval.py output); None restores the hand-set weights."""
+    if path is None:
+        _EVAL.update(weights=HAND_WEIGHTS, fitted=False, early={}, early_turns=0, race=False)
+        return
+    data = json.loads(Path(path).read_text(encoding="utf-8"))
+    # "choice" weights (src/fit_choice.py) rank positions from the decider's side, like the hand-set score;
+    # outcome weights (src/fit_eval.py) are log-odds for the player to move.
+    _EVAL.update(weights={**{k: 0.0 for k in HAND_WEIGHTS}, **data["weights"]}, fitted=data.get("kind") != "choice",
+                 early=data.get("early_extra") or {}, early_turns=data.get("early_turns", 0),
+                 race=bool(data.get("race")))
+
+
+def board_features(engine: Engine, cur: dict[str, Any], me: int) -> dict[str, float]:
     """
-    Heuristic value of a board for player `me` (used to compare transitions):
-    Prizes taken, damage on each side weighted by Prize value, development, and THREAT.
-    With `ko_model`, threat = KO reachability classes (easy / very KO-able / KO-able / survives)
-    for both sides: the Prizes we can expect to take next turn minus the Prizes we are exposing.
+    The raw ingredients of the board evaluation for player `me`, each side separately ("my_*", "op_*"):
+      threat         Prize-weighted share of the opposing Active's HP our attackers can deal next turn
+                     (Benched attackers discounted, one-Energy-short attackers discounted)
+      spread         Prize-weighted Bench damage our spread attacks threaten
+      taken          Prizes taken
+      damage         Prize-weighted damage carried by our Pokemon
+      energy_*       Energy toward each Pokemon's best attack (Active / Bench), and Energy beyond that cost
+      evolved        evolution stages in play
+      readiness      best-attack damage x share of its cost paid (per Pokemon, /100)
+      has_active, no_pokemon, body2..body5  how many Pokemon in play (board-wipe insurance)
+      role           evolution fodder / first-copy Ability / attacker close to attacking
+      exposure       Prize-weighted Benched Pokemon, doubled when far from attacking
+      bench_slots    rising cost of each Bench slot used;  bench_n  Bench size
+      hand, deck_low cards in hand (capped at 8); cards short of 6 in the deck
+      pot, win       the prize race (`prize_race`): expected Prizes on this side's next turn and the chance it
+                     wins then, in turn order (the side that moves second counts only attackers that survive)
     """
-    if cur is None:
-        return 0.0
-    if cur.get("result", -1) >= 0:
-        return 1000.0 if cur["result"] == me else (-1000.0 if cur["result"] == 1 - me else 0.0)
-    v = 0.0
-    if ko_model:
-        # Offense: the Prizes our best whole-turn route can expect; defense: the opponent's.
-        # Board wipes and prize-outs end the game, so they dominate when a route can reach them.
-        ours = turn_potential(engine, cur, me)
-        theirs = turn_potential(engine, cur, 1 - me)
-        v += 4.0 * ours["expected"] + 120.0 * max(ours["wipe"], ours["prize_out"])
-        v -= 4.0 * theirs["expected"] + 300.0 * max(theirs["wipe"], theirs["prize_out"])
-    for side, sign in ((me, 1.0), (1 - me, -1.0)):
+    f = {k: 0.0 for k in HAND_WEIGHTS}
+    f["bias"] = 1.0
+    if _EVAL.get("race"):
+        race = prize_race(engine, cur)
+        for side, pre in ((me, "my_"), (1 - me, "op_")):
+            f[pre + "pot"] = race[side]["expected"]
+            f[pre + "win"] = race[side]["win"]
+    for side, pre in ((me, "my_"), (1 - me, "op_")):
         p, o = cur["players"][side], cur["players"][1 - side]
+        mons = [m for m in (p.get("active") or []) if m] + list(p.get("bench") or [])
         tgt = (o.get("active") or [None])[0]
         if tgt:
             tgt_left = max(10, tgt["hp"])
-            pv = _prize_value(engine, tgt["id"])
+            tpv = _prize_value(engine, tgt["id"])
             opp_bench = list(o.get("bench") or [])
-            for i, m in enumerate([m for m in (p.get("active") or []) if m] + list(p.get("bench") or [])):
+            for i, m in enumerate(mons):
                 reach = 1.0 if i == 0 else 0.45          # benched attackers must be switched in
-                persp = 1.0 if side == me else 0.8
-                if not ko_model:      # (the KO classes replace this Active-only threat term)
-                    dmg, miss = _threat(engine, m, tgt, cur, side, from_bench=i > 0)
-                    if dmg > 0 and miss <= 1:
-                        ready = 1.0 if miss == 0 else 0.4
-                        v += sign * 4.0 * pv * min(1.0, dmg / tgt_left) * reach * ready * persp
-                # bench spread (Phantom Dive counters, bench-damage attacks): threatens benched Prizes
+                dmg, miss = _threat(engine, m, tgt, cur, side, from_bench=i > 0)
+                if dmg > 0 and miss <= 1:
+                    f[pre + "threat"] += tpv * min(1.0, dmg / tgt_left) * reach * (1.0 if miss == 0 else 0.4)
                 amt, kind, smiss = _spread_threat(engine, m)
                 if amt > 0 and smiss <= 1 and opp_bench:
                     best = 0.0
@@ -779,36 +953,26 @@ def evaluate_state(engine: Engine, cur: dict[str, Any], me: int, ko_model: bool 
                         if kind == "damage" and engine.cards.get(b["id"], {}).get("tera"):
                             continue                     # benched Tera Pokemon take no attack damage
                         best = max(best, _prize_value(engine, b["id"]) * min(1.0, amt / max(10, b["hp"])))
-                    v += sign * 2.5 * best * reach * (1.0 if smiss == 0 else 0.4) * persp
-    for side, sign in ((me, 1.0), (1 - me, -1.0)):
-        p = cur["players"][side]
-        taken = 6 - len(p["prize"])            # Prizes this side has taken
-        v += sign * 10.0 * taken
-        mons = [m for m in (p.get("active") or []) if m] + list(p.get("bench") or [])
-        their_active = (cur["players"][1 - side].get("active") or [None])[0]
+                    f[pre + "spread"] += best * reach * (1.0 if smiss == 0 else 0.4)
+        f[pre + "taken"] = 6 - len(p["prize"])
+        their_active = tgt
         copies: Counter = Counter()
         for i, m in enumerate(mons):
             hp, mx = m.get("hp", 0), max(1, m.get("maxHp", 1))
             pv = _prize_value(engine, m["id"])
             card = engine.cards.get(m["id"], {})
-            # damage on a Pokemon = progress toward the opponent taking its Prizes
-            v -= sign * 3.0 * pv * (1.0 - hp / mx)
-            # Energy counts toward this Pokemon's best attack (against the Pokemon it would actually hit);
-            # Energy beyond that cost, or on Pokemon with no damaging attack, is worth little.
+            f[pre + "damage"] += pv * (1.0 - hp / mx)
             en = len(m.get("energies") or [])
             plan_dmg, need, miss = attack_plan(engine, cur, side, m, their_active, from_bench=i > 0)
             useful = min(en, need)
-            v += sign * ((0.8 if i == 0 else 0.6) * useful + 0.15 * (en - useful))
-            v += sign * 1.0 * len(m.get("preEvolution") or [])
+            f[pre + ("energy_active" if i == 0 else "energy_bench")] += useful
+            f[pre + "energy_excess"] += en - useful
+            f[pre + "evolved"] += len(m.get("preEvolution") or [])
             if need:
-                v += sign * 0.004 * min(250, plan_dmg) * (1.0 - miss / need)
-            # Presence is NET value: what this Pokemon does for us minus what it costs to have it in play.
+                f[pre + "readiness"] += min(250, plan_dmg) * (1.0 - miss / need) / 100.0
             name = card.get("name")
             k = copies[name]
             copies[name] += 1
-            # + board-wipe insurance: only the first few bodies matter
-            v += sign * BODY_VALUE[min(i, len(BODY_VALUE) - 1)]
-            # + role: evolution fodder, a (first-copy) Ability, or an attacker close to attacking
             role = 0.0
             if name in _evolves_from_names(engine):
                 role = max(role, (0.6, 0.45, 0.3, 0.15)[min(k, 3)])
@@ -816,18 +980,62 @@ def evaluate_state(engine: Engine, cur: dict[str, Any], me: int, ko_model: bool 
                 role = max(role, 0.6 if k == 0 else 0.1)
             if need and miss <= 1:
                 role = max(role, 0.5 if k == 0 else 0.2)
-            v += sign * role
+            f[pre + "role"] += role
             if i > 0:
-                # - Prize exposure: a Benched Pokemon is Prizes the opponent can drag up and take;
-                #   worst for multi-Prize Pokemon that aren't close to attacking
-                v -= sign * 0.35 * pv * (1.0 if (not need or miss >= 2) else 0.5)
-                # - opportunity cost of the Bench slot: less room for better Pokemon later
-                v -= sign * BENCH_SLOT_COST[min(i - 1, len(BENCH_SLOT_COST) - 1)]
-        if not mons:
-            v -= sign * 50.0
-        v += sign * 0.15 * min(8, p.get("handCount", 0))
-        if p.get("deckCount", 60) < 6:
-            v -= sign * (6 - p["deckCount"]) * 1.5
+                f[pre + "exposure"] += pv * (1.0 if (not need or miss >= 2) else 0.5)
+                f[pre + "bench_slots"] += BENCH_SLOT_COST[min(i - 1, len(BENCH_SLOT_COST) - 1)]
+        n = len(mons)
+        f[pre + "has_active"] = float(n >= 1)
+        f[pre + "no_pokemon"] = float(n == 0)
+        for b in (2, 3, 4, 5):
+            f[pre + f"body{b}"] = float(n >= b)
+        f[pre + "bench_n"] = float(max(0, n - 1))
+        f[pre + "hand"] = float(min(8, p.get("handCount", 0)))
+        f[pre + "deck_low"] = float(max(0, 6 - p.get("deckCount", 60)))
+    return f
+
+
+def evaluate_state(engine: Engine, cur: dict[str, Any], me: int, ko_model: bool = False,
+                   mid_turn: int | None = None) -> float:
+    """
+    Value of a board for player `me`: a weighted sum of `board_features` (hand-set weights by default,
+    or fitted ones via `load_eval_weights`, in which case the value is the fitted log-odds of winning
+    x FITTED_SCALE). With `ko_model`, KO reachability classes are added for both sides.
+    `mid_turn`: the turn the caller is deciding in. A fitted model only knows turn-START positions
+    ("the player to move wins with p"), so a position still inside that turn is scored as of the moment
+    the turn passes, from the next mover's side - otherwise "play another card" (still our move) and
+    "end turn / attack" (their move) would be scored on different footings.
+    """
+    if cur is None:
+        return 0.0
+    if cur.get("result", -1) >= 0:
+        return 1000.0 if cur["result"] == me else (-1000.0 if cur["result"] == 1 - me else 0.0)
+    w = _EVAL["weights"]
+    if _EVAL["fitted"]:
+        # The fitted model is P(player TO MOVE wins): score from the mover's side, flip if that's the opponent.
+        mover = cur.get("yourIndex", me)
+        if mid_turn is not None and cur.get("turn") == mid_turn:
+            first = cur.get("firstPlayer", 0)
+            owner = first if mid_turn % 2 == 1 else 1 - first
+            mover = 1 - owner                         # the turn is about to pass to the other player
+        if mover not in (0, 1):
+            mover = me
+        f = board_features(engine, cur, mover)
+        v = sum(w.get(k, 0.0) * x for k, x in f.items() if x)
+        if _EVAL.get("early") and cur.get("turn", 99) <= _EVAL.get("early_turns", 0):
+            v += sum(_EVAL["early"].get(k, 0.0) * x for k, x in f.items() if x)
+        v *= FITTED_SCALE if mover == me else -FITTED_SCALE
+    else:
+        f = board_features(engine, cur, me)
+        v = sum(w.get(k, 0.0) * x for k, x in f.items() if x)
+        if _EVAL.get("early") and cur.get("turn", 99) <= _EVAL.get("early_turns", 0):
+            v += sum(_EVAL["early"].get(k, 0.0) * x for k, x in f.items() if x)
+    if ko_model:
+        # Offense: the Prizes our best whole-turn route can expect; defense: the opponent's.
+        ours = turn_potential(engine, cur, me)
+        theirs = turn_potential(engine, cur, 1 - me)
+        v += 4.0 * ours["expected"] + 120.0 * max(ours["wipe"], ours["prize_out"])
+        v -= 4.0 * theirs["expected"] + 300.0 * max(theirs["wipe"], theirs["prize_out"])
     return v
 
 
@@ -1089,7 +1297,8 @@ class SearchAgent:
                 ch2, _ = self._advance_static(ch, me, turn)
                 if ch2 is None:
                     continue
-                v = evaluate_state(self.engine, ch2["observation"]["current"], me, self.ko_model) - (0.5 if o["type"] == OT_END else 0.0)
+                v = evaluate_state(self.engine, ch2["observation"]["current"], me, self.ko_model,
+                                   mid_turn=turn) - (0.5 if o["type"] == OT_END else 0.0)
                 if v > best_v:
                     best, best_v = ch, v
             if best is None:
@@ -1111,7 +1320,7 @@ class SearchAgent:
             if state is None:
                 return -1e9
         cur = state["observation"]["current"]
-        heuristic = evaluate_state(self.engine, cur, me, self.ko_model)
+        heuristic = evaluate_state(self.engine, cur, me, self.ko_model, mid_turn=turn)
         if self.race_values is None:
             return heuristic
         if cur.get("result", -1) >= 0:
