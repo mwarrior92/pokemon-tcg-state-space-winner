@@ -1,0 +1,51 @@
+{
+  "_about": "Per-attack overrides for the attack-text compiler (src/attack_text.py), merged on top of what it parses. Key: 'Card Name|Attack Name'. Fields are spec fields (see attack_text.py); 'typical' = [expected, max] damage for deck-level scoring; 'unparsed': [] marks the text as handled. Patch only what a general rule shouldn't cover.",
+
+  "N's Zoroark ex|Night Joker": {
+    "note": "Copies a Benched N's Pokemon's attack (N's Zekrom Rampaging Thunder 250 / Shred 70) for its own 2-Energy cost. The board-aware estimator resolves the copy; 'typical' is for deck scoring.",
+    "typical": [190, 250]
+  },
+  "Alakazam|Strange Hacking": {
+    "note": "No damage of its own: confuses, then redistributes the opponent's existing damage counters (can turn spread into Knock Outs). Not modelled as damage.",
+    "effects": ["status: confused", "redistribute opponent's damage counters"],
+    "typical": [0, 0], "unparsed": []
+  },
+  "Sinistcha|Matcha Spin": {
+    "note": "4 counters on EACH opponent Pokemon once 6+ Hide 'n Sneak Pokemon are in the discard pile.",
+    "counters_each_opp": 4, "cond_discard_ability": ["hide 'n' sneak", 6],
+    "typical": [40, 40], "unparsed": []
+  },
+  "Spiritomb|Spiritual End": {
+    "note": "With 13+ Hide 'n Sneak Pokemon in the discard pile, quadruples the counters on 2 opponent Pokemon. Late-game finisher; not modelled on the board.",
+    "effects": ["quadruple damage counters on 2 opponent Pokemon (13+ Hide 'n Sneak in discard)"],
+    "typical": [60, 240], "unparsed": []
+  },
+  "Mega Absol ex|Terminal Period": {
+    "note": "Knocks Out the opponent's Active if it has exactly 6 damage counters.",
+    "ko_if_counters": 6, "typical": [0, 330], "unparsed": []
+  },
+  "Arboliva ex|Oil Salvo": {
+    "note": "6 x 20 damage spread as you like, not affected by Weakness/Resistance: modelled as 12 freely placed counters.",
+    "counters_any": 12, "typical": [120, 120], "unparsed": []
+  },
+  "Spectrier|Phantasmal Barrage": {
+    "note": "12 counters on 1 opponent Pokemon (any), discarding all Energy from Spectrier.",
+    "fixed_counters": 12, "drawbacks": ["discard all energy"], "typical": [120, 120], "unparsed": []
+  },
+  "Team Rocket's Sneasel|Strike the Sleeper": {
+    "note": "20 x damage counters already on 1 Benched opponent Pokemon. Scales with existing Bench damage; not modelled on the board.",
+    "effects": ["bench snipe scaling with existing counters"], "typical": [40, 160], "unparsed": []
+  },
+  "Cofagrigus|Law of the Underworld": {
+    "note": "6 counters on every Pokemon with an Ability, both sides.",
+    "effects": ["6 counters on each Pokemon with an Ability (both sides)"], "typical": [60, 120], "unparsed": []
+  },
+  "Cofagrigus|Extended Damagriiigus": {
+    "note": "Moves all counters from 1 of your Benched Pokemon to 1 opponent Pokemon.",
+    "effects": ["move own Bench damage to an opponent Pokemon"], "typical": [60, 150], "unparsed": []
+  },
+  "Pawmot|Voltaic Fist": {
+    "note": "Optional: 60 self-damage to Paralyze the opponent's Active.",
+    "drawbacks": ["optional self-damage 60"], "effects": ["optional: paralyze"], "unparsed": []
+  }
+}

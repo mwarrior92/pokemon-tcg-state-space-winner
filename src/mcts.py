@@ -137,13 +137,14 @@ class MCTSAgent:
                  iterations: int = 150, n_turns: int = 3, c_explore: float = 0.1, max_steps: int = 400,
                  sub_cap: int = 6, reuse: bool = True, decay: float = 0.5,
                  horizon_start: int | None = None, horizon_floor: int = 3, greedy_turn: bool = True,
-                 n_guesses: int = 10, default_margin: float = 0.02) -> None:
+                 n_guesses: int = 10, default_margin: float = 0.02, greedy_opp: bool = False) -> None:
         self.engine = engine
         self.rng = rng
         self.iterations = iterations
         self.n_turns = n_turns
         self.greedy_turn = greedy_turn
         self.default_margin = default_margin
+        self.greedy_opp = greedy_opp
         self.n_guesses = n_guesses                 # shared hidden-card guesses per decision (paired comparisons)
         self._guess_pool: list[tuple] = []
         self.horizon_start = horizon_start
@@ -216,8 +217,11 @@ class MCTSAgent:
                 best, best_v = i, v
         return best
 
-    def _plan_choice(self, ob: dict[str, Any], plan: str, actions_this_turn: int) -> list[int]:
-        """The opponent's play under one high-level plan (details inside the plan are lumped together)."""
+    def _plan_choice(self, ob: dict[str, Any], plan: str, actions_this_turn: int,
+                     state: dict[str, Any] | None = None) -> list[int]:
+        """The opponent's play under one high-level plan (details inside the plan are lumped together).
+        With `state` (and greedy_opp), each main-phase action is the opponent's one-step greedy best FROM THEIR
+        SIDE among the actions the plan allows, the way the one-turn agent plays; otherwise quick priorities."""
         sel = ob["select"]
         cur = ob["current"]
         who = cur["yourIndex"]
@@ -227,6 +231,30 @@ class MCTSAgent:
                 if t is not None:
                     return [t]
             return self.helper.static_choice(ob)
+        if state is not None and self.greedy_opp and actions_this_turn < 12:
+            best, best_v = None, -1e18
+            for i, o in enumerate(sel["option"]):
+                t = o["type"]
+                cid = _card_at(ob, o) if t in (OT_PLAY, OT_ABILITY) else None
+                if plan == "setup" and t == OT_ATTACK:
+                    continue
+                gust = t == OT_PLAY and _is_gust(self.engine, cid)
+                if gust and plan != "gust_ko":
+                    continue
+                bonus = 0.0
+                if plan == "gust_ko" and gust:
+                    bonus = 1e6                                  # the plan: gust first
+                if plan == "abilities_attack" and t == OT_ABILITY and _places_damage(self.engine, cid):
+                    bonus = 1e6                                  # the plan: place counters first
+                ch = self.engine.search_step(state["searchId"], [i])
+                if ch is None:
+                    continue
+                v = evaluate_state(self.engine, ch["observation"]["current"], who, mid_turn=cur["turn"]) + bonus \
+                    - (0.5 if t == OT_END else 0.0)
+                if v > best_v:
+                    best, best_v = [i], v
+            if best is not None:
+                return best
         from cabt_bridge import attack_estimate
         opts = sel["option"]
         if actions_this_turn >= 12:
@@ -357,7 +385,7 @@ class MCTSAgent:
                                 node = e.child
                             opp_plan = key[1]
                     if plan_turn == cur["turn"] and opp_plan:
-                        choice = self._plan_choice(ob, opp_plan, actions_this_turn)
+                        choice = self._plan_choice(ob, opp_plan, actions_this_turn, state)
                     else:
                         choice = self.helper.static_choice(ob)   # opponent choices outside their main phase
                     nxt = eng.search_step(state["searchId"], choice)

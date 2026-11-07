@@ -317,7 +317,7 @@ def _extract_damage_bonus(rules_low: str, subtypes: list[str]) -> dict[str, Any]
     return {"amount": int(m.group(1)), "vs_ex": bool(m.group(2)), "filter": attacker, "kind": kind}
 
 
-def _analyze_attack(atk: dict[str, Any], card_abilities: list[dict[str, str]]) -> AttackProfile:
+def _analyze_attack(atk: dict[str, Any], card_abilities: list[dict[str, str]], card_name: str = "") -> AttackProfile:
     name = atk.get("name", "")
     cost = atk.get("cost") or []
     colored_cost: dict[str, int] = defaultdict(int)
@@ -492,6 +492,20 @@ def _analyze_attack(atk: dict[str, Any], card_abilities: list[dict[str, str]]) -
         max_dmg = 280.0
         scales_with = "OPP_ATTACK_COPY"
 
+    # Shared attack-text compiler (src/attack_text.py + card_patches.json): patches with typical values win;
+    # otherwise it fills in attacks the heuristics above found nothing special in (Knock-Out-both, optional
+    # or conditional bonuses, freely placed counters, ...), so deck scoring and the engine bridge agree.
+    try:
+        from attack_text import parse_attack, typical_damage
+        _sp = parse_attack(text, atk.get("damage"), cost, name, card_name)
+        _exp, _mx = typical_damage(_sp)
+        if _sp.get("patched") and _sp.get("typical"):
+            expected_dmg, max_dmg = float(_exp), float(_mx)
+        elif abs(expected_dmg - base_dmg) < 1e-6 and abs(_exp - base_dmg) > 1e-6:
+            expected_dmg, max_dmg = float(_exp), max(float(_mx), max_dmg)
+    except Exception:  # the compiler must never fail on odd card text
+        pass
+
     # Check if Pokemon has Seasoned Skill (Bloodmoon Ursaluna ex cost reduction)
     if any("seasoned skill" in (ab.get("name") or "").lower() for ab in card_abilities) and conv_cost >= 4:
         conv_cost = 1
@@ -576,7 +590,7 @@ def compile_card_from_json(raw: dict[str, Any], set_code: str, meta_rate: float 
     retreat_cost = int(raw.get("convertedRetreatCost") or 0)
 
     abilities = raw.get("abilities") or []
-    attacks = [_analyze_attack(a, abilities) for a in (raw.get("attacks") or [])]
+    attacks = [_analyze_attack(a, abilities, raw.get("name", "")) for a in (raw.get("attacks") or [])]
 
     rules_list = [
         r for r in (raw.get("rules") or [])

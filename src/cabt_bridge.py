@@ -252,6 +252,9 @@ def _count_phrase(engine: Engine, cur: dict[str, Any], side: int, attacker: dict
     mons = lambda pl: [m for m in (pl.get("active") or []) if m] + list(pl.get("bench") or [])
     if "benched pokémon (both" in p or "each benched pokémon" in p and "your opponent's" not in p and "your benched" not in p:
         return len(me.get("bench") or []) + len(op.get("bench") or [])
+    if "your opponent's pokémon ex" in p:
+        return sum(1 for m in mons(op) if _is_ex(engine.cards.get(m["id"], {})) or "pokémon v" in p and
+                   (engine.cards.get(m["id"], {}).get("name") or "").endswith(" V"))
     if "your opponent's benched pokémon" in p:
         return len(op.get("bench") or [])
     if "your benched pokémon" in p:
@@ -290,36 +293,54 @@ _PROTECT_CACHE: dict[tuple, float] = {}
 
 
 def _attack_spec(engine: Engine, aid: int) -> dict[str, Any]:
-    """An attack's text parsed once into the pieces attack_estimate needs (cached per attack)."""
+    """An attack's text compiled once by the shared attack-text compiler (src/attack_text.py, with
+    src/card_patches.json applied), cached per attack."""
     sp = _ATTACK_SPECS.get(aid)
     if sp is not None:
         return sp
+    from attack_text import parse_attack
     a = engine.attacks.get(aid) or {}
-    t = _ntext(a.get("text"))
-    sp = {"base": float(a.get("damage") or 0), "cost": list(a.get("energies") or []), "name": _ntext(a.get("name")),
-          "for_each": [(int(m.group(1)), bool(m.group(2)), m.group(3))
-                       for m in re.finditer(r"(\d+) (more )?damage for each ([^.]+)", t) if "heads" not in m.group(3)],
-          "counters": None, "needs_bench": None, "needs_stadium": "if there is no stadium in play, this attack does nothing" in t,
-          "coins": None, "tails_nothing": bool(re.search(r"flip a coin\. if tails, this attack does nothing", t)), "moved": 0.0}
-    m = re.search(r"(?:place|put) (\d+) damage counters? on your opponent's active pokémon for each ([^.]+)", t)
-    if m:
-        sp["counters"] = (int(m.group(1)), m.group(2))
-    m = re.search(r"if you don't have ([a-z' -]+?) on your bench, this attack does nothing", t)
-    if m:
-        sp["needs_bench"] = m.group(1)
-    m = re.search(r"flip (\w+) coins?\. this attack does (\d+) damage for each heads", t)
-    if m:
-        k = _NUM.get(m.group(1), int(m.group(1)) if m.group(1).isdigit() else 1)
-        sp["coins"] = ("each", 0.5 * k * int(m.group(2)))
-    elif re.search(r"flip a coin until you get tails\. this attack does (\d+) more damage for each heads", t):
-        sp["coins"] = ("more", float(re.search(r"(\d+) more damage for each heads", t).group(1)))
-    elif re.search(r"flip a coin\. if heads, this attack does (\d+) more damage", t):
-        sp["coins"] = ("more", 0.5 * float(re.search(r"if heads, this attack does (\d+) more damage", t).group(1)))
-    m = re.search(r"if this pokémon moved from your bench to the active spot this turn, this attack does (\d+) more damage", t)
-    if m:
-        sp["moved"] = float(m.group(1))
+    owner = next((c.get("name") for c in engine.cards.values() if aid in (c.get("attacks") or [])), "")
+    sp = parse_attack(a.get("text"), a.get("damage"), a.get("energies"), a.get("name"), owner)
     _ATTACK_SPECS[aid] = sp
     return sp
+
+
+def _cond_prob(cond: str, engine: Engine, cur: dict[str, Any] | None, side: int, attacker: dict[str, Any],
+               defender: dict[str, Any] | None) -> float:
+    """Chance an attack's 'If <condition>, ... more damage' holds now (1 / 0 when the board decides it,
+    0.5 when it doesn't - e.g. what was played earlier this turn)."""
+    c = cond
+    if c.startswith("optional:"):
+        return 1.0
+    if cur is None:
+        return 0.5
+    dc = engine.cards.get((defender or {}).get("id", -1), {})
+    op = cur["players"][1 - side]
+    if "your opponent's active pokémon is a pokémon ex" in c or "your opponent's active pokémon is a mega" in c:
+        return float(_is_ex(dc))
+    if "your opponent's active pokémon has any damage counters" in c or "your opponent's active pokémon is damaged" in c:
+        return float(bool(defender) and defender.get("hp", 0) < defender.get("maxHp", 0))
+    if "this pokémon has any damage counters" in c or "this pokémon is damaged" in c:
+        return float(attacker.get("hp", 0) < attacker.get("maxHp", 0))
+    for st in ("poisoned", "burned", "asleep", "paralyzed", "confused"):
+        if f"your opponent's active pokémon is {st}" in c:
+            return float(bool(op.get(st)))
+    if "your opponent's active pokémon is an evolution pokémon" in c or "is a stage" in c:
+        return float(bool(dc.get("stage1") or dc.get("stage2")))
+    if "your opponent's active pokémon is a basic pokémon" in c:
+        return float(bool(dc.get("basic")))
+    if "you have more prize cards remaining than your opponent" in c:
+        return float(len(cur["players"][side].get("prize") or []) > len(op.get("prize") or []))
+    bench = cur["players"][side].get("bench") or []
+    m = re.search(r"you have (\d+) or more benched pokémon", c)
+    if m:
+        return float(len(bench) >= int(m.group(1)))
+    m = re.search(r"^([a-z' .-]+?)(?: and ([a-z' .-]+?))? (?:is|are) on your bench$", c)
+    if m:
+        names = [_ntext(engine.cards.get(b["id"], {}).get("name")) for b in bench]
+        return float(all(any(w.strip() == n or w.strip() in n for n in names) for w in m.groups() if w))
+    return 0.5
 
 
 def _reductions(engine: Engine, card_id: int) -> list[str]:
@@ -346,7 +367,8 @@ def _protected_cached(engine: Engine, ac: dict[str, Any], a: dict[str, Any], def
 
 
 def attack_estimate(engine: Engine, cur: dict[str, Any] | None, side: int, attacker: dict[str, Any],
-                    defender: dict[str, Any] | None, aid: int, from_bench: bool = False) -> tuple[float, int, int]:
+                    defender: dict[str, Any] | None, aid: int, from_bench: bool = False,
+                    _copied: bool = False) -> tuple[float, int, int]:
     """
     (expected damage, Energy cost after reductions, Energy still missing) of one attack, read the way
     the engine resolves its text (parsed once per attack by `_attack_spec`):
@@ -359,6 +381,21 @@ def attack_estimate(engine: Engine, cur: dict[str, Any] | None, side: int, attac
     """
     sp = _attack_spec(engine, aid)
     ac = engine.cards.get(attacker["id"], {})
+    if sp["copy"] and not _copied:
+        # worth the best attack it can copy right now, used by THIS Pokemon, paid with this attack's own cost
+        cost, have = sp["cost"], attacker.get("energies") or []
+        pool: list[int] = []
+        if cur is not None and sp["copy"][0] == "bench":
+            want = sp["copy"][1]                        # e.g. "n's"
+            for b in cur["players"][side].get("bench") or []:
+                name = _ntext(engine.cards.get(b["id"], {}).get("name"))
+                if not want or name.startswith(want) or want in name:
+                    pool += list(engine.cards.get(b["id"], {}).get("attacks", []))
+        elif sp["copy"][0] == "opp_active" and defender is not None:
+            pool = list(engine.cards.get(defender["id"], {}).get("attacks", []))
+        best = max((attack_estimate(engine, cur, side, attacker, defender, a2, from_bench, _copied=True)[0] for a2 in pool),
+                   default=0.0)
+        return best, len(cost), _missing_energy(cost, have)
     base = sp["base"]
     dmg, counters = base, 0.0
     cost = sp["cost"]
@@ -384,6 +421,19 @@ def attack_estimate(engine: Engine, cur: dict[str, Any] | None, side: int, attac
             return 0.0, len(cost), _missing_energy(cost, have)
         if sp["needs_stadium"] and not cur.get("stadium"):
             return 0.0, len(cost), _missing_energy(cost, have)
+        if sp.get("min_bench") and len(cur["players"][side].get("bench") or []) < sp["min_bench"]:
+            return 0.0, len(cost), _missing_energy(cost, have)
+        for n, cond in sp.get("bonus") or []:
+            dmg += n * _cond_prob(cond, engine, cur, side, attacker, defender)
+        if sp.get("counters_each_opp"):
+            need = sp.get("cond_discard_ability")
+            ok = 1.0
+            if need:
+                pile = [c if isinstance(c, int) else (c or {}).get("id") for c in (cur["players"][side].get("discard") or [])]
+                have_n = sum(1 for cid in pile if any(need[0] in _ntext(sk.get("text")) or need[0] in _ntext(sk.get("name"))
+                                                      for sk in engine.cards.get(cid, {}).get("skills") or []))
+                ok = 1.0 if have_n >= need[1] else 0.0
+            counters += 10 * sp["counters_each_opp"] * ok
     if sp["coins"]:
         kind, x = sp["coins"]
         dmg = x if kind == "each" else dmg + x
@@ -391,14 +441,21 @@ def attack_estimate(engine: Engine, cur: dict[str, Any] | None, side: int, attac
         dmg *= 0.5
     if sp["moved"] and from_bench:
         dmg += sp["moved"]
+    counters += 10 * float(sp.get("fixed_counters") or 0) + 10 * float(sp.get("counters_any") or 0)
     miss = _missing_energy(cost, have)
     if defender is None:
         return dmg + counters, len(cost), miss
+    if sp.get("ko_active"):
+        return float(defender.get("hp", 0)), len(cost), miss
+    if sp.get("ko_if_counters") is not None:
+        on = (defender.get("maxHp", 0) - defender.get("hp", 0)) // 10
+        if on == sp["ko_if_counters"]:
+            return float(defender.get("hp", 0)), len(cost), miss
     tc = engine.cards.get(defender["id"], {})
     if dmg > 0:
-        if tc.get("weakness") is not None and tc.get("weakness") == ac.get("energyType"):
+        if tc.get("weakness") is not None and tc.get("weakness") == ac.get("energyType") and not sp.get("ignore_weakness"):
             dmg *= 2
-        if tc.get("resistance") is not None and tc.get("resistance") == ac.get("energyType"):
+        if tc.get("resistance") is not None and tc.get("resistance") == ac.get("energyType") and not sp.get("ignore_resistance"):
             dmg = max(0.0, dmg - 30)
         dmg = _protected_cached(engine, ac, engine.attacks.get(aid) or {}, defender, dmg)
     return dmg + counters, len(cost), miss
@@ -757,7 +814,8 @@ def prize_routes(engine: Engine, cur: dict[str, Any], side: int) -> list[dict[st
             if not atk:
                 continue
             text = _ntext(atk.get("text"))
-            snipe_amt = _snipe_amount(text)
+            spec = _attack_spec(engine, aid)
+            snipe_amt = spec.get("snipe") or _snipe_amount(text)
             _, _, miss = attack_estimate(engine, cur, side, am, None, aid, from_bench=not a_active)
             if miss >= 2:
                 continue
@@ -771,7 +829,7 @@ def prize_routes(engine: Engine, cur: dict[str, Any], side: int) -> list[dict[st
                                         for t in pieces["energies"]) else 0.25
             if not a_active:
                 avail *= reach_active if reach_active > 0 else 0.25
-            spread_kind, spread_amt, spread_n = _attack_spread(text)
+            spread_kind, spread_amt, spread_n = spec.get("spread") or _attack_spread(text)
             for dm, d_active in defenders:
                 route_p = avail
                 if d_active:
