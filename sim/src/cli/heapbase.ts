@@ -1,5 +1,6 @@
 // What a worker's baseline heap consists of: engine load, card database, decklists, a template game.
 //   node --expose-gc dist/heapbase.js
+export {};   // module scope (its gc constant must not clash with other CLI files)
 const gc = (globalThis as any).gc as () => void;
 const mb = () => {
   gc();

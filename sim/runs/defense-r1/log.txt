@@ -1,0 +1,67 @@
+# defense round "defense-r1": 400 states to label, 60 to evaluate, search budget 3000, 5 workers
+  labelled 50/400 (270 s; last 50 in 270 s, 7.0 s/job in a worker; max worker heap 348 MB)
+  labelled 100/400 (378 s; last 50 in 109 s, 3.2 s/job in a worker; max worker heap 445 MB)
+  labelled 150/400 (502 s; last 50 in 124 s, 3.8 s/job in a worker; max worker heap 419 MB)
+  labelled 200/400 (723 s; last 50 in 221 s, 5.9 s/job in a worker; max worker heap 408 MB)
+  labelled 250/400 (1143 s; last 50 in 421 s, 10.9 s/job in a worker; max worker heap 431 MB)
+  labelled 300/400 (1546 s; last 50 in 402 s, 10.9 s/job in a worker; max worker heap 404 MB)
+  labelled 350/400 (1757 s; last 50 in 211 s, 6.3 s/job in a worker; max worker heap 473 MB)
+  labelled 400/400 (2180 s; last 50 in 423 s, 10.2 s/job in a worker; max worker heap 407 MB)
+labelled 1564 positions from 205 states in 2180 s; searches complete 57/205; mean root value 0.48
+target distribution: 0:533 1:785 2:216 3:25 4:5
+fit: all 1236 features: validation MSE 0.379 (predicting the mean: 0.441, R² 0.141)
+
+feature reduction (validation MSE; lower is better):
+  all features                              1236 features  [probe]  MSE 0.379  R² 0.141
+  cheap groups only (no engine probes)       886 features  [cheap]  MSE 0.399  R² 0.095
+  all but probe-damage                       900 features  [probe]  MSE 0.391  R² 0.113
+  all but probe-ability                     1224 features  [probe]  MSE 0.387  R² 0.124
+  all but probe-hand                        1234 features  [probe]  MSE 0.379  R² 0.141
+  cheap + probe-damage                      1222 features  [probe]  MSE 0.387  R² 0.124
+  top 200 features by importance             200 features  [probe]  MSE 0.359  R² 0.187
+  top 100 features by importance             100 features  [probe]  MSE 0.352  R² 0.201
+  top 50 features by importance               50 features  [probe]  MSE 0.358  R² 0.190
+  top 25 features by importance               25 features  [probe]  MSE 0.362  R² 0.180
+  top 200 cheap features by importance       200 features  [cheap]  MSE 0.391  R² 0.115
+  top 100 cheap features by importance       100 features  [cheap]  MSE 0.380  R² 0.139
+  top 50 cheap features by importance         50 features  [cheap]  MSE 0.383  R² 0.132
+  reach + board + resources only             239 features  [cheap]  MSE 0.370  R² 0.161
+chosen: "top 50 cheap features by importance" (50 features, cheap)
+
+top features of the full model (weight on a standardized scale):
+  +0.020  op.hand
+  +0.019  op.reach.maxPrize
+  +0.016  op.s0.a0.nowToActive
+  +0.016  op.reach.bestDamageToActive
+  +0.016  op.reach.potentialMaxPrize
+  +0.015  op.reach.oneShortMaxPrize
+  +0.013  op.s0.energy
+  +0.013  op.reach.oneShort1
+  +0.013  me.s0.damage
+  +0.012  op.reach.ko0
+  +0.012  me.s0.koThreat
+  +0.012  op.reach.oneShortCount
+  -0.012  op.s0.a0.gap
+  -0.011  op.s0.retreatGap
+  +0.011  op.s0.a1.dmgTo0
+  +0.010  op.s0.damage
+  +0.010  op.s0.stage
+  +0.010  op.s2.energyC
+  +0.010  op.reach.count
+  +0.010  op.s0.energyW
+  +0.009  op.reach.oneShort2
+  +0.009  op.s1.energyP
+  +0.009  me.deckBasic
+  +0.009  me.s1.damage
+  +0.009  op.s3.typeW
+  evaluated 10/60 (72 s; last 10 in 72 s, 0.5 s/job in a worker; max worker heap 352 MB)
+  evaluated 20/60 (170 s; last 10 in 98 s, 0.7 s/job in a worker; max worker heap 316 MB)
+  evaluated 30/60 (262 s; last 10 in 92 s, 0.6 s/job in a worker; max worker heap 348 MB)
+  evaluated 40/60 (331 s; last 10 in 69 s, 0.8 s/job in a worker; max worker heap 282 MB)
+  evaluated 50/60 (355 s; last 10 in 24 s, 0.3 s/job in a worker; max worker heap 346 MB)
+  evaluated 60/60 (380 s; last 10 in 25 s, 0.2 s/job in a worker; max worker heap 443 MB)
+
+evaluation on 60 fresh states (380 s):
+  opponent's next-turn prizes: after policy 0.22, after passing at once 0.33, best sampled 0.12; policy 0.53 s/turn
+
+review packet: C:\Users\marcw\local\winner\sim\runs\defense-r1\review-packet.md

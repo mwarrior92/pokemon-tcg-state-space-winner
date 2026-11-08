@@ -26,7 +26,7 @@ export function serveJobs(handler: (job: any) => any): void {
 /** Workers the machine can run well. The simulator is memory-bound (state copies, effect dispatch
  *  over every card): on a 14-core laptop, 8 parallel searches gave 3.1 states/s and 12 gave 2.9,
  *  so at most 8; and no more than fit in free memory (keeping 2 GB for the OS) at `perWorkerMb`. */
-export function autoWorkers(perWorkerMb = 900, max = 8): number {
+export function autoWorkers(perWorkerMb = 450, max = 8): number {
   const byCpu = Math.max(1, os.cpus().length - 2);
   const byMem = Math.max(1, Math.floor((os.freemem() / 1e6 - 2000) / perWorkerMb));
   return Math.min(byCpu, byMem, max);

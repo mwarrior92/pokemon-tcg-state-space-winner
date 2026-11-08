@@ -10,6 +10,8 @@
 //           attachment, a way into the Active Spot, gust for benched targets)
 //   threat  can the opponent Knock Out my Active on their next turn (same reach, their side,
 //           public information only)
+//   exposed every one of my ready attackers can be Knocked Out next turn (my plan is easy to
+//           disrupt); "none" when I have no ready attacker
 // The full feature vector is recorded next to the category in playouts, so finer categories can be
 // derived later (clustering, more axes) without replaying games.
 import { features } from './features';
@@ -17,7 +19,7 @@ import { Sim } from './sim';
 
 export interface Category {
   key: string;
-  axes: { race: 'ahead' | 'even' | 'behind'; readyMe: number; readyOp: number; ko: boolean; threat: boolean };
+  axes: { race: 'ahead' | 'even' | 'behind'; readyMe: number; readyOp: number; ko: boolean; threat: boolean; exposed: 'yes' | 'no' | 'none' };
 }
 
 const bin = (n: number) => (n >= 2 ? 2 : n);
@@ -30,21 +32,21 @@ export function categorize(sim: Sim, me: number): Category {
   };
   const prizesMe = v('me.prizes'), prizesOp = v('op.prizes');
   const race = prizesMe < prizesOp ? 'ahead' : prizesMe > prizesOp ? 'behind' : 'even';
-  const ready = (tag: string) => {
-    let n = 0;
+  const readySlots = (tag: string) => {
+    const out: number[] = [];
     for (let a = 0; a < 6; a++) {
-      if (!v(`${tag}.s${a}.present`)) {
-        continue;
-      }
-      if ([0, 1].some(j => v(`${tag}.s${a}.a${j}.present`) && v(`${tag}.s${a}.a${j}.gap`) === 0)) {
-        n++;
+      if (v(`${tag}.s${a}.present`) && [0, 1].some(j => v(`${tag}.s${a}.a${j}.present`) && v(`${tag}.s${a}.a${j}.gap`) === 0)) {
+        out.push(a);
       }
     }
-    return bin(n);
+    return out;
   };
-  const readyMe = ready('me'), readyOp = ready('op');
+  const mine = readySlots('me');
+  const readyMe = bin(mine.length), readyOp = bin(readySlots('op').length);
+  // op.reach.ko<d>: the opponent can Knock Out my slot d next turn
+  const exposed = !mine.length ? 'none' : mine.every(a => v(`op.reach.ko${a}`) > 0) ? 'yes' : 'no';
   const ko = v('me.reach.maxPrize') > 0;
   const threat = v('op.reach.ko0') > 0;
-  const key = `race:${race} ready:${readyMe}-${readyOp} ko:${ko ? 'yes' : 'no'} threat:${threat ? 'yes' : 'no'}`;
-  return { key, axes: { race, readyMe, readyOp, ko, threat } };
+  const key = `race:${race} ready:${readyMe}-${readyOp} ko:${ko ? 'yes' : 'no'} threat:${threat ? 'yes' : 'no'} exposed:${exposed}`;
+  return { key, axes: { race, readyMe, readyOp, ko, threat, exposed } };
 }

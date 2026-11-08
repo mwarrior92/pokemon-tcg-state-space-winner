@@ -104,7 +104,7 @@ export function playOffenseSearch(root: Sim, model: LinearModel, opts: SearchPol
   let cur = root;
   for (let round = 0; round < (opts.maxSteps ?? 15) && line.length < (opts.maxSteps ?? 15); round++) {
     const r = offenseSearch(cur, {
-      budget: opts.budget ?? 400, evaluate: estimate, priority: opts.order === 'best' ? (n => n.value) : undefined, keepSims: 0, maxMs: opts.maxMs ?? 5000,
+      budget: opts.budget ?? 400, evaluate: estimate, quiescence: true, priority: opts.order === 'best' ? (n => n.value) : undefined, keepSims: 0, maxMs: opts.maxMs ?? 5000,
     });
     let node: SearchNode = r.nodes[0];
     let ended = false;

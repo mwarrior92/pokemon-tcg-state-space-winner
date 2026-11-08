@@ -3,6 +3,7 @@
 //
 //   node dist/playout.js --games 200 --offense runs/offense-r3/model.json --defense runs/defense-r1/model.json [--run name]
 //     [--workers auto] [--budget 100] [--max-turns 80] [--seed n] [--vectors]
+//     [--A v0|plan:<value-model.json>|plan2:<value-model.json>] [--B ...]   (head to head; seats swap every game)
 //
 // Turn policy (both sides, v0): the offense search policy; if it finds no prize this turn, the
 // defense policy instead (set up so the opponent's next turn takes as few prizes as possible).
@@ -17,18 +18,30 @@ import { CHEAP_GROUPS, features } from '../features';
 import { GamePhase, GameWinner, PassTurnAction } from '../engine';
 import { LinearModel, loadModel } from '../model';
 import { playDefense, playOffenseSearch } from '../policy';
+import { planTurn, planTurn2 } from '../planner';
+import { WinModel } from '../value';
 import { autoWorkers, isMainThread, runPool, serveJobs } from '../pool';
 import { prizesLeft } from '../rules';
 import { Rng } from '../rng';
 import { Sim, randomChooser, resolvePrompts } from '../sim';
 import { generateState } from '../stategen';
 
-interface GameJob { seed: number; a: number; b: number; offense: string; defense?: string; budget: number; maxTurns: number; vectors: boolean }
-interface TurnRec { turn: number; mover: number; cat: string; prizes: [number, number]; took: number; policy: 'offense' | 'defense' | 'pass'; ms: number; x?: number[] }
-interface GameRec { seed: number; decks: [string, string]; startTurn: number; turns: TurnRec[]; winner: number; reason: string; ms: number }
+/** a seat's turn policy: 'v0' (offense search, else defense) or 'plan:<value model file>' */
+interface GameJob { seed: number; a: number; b: number; offense: string; defense?: string; budget: number; maxTurns: number; vectors: boolean; seats: [string, string] }
+interface TurnRec { turn: number; mover: number; cat: string; prizes: [number, number]; took: number; policy: 'offense' | 'defense' | 'plan' | 'pass'; ms: number; x?: number[] }
+interface GameRec { seed: number; decks: [string, string]; seats: [string, string]; startTurn: number; turns: TurnRec[]; winner: number; reason: string; ms: number }
 
 // ---------------------------------------------------------------- worker
 
+const wins = new Map<string, WinModel>();
+const winModel = (f: string) => {
+  let w = wins.get(f);
+  if (!w) {
+    w = new WinModel(loadModel(f));
+    wins.set(f, w);
+  }
+  return w;
+};
 const models = new Map<string, LinearModel>();
 const model = (f: string) => {
   let m = models.get(f);
@@ -73,21 +86,31 @@ function playGame(job: GameJob): GameRec {
     const prizes: [number, number] = [prizesLeft(sim.state.players[0]), prizesLeft(sim.state.players[1])];
     let next: Sim | undefined;
     let policy: TurnRec['policy'] = 'offense';
+    const seat = job.seats[mover];
     try {
-      const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
-      if (o.prizes > 0 || !def) {
-        next = o.end;
+      if (seat.startsWith('plan:')) {
+        policy = 'plan';
+        next = planTurn(sim, winModel(seat.slice(5)), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
+      } else if (seat.startsWith('plan2:')) {
+        policy = 'plan';
+        next = planTurn2(sim, winModel(seat.slice(6)), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
       } else {
-        policy = 'defense';
-        const d = playDefense(sim, def, job.seed + t);
-        next = d.end;
+        const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
+        if (o.prizes > 0 || !def) {
+          next = o.end;
+        } else {
+          policy = 'defense';
+          const d = playDefense(sim, def, job.seed + t);
+          next = d.end;
+        }
       }
     } catch {
       policy = 'pass';
       next = sim.copy(rng.fork());
     }
     sim = next!;
-    if (!sim.finished && !passInPlace(sim, rng)) {
+    // pass only if the line did not end the turn itself (an attack ends it)
+    if (!sim.finished && sim.state.activePlayer === mover && !passInPlace(sim, rng)) {
       reason = 'engine error';
       break;
     }
@@ -99,7 +122,7 @@ function playGame(job: GameJob): GameRec {
     const w = winner < 2 && winner >= 0 ? sim.state.players[winner] : undefined;
     reason = w && prizesLeft(w) === 0 ? 'prizes' : winner === 2 ? 'draw' : 'deck out / no Pokémon';
   }
-  return { seed: job.seed, decks: [decks[job.a].archetype, decks[job.b].archetype], startTurn: g.info.turn, turns, winner, reason, ms: Date.now() - t0 };
+  return { seed: job.seed, decks: [decks[job.a].archetype, decks[job.b].archetype], seats: job.seats, startTurn: g.info.turn, turns, winner, reason, ms: Date.now() - t0 };
 }
 
 serveJobs((job: GameJob) => {
@@ -195,6 +218,19 @@ function report(dir: string, games: GameRec[]): void {
     const fmt = ([k, c]: [string, { n: number; w: number }]) => `${k} ${(100 * c.w / c.n).toFixed(0)}% (${c.n})`;
     L.push(`- **${deck}**: best ${fmt(r[0])}; worst ${fmt(r[r.length - 1])}`);
   }
+  // head to head, when the two seats play different policies
+  const specs = [...new Set(games.flatMap(g => g.seats ?? []))];
+  if (specs.length === 2) {
+    L.push('');
+    L.push('## Policies head to head');
+    L.push('');
+    for (const sp of specs) {
+      const mine = decided.filter(g => g.seats.includes(sp));
+      const won = mine.filter(g => g.seats[g.winner] === sp).length;
+      const kind = sp.startsWith('plan2:') ? 'two-turn planner' : sp.startsWith('plan:') ? 'one-turn planner' : 'v0 (offense, else defense)';
+      L.push(`- ${kind}${sp.includes(':') ? ` with \`${path.basename(path.dirname(sp.replace(/^plan2?:/, '')))}\`` : ''}: won ${won}/${mine.length} (${(100 * won / Math.max(1, mine.length)).toFixed(0)}%)`);
+    }
+  }
   fs.writeFileSync(path.join(dir, 'categories.md'), L.join('\n') + '\n');
 }
 
@@ -210,10 +246,17 @@ async function main(): Promise<void> {
   const resolve = (f: string) => (path.isAbsolute(f) ? f : path.join(REPO_ROOT, 'sim', f));
   const offense = resolve(arg('offense', 'runs/offense-r3/model.json'));
   const defArg = arg('defense', '');
+  const seatSpec = (v: string) => {
+    const m = /^(plan2?):(.*)$/.exec(v);
+    return m ? `${m[1]}:${resolve(m[2])}` : v;
+  };
+  const seatA = seatSpec(arg('A', 'v0')), seatB = seatSpec(arg('B', 'v0'));
   const defense = defArg ? resolve(defArg) : undefined;
   const jobs: GameJob[] = Array.from({ length: nGames }, (_, k) => ({
     seed: seedBase * 1000 + k, a: rng.int(0, decks.length - 1), b: rng.int(0, decks.length - 1),
     offense, defense, budget: Number(arg('budget', '100')), maxTurns: Number(arg('max-turns', '80')), vectors: process.argv.includes('--vectors'),
+    // policy A and B (default both v0); seats swap every game so neither always moves first
+    seats: (k % 2 === 0 ? [seatA, seatB] : [seatB, seatA]) as [string, string],
   }));
   if (jobs[0]?.vectors) {
     const g = generateState(decks[0].cards, decks[1].cards, new Rng(1));

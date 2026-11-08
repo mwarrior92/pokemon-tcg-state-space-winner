@@ -348,6 +348,10 @@ export interface SearchOptions extends ExpandOptions {
    *  an unexpanded position is worth max(prizes taken, estimate) instead of the prizes taken, so a
    *  budgeted search returns the best line by "exact where searched, estimated beyond" */
   evaluate?: (sim: Sim) => number;
+  /** with evaluate: also value each unexpanded position by its best immediate attack, played out
+   *  exactly ("quiescence", review offense-r3): a line that sets up an attack is never left to
+   *  the model's guess about that attack */
+  quiescence?: boolean;
   /** generate commuting plays in one order only (default true; false = every order, for checks) */
   orderReduction?: boolean;
   /** instrumentation: called for every generated child; `known` = its position was already
@@ -409,8 +413,20 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
     const taken = startPrizes - prizesLeft(sim.state.players[mover]);
     const n: SearchNode = { key, sim, depth, taken, value: taken, complete: false, expanded: false, kids: [] };
     if (opts.evaluate && depth > 0) {
-      n.estimate = Math.max(taken, opts.evaluate(sim));
-      n.value = n.estimate;
+      // an estimate can never exceed the prizes left to take (review offense-r3: an estimate of
+      // 1.3 with 1 prize left beat an exact game-winning Knock Out)
+      let est = Math.min(bound, Math.max(taken, opts.evaluate(sim)));
+      if (opts.quiescence) {
+        for (const o of mainCandidates(sim.state)) {
+          if (o.kind === 'attack') {
+            for (const c of expandAction(sim, o, mover, startPrizes, opts)) {
+              est = Math.max(est, c.prizes);
+            }
+          }
+        }
+      }
+      n.estimate = est;
+      n.value = est;
     }
     memo.set(key, n);
     nodes.push(n);

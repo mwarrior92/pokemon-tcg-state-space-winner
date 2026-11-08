@@ -214,6 +214,9 @@ async function main(): Promise<void> {
   const budget = Number(arg('budget', '3000'));
   const oppBudget = Number(arg('opp-budget', '600'));
   const policyBudget = Number(arg('policy-budget', '100'));
+  // a probe feature set is chosen only if its validation MSE beats the best cheap set by this much
+  // (review offense-r3: probes beat cheap by ~11% and made the policy ~4 s per turn)
+  const probeMargin = Number(arg('probe-margin', '0.2'));
   // default: as many workers as cores and free memory allow (round 2 swapped with 18 workers)
   const workers = arg('workers', 'auto') === 'auto' ? autoWorkers() : Number(arg('workers', '0'));
   const perState = Number(arg('per-state', '10'));
@@ -344,7 +347,7 @@ async function main(): Promise<void> {
   for (const c of candidates) {
     log(`  ${c.label.padEnd(40)} ${String(c.n).padStart(5)} features  [${cost(c.groups)}]  MSE ${c.val.toFixed(3)}  R² ${(1 - c.val / baseMse).toFixed(3)}`);
   }
-  // pick (review offense-r1): the best cheap set, unless a probe set beats it by more than 10%;
+  // pick (reviews offense-r1, -r3): the best cheap set, unless a probe set beats it by more than probeMargin;
   // within a cost class, the smallest set within tolerance of that class's best
   const cheapSets = candidates.filter(c => cost(c.groups) === 'cheap');
   const probeSets = candidates.filter(c => cost(c.groups) !== 'cheap');
@@ -354,7 +357,7 @@ async function main(): Promise<void> {
   };
   const bestCheap = cheapSets.length ? bestOf(cheapSets) : undefined;
   const bestProbe = probeSets.length ? bestOf(probeSets) : undefined;
-  const chosen = !bestCheap ? (bestProbe ?? full) : (bestProbe && bestProbe.val < bestCheap.val * 0.9 ? bestProbe : bestCheap);
+  const chosen = !bestCheap ? (bestProbe ?? full) : (bestProbe && bestProbe.val < bestCheap.val * (1 - probeMargin) ? bestProbe : bestCheap);
   log(`chosen: "${chosen.label}" (${chosen.n} features, ${cost(chosen.groups)})`);
   const modelFile = path.join(dir, 'model.json');
   saveModel(chosen.model, modelFile);
