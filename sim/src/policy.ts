@@ -43,6 +43,7 @@ export function playOffense(root: Sim, model: LinearModel, opts: PolicyOptions =
   const start = prizesLeft(root.state.players[mover]);
   const pred = new Predictor(model);
   const groups = groupsFor(model);
+  const only = new Set(model.names);
   const line: string[] = [];
   const steps: StepLog[] = [];
   let cur = root;
@@ -55,7 +56,7 @@ export function playOffense(root: Sim, model: LinearModel, opts: PolicyOptions =
       if (c.terminal) {
         return { c, value: c.prizes, exact: true };
       }
-      const fv = features(c.sim, mover, groups);
+      const fv = features(c.sim, mover, groups, { only });
       // a position can never be worth less than the prizes already taken on the way to it
       return { c, value: Math.max(c.prizes, pred.predict(fv.names, fv.values)), exact: false };
     });
@@ -99,12 +100,13 @@ export function playDefense(root: Sim, model: LinearModel, seed: number, opts: P
   const start = prizesLeft(root.state.players[mover]);
   const pred = new Predictor(model);
   const groups = groupsFor(model);
+  const only = new Set(model.names);
   const line: string[] = [];
   const steps: StepLog[] = [];
   let cur = root;
   let afterTurn: Sim | undefined;
   const judge = (s: Sim) => {
-    const fv = features(s, mover, groups);
+    const fv = features(s, mover, groups, { only });
     return Math.max(0, pred.predict(fv.names, fv.values));
   };
   for (let step = 0; step < (opts.maxSteps ?? 15); step++) {

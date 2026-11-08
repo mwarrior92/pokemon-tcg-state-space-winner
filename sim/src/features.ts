@@ -39,12 +39,16 @@ class Builder {
   names: string[] = [];
   groups: Group[] = [];
   values: number[] = [];
-  constructor(private want: Set<Group>) {}
+  constructor(private want: Set<Group>, private only?: Set<string>) {}
   on(g: Group): boolean {
     return this.want.has(g);
   }
+  /** is this feature wanted (its group is on, and it is in `only` if that is given)? */
+  need(g: Group, name: string): boolean {
+    return this.want.has(g) && (!this.only || this.only.has(name));
+  }
   add(g: Group, name: string, v: number): void {
-    if (!this.want.has(g)) {
+    if (!this.need(g, name)) {
       return;
     }
     this.names.push(name);
@@ -124,6 +128,9 @@ function isTag(c: PokemonCard, t: CardTag): number {
 
 export interface ProbeOptions {
   seeds?: number;     // prompt answer samples per probe (max is kept)
+  /** compute only these features (by name); engine probes run only for features in it. A model
+   *  passes its own names, so play time pays only for what the model uses. */
+  only?: Set<string>;
 }
 
 function slotKey(l: PokemonCardList, p: Player): number {
@@ -393,47 +400,42 @@ function reachFor(st: State, side: number, mine: PokemonCardList[], theirs: Poke
 
 export function features(sim: Sim, me: number, groups: Group[] = ALL_GROUPS, opts: ProbeOptions = {}): FeatureVector {
   const st: State = sim.state;
-  const b = new Builder(new Set(groups));
+  const b = new Builder(new Set(groups), opts.only);
   const seeds = opts.seeds ?? 1;
   const sides = [me, 1 - me];
   const ordered = sides.map(i => orderedSlots(st.players[i]));
 
-  // probe tables: dmg[s][a][atk][d] = damage side s's slot a does with attack atk to opposing slot d
-  const potential: number[][][][] = [[], []];
-  const now: number[][][][] = [[], []];
-  if (b.on('probe-damage')) {
-    sides.forEach((side, s) => {
-      const p = st.players[side];
-      ordered[s].forEach((l, a) => {
-        potential[s][a] = [];
-        now[s][a] = [];
-        if (!l) {
-          return;
-        }
-        const idx = slotKey(l, p);
-        const pc = l.getPokemonCard()!;
-        pc.attacks.slice(0, ATTACKS).forEach((atk, j) => {
-          potential[s][a][j] = [];
-          now[s][a][j] = [];
-          const op = st.players[1 - side];
-          ordered[1 - s].forEach((dl, d) => {
-            if (!dl) {
-              potential[s][a][j][d] = 0;
-              now[s][a][j][d] = 0;
-              return;
-            }
-            const didx = slotKey(dl, op);
-            const pot = probeAttack(sim, side, idx, didx, atk.name, true, seeds);
-            potential[s][a][j][d] = pot ? pot[didx] : 0;
-            // "now": only if it can be paid with attached energy and it is this side's turn
-            const payable = energyGap(atk.cost, l) === 0;
-            now[s][a][j][d] = payable && side === st.activePlayer && idx === 0 && didx === 0
-              ? (probeAttack(sim, side, idx, didx, atk.name, false, seeds)?.[didx] ?? 0) : 0;
-          });
-        });
-      });
-    });
-  }
+  // probe tables, computed on first use (each engine probe runs at most once per vector):
+  // potential(s, a, j, d) = damage side s's slot a does with attack j to opposing slot d, with the
+  // energy it still needs topped up; nowToActive(s, a, j) = the same, Active vs Active, with what
+  // is attached now (only on the side to move)
+  const potMemo = new Map<number, number>();
+  const potential = (s: number, a: number, j: number, d: number): number => {
+    const k = ((s * SLOTS + a) * ATTACKS + j) * SLOTS + d;
+    let v = potMemo.get(k);
+    if (v === undefined) {
+      v = 0;
+      const side = sides[s];
+      const l = ordered[s][a], dl = ordered[1 - s][d];
+      const atk = l?.getPokemonCard()?.attacks[j];
+      if (l && dl && atk && j < ATTACKS) {
+        const didx = slotKey(dl, st.players[1 - side]);
+        v = probeAttack(sim, side, slotKey(l, st.players[side]), didx, atk.name, true, seeds)?.[didx] ?? 0;
+      }
+      potMemo.set(k, v);
+    }
+    return v;
+  };
+  const nowToActive = (s: number, a: number, j: number): number => {
+    const side = sides[s];
+    const l = ordered[s][a], dl = ordered[1 - s][0];
+    const atk = l?.getPokemonCard()?.attacks[j];
+    if (!l || !dl || !atk || side !== st.activePlayer || slotKey(l, st.players[side]) !== 0 || slotKey(dl, st.players[1 - side]) !== 0
+      || energyGap(atk.cost, l) !== 0) {
+      return 0;
+    }
+    return probeAttack(sim, side, 0, 0, atk.name, false, seeds)?.[0] ?? 0;
+  };
 
   sides.forEach((side, s) => {
     const p = st.players[side];
@@ -476,30 +478,34 @@ export function features(sim: Sim, me: number, groups: Group[] = ALL_GROUPS, opt
         b.add('attacks', `${pre}.a${j}.baseDamage`, atk ? atk.damage : 0);
         if (b.on('probe-damage')) {
           for (let d = 0; d < SLOTS; d++) {
-            const pot = potential[s][a]?.[j]?.[d] ?? 0;
-            const hpD = (() => {
-              const dl = ordered[1 - s][d];
-              const dpc = dl?.getPokemonCard();
-              return dpc ? dpc.hp + (dl.hpBonus ?? 0) - dl.damage : 0;
-            })();
-            b.add('probe-damage', `${pre}.a${j}.dmgTo${d}`, pot);
-            b.add('probe-damage', `${pre}.a${j}.koTo${d}`, hpD > 0 && pot >= hpD ? 1 : 0);
+            const dmgName = `${pre}.a${j}.dmgTo${d}`, koName = `${pre}.a${j}.koTo${d}`;
+            if (!b.need('probe-damage', dmgName) && !b.need('probe-damage', koName)) {
+              continue;
+            }
+            const pot = potential(s, a, j, d);
+            const dl = ordered[1 - s][d];
+            const dpc = dl?.getPokemonCard();
+            const hpD = dpc ? dpc.hp + (dl.hpBonus ?? 0) - dl.damage : 0;
+            b.add('probe-damage', dmgName, pot);
+            b.add('probe-damage', koName, hpD > 0 && pot >= hpD ? 1 : 0);
           }
-          b.add('probe-damage', `${pre}.a${j}.nowToActive`, now[s][a]?.[j]?.[0] ?? 0);
+          if (b.need('probe-damage', `${pre}.a${j}.nowToActive`)) {
+            b.add('probe-damage', `${pre}.a${j}.nowToActive`, nowToActive(s, a, j));
+          }
         }
       }
-      if (b.on('probe-damage')) {
+      if (b.need('probe-damage', `${pre}.incoming`) || b.need('probe-damage', `${pre}.koThreat`)) {
         // incoming: the most any opposing Pokémon could do to this one, and whether that is a KO
         let incoming = 0;
-        for (let oa = 0; oa < SLOTS; oa++) {
+        for (let oa = 0; oa < SLOTS && pc; oa++) {
           for (let j = 0; j < ATTACKS; j++) {
-            incoming = Math.max(incoming, potential[1 - s][oa]?.[j]?.[a] ?? 0);
+            incoming = Math.max(incoming, potential(1 - s, oa, j, a));
           }
         }
         b.add('probe-damage', `${pre}.incoming`, incoming);
         b.add('probe-damage', `${pre}.koThreat`, pc && incoming >= hpLeft ? 1 : 0);
       }
-      if (b.on('probe-ability')) {
+      if (b.need('probe-ability', `${pre}.abilityDamage`)) {
         const pw = pc?.powers.find(x => x.useWhenInPlay !== false);
         b.add('probe-ability', `${pre}.abilityDamage`, pc && pw ? probeAbility(sim, side, slotKey(l, p), pw.name, seeds) : 0);
       }
@@ -540,7 +546,7 @@ export function features(sim: Sim, me: number, groups: Group[] = ALL_GROUPS, opt
     }
   });
 
-  if (b.on('probe-hand')) {
+  if (b.need('probe-hand', 'me.handDamage') || b.need('probe-hand', 'me.handPrizes')) {
     const h = probeHand(sim, me, seeds);
     b.add('probe-hand', 'me.handDamage', h.damage);
     b.add('probe-hand', 'me.handPrizes', h.prizes);
@@ -549,7 +555,10 @@ export function features(sim: Sim, me: number, groups: Group[] = ALL_GROUPS, opt
   if (b.on('reach')) {
     sides.forEach((side, s) => {
       const tag = s === 0 ? 'me' : 'op';
-      const r = reachFor(st, side, ordered[s], ordered[1 - s], s === 0, b.on('probe-damage') ? potential[s] : undefined);
+      // always the analytic damage estimate (not the probes): the reach group must mean the same
+      // with or without the probe groups, or a "cheap" model would be trained on probe-based values
+      // and played with estimated ones
+      const r = reachFor(st, side, ordered[s], ordered[1 - s], s === 0, undefined);
       b.add('reach', `${tag}.reach.maxPrize`, r.maxPrize);
       b.add('reach', `${tag}.reach.count`, r.count);
       b.add('reach', `${tag}.reach.oneShortMaxPrize`, r.oneShortMaxPrize);
