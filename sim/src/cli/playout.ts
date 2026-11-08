@@ -94,7 +94,11 @@ function playGame(job: GameJob): GameRec {
       } else if (seat === 'race' && def) {
         // policy v1: two-turn prize race from the offense and defense models
         policy = 'plan';
-        next = planTurn(sim, raceEvaluator(off, def, 0.8, job.seed + t), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
+        // the offense policy's tactical line is always a candidate (v1 must not take fewer prizes
+        // than v0 unless setting up is predicted to be worth more)
+        const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
+        const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
+        next = planTurn(sim, raceEvaluator(off, def, 0.8, job.seed + t), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra }).end;
       } else if (seat.startsWith('plan2:')) {
         policy = 'plan';
         next = planTurn2(sim, winModel(seat.slice(6)), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
