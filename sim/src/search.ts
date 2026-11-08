@@ -10,6 +10,7 @@ import { prizesLeft } from './rules';
 import { Rng } from './rng';
 import { DeadEnd, MainOption, Sim, mainCandidates, promptOptions } from './sim';
 import { firstDifference, sameState } from './clone';
+import { energyGap } from './features';
 
 // ---------------------------------------------------------------- canonical key
 
@@ -416,12 +417,22 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
       // an estimate can never exceed the prizes left to take (review offense-r3: an estimate of
       // 1.3 with 1 prize left beat an exact game-winning Knock Out)
       let est = Math.min(bound, Math.max(taken, opts.evaluate(sim)));
-      if (opts.quiescence) {
+      if (opts.quiescence && est < bound) {
+        // only attacks the Active can pay for with what is attached (cost modifiers are rare; this
+        // is a cheap check that keeps the quiescence step from trying every unpayable attack)
+        const act = sim.state.players[mover].active;
+        const pc = act.getPokemonCard();
+        const spare: Spare = {};
         for (const o of mainCandidates(sim.state)) {
-          if (o.kind === 'attack') {
-            for (const c of expandAction(sim, o, mover, startPrizes, opts)) {
-              est = Math.max(est, c.prizes);
-            }
+          if (o.kind !== 'attack' || !pc) {
+            continue;
+          }
+          const atk = pc.attacks.find(a => o.label === `attack ${a.name}`);
+          if (atk && energyGap(atk.cost, act) > 0) {
+            continue;
+          }
+          for (const c of expandAction(sim, o, mover, startPrizes, { ...opts, branchCap: 4 }, spare)) {
+            est = Math.max(est, c.prizes);
           }
         }
       }

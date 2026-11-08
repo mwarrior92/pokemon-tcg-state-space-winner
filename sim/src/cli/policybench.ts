@@ -29,7 +29,7 @@ for (let k = 0; k < n; k++) {
   if (!sameState(before.state, g.sim.state)) {
     mutated++;
   }
-  const t = offenseSearch(g.sim, { budget: 3000, keepSims: 0 });
+  const t = process.env.NO_TEACHER ? { value: 0 } as any : offenseSearch(g.sim, { budget: 3000, keepSims: 0 });
   teacher += t.value;
   got += p.prizes;
   atLeast += p.prizes >= t.value ? 1 : 0;
