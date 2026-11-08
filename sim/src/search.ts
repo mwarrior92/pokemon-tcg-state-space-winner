@@ -312,7 +312,8 @@ export interface SearchNode {
   value: number;          // best prizes reachable from here this turn (lower bound if !complete)
   complete: boolean;      // every line from here was searched
   expanded: boolean;
-  kids: { node?: SearchNode; terminal?: number; label: string }[];
+  kids: { node?: SearchNode; terminal?: number; label: string; step?: Step }[];
+  estimate?: number;
   kept?: boolean;
   /** order-free options covered by another order of the same plays (intersection over every path
    *  that reached this position; undefined = nothing to skip) */
@@ -343,6 +344,10 @@ export interface SearchOptions extends ExpandOptions {
   sampleSeed?: number;
   /** wall-clock cap for one search (default 15 s); the result is then marked incomplete */
   maxMs?: number;
+  /** value estimate for a position (prizes the mover ends the turn with, from here): when given,
+   *  an unexpanded position is worth max(prizes taken, estimate) instead of the prizes taken, so a
+   *  budgeted search returns the best line by "exact where searched, estimated beyond" */
+  evaluate?: (sim: Sim) => number;
   /** generate commuting plays in one order only (default true; false = every order, for checks) */
   orderReduction?: boolean;
   /** instrumentation: called for every generated child; `known` = its position was already
@@ -403,6 +408,10 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
     }
     const taken = startPrizes - prizesLeft(sim.state.players[mover]);
     const n: SearchNode = { key, sim, depth, taken, value: taken, complete: false, expanded: false, kids: [] };
+    if (opts.evaluate && depth > 0) {
+      n.estimate = Math.max(taken, opts.evaluate(sim));
+      n.value = n.estimate;
+    }
     memo.set(key, n);
     nodes.push(n);
     best = Math.max(best, taken);
@@ -448,7 +457,7 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
     for (const c of kids) {
       opts.onChild?.(c, !c.terminal && memo.has(stateHash(c.sim.state)), n.depth);
       if (c.terminal) {
-        n.kids.push({ terminal: c.prizes, label: c.label });
+        n.kids.push({ terminal: c.prizes, label: c.label, step: c.step });
         best = Math.max(best, c.prizes);
       } else {
         const fresh = !memo.has(stateHash(c.sim.state));
@@ -470,7 +479,7 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
             m.skip = both.size ? both : undefined;
           }
         }
-        n.kids.push({ node: m, label: c.label });
+        n.kids.push({ node: m, label: c.label, step: c.step });
         if (!m.expanded && m.sim) {
           if (!keepAll && !opts.priority && !m.kept && queue.length - head > roomLeft()) {
             m.sim = undefined;   // beyond the budget's reach
@@ -499,6 +508,8 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
  *  parallel search). */
 export interface DagNode {
   taken: number;
+  /** model estimate, used while the node is unexpanded (see SearchOptions.evaluate) */
+  estimate?: number;
   value: number;
   complete: boolean;
   expanded: boolean;
@@ -512,7 +523,7 @@ export function backUpValues(nodes: DagNode[], bound: number): void {
   for (let pass = 0; pass < 2; pass++) {
     for (let i = nodes.length - 1; i >= 0; i--) {
       const n = nodes[i];
-      let v = n.taken;
+      let v = !n.expanded && n.estimate !== undefined ? Math.max(n.taken, n.estimate) : n.taken;
       let complete = n.expanded;
       for (const k of n.kids) {
         if (k.terminal !== undefined) {

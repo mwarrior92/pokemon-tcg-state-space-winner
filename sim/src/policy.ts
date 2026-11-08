@@ -6,7 +6,7 @@
 import { ALL_GROUPS, Group, features } from './features';
 import { LinearModel, Predictor } from './model';
 import { prizesLeft } from './rules';
-import { ExpandOptions, children } from './search';
+import { ExpandOptions, SearchNode, children, offenseSearch, replayStep } from './search';
 import { GamePhase, PassTurnAction } from './engine';
 import { Rng } from './rng';
 import { Sim, randomChooser, resolvePrompts } from './sim';
@@ -69,6 +69,74 @@ export function playOffense(root: Sim, model: LinearModel, opts: PolicyOptions =
     line.push(pick.c.label);
     cur = pick.c.sim;
     if (pick.c.terminal) {
+      break;
+    }
+  }
+  return { prizes: start - prizesLeft(cur.state.players[mover]), line, steps, end: cur, ms: Date.now() - t0 };
+}
+
+export interface SearchPolicyOptions {
+  budget?: number;        // children generated per search (offenseSearch budget)
+  maxSteps?: number;
+  maxMs?: number;         // per search
+  /** expansion order: breadth-first (default; exact for short tactics such as gust + attack) or
+   *  best-first by predicted value (follows the model's mistakes; worse in the round-2 review) */
+  order?: 'breadth' | 'best';
+}
+
+/** Offense, search version: at each step a search of `budget` children from the current
+ *  position, exact where it searched and valued by the model beyond. The moves along the best line are played
+ *  while they lead into searched positions; then it searches again from there. The greedy policy
+ *  above is the special case of one expansion per step. */
+export function playOffenseSearch(root: Sim, model: LinearModel, opts: SearchPolicyOptions = {}): TurnPlay {
+  const t0 = Date.now();
+  const mover = root.state.activePlayer;
+  const start = prizesLeft(root.state.players[mover]);
+  const pred = new Predictor(model);
+  const groups = groupsFor(model);
+  const only = new Set(model.names);
+  const estimate = (sim: Sim) => {
+    const fv = features(sim, mover, groups, { only });
+    return pred.predict(fv.names, fv.values);
+  };
+  const line: string[] = [];
+  const steps: StepLog[] = [];
+  let cur = root;
+  for (let round = 0; round < (opts.maxSteps ?? 15) && line.length < (opts.maxSteps ?? 15); round++) {
+    const r = offenseSearch(cur, {
+      budget: opts.budget ?? 400, evaluate: estimate, priority: opts.order === 'best' ? (n => n.value) : undefined, keepSims: 0, maxMs: opts.maxMs ?? 5000,
+    });
+    let node: SearchNode = r.nodes[0];
+    let ended = false;
+    // follow the best line through searched positions
+    for (;;) {
+      const target = node.value;
+      const term = node.kids.find(k => k.terminal !== undefined && k.terminal >= target);
+      const next = term ?? node.kids.filter(k => k.node).sort((a, b) => (b.node!.value - a.node!.value))[0];
+      if (!next || (!term && next.node!.value < node.taken) || !next.step) {
+        ended = true;   // nothing better than stopping here
+        break;
+      }
+      const alternatives = node.kids.filter(k => k !== next).map(k => ({ label: k.label, value: k.terminal ?? k.node!.value, exact: k.terminal !== undefined || !!k.node?.complete }))
+        .sort((a, b) => b.value - a.value).slice(0, 5);
+      const child = replayStep(cur, next.step, mover, start, { cheapPass: false });
+      if (!child) {
+        ended = true;
+        break;
+      }
+      steps.push({ chosen: next.label, value: term ? term.terminal! : next.node!.value, exact: !!term || !!next.node!.complete, alternatives });
+      line.push(next.label);
+      cur = child.sim;
+      if (child.terminal || term) {
+        ended = true;
+        break;
+      }
+      node = next.node!;
+      if (!node.expanded) {
+        break;          // beyond the searched part: search again from here
+      }
+    }
+    if (ended) {
       break;
     }
   }

@@ -21,7 +21,7 @@ import { REPO_ROOT, loadCards, metaDecks } from '../cards';
 import { describeState } from '../describe';
 import { ALL_GROUPS, CHEAP_GROUPS, Group, PROBE_GROUPS, features } from '../features';
 import { LinearModel, fitRidge, importance, loadModel, mse, saveModel, selectColumns } from '../model';
-import { passTurn, playDefense, playOffense } from '../policy';
+import { passTurn, playDefense, playOffense, playOffenseSearch } from '../policy';
 import { autoWorkers, isMainThread, runPool, serveJobs } from '../pool';
 import { prizesLeft } from '../rules';
 import { Rng } from '../rng';
@@ -34,7 +34,7 @@ type Objective = 'offense' | 'defense';
 interface LabelJob { kind: 'label'; objective: Objective; seed: number; a: number; b: number; budget: number; perState: number; oppBudget: number }
 interface Row { x: number[]; y: number; state: number; depth: number }
 interface LabelResult { names: string[]; groups: Group[]; rows: Row[]; root: { value: number; complete: boolean; line: string[]; ms: number; turn: number }; heapMb?: number; seed?: number }
-interface EvalJob { kind: 'eval'; objective: Objective; seed: number; a: number; b: number; budget: number; modelFile: string; oppBudget: number }
+interface EvalJob { kind: 'eval'; objective: Objective; seed: number; a: number; b: number; budget: number; modelFile: string; oppBudget: number; policyBudget: number }
 
 // ---------------------------------------------------------------- worker side
 
@@ -97,6 +97,7 @@ export interface BattleLog {
   oracle: { value: number; complete: boolean; line: string[] };
   policy: { value: number; line: string[]; steps: any[]; ms: number };
   baseline?: { passNow: number };
+  greedy?: { value: number; line: string[]; ms: number };
   gap: number;
   heapMb?: number;
 }
@@ -106,14 +107,17 @@ function evaluate(job: EvalJob): BattleLog {
   const model = loadModel(job.modelFile);
   const board = describeState(g.sim.state);
   if (job.objective === 'offense') {
-    const r = offenseSearch(g.sim, { budget: job.budget });
-    const p = playOffense(g.sim, model);
-    // reference = the better of search and policy (an incomplete search is not an upper bound)
-    const ref = Math.max(r.value, p.prizes);
+    const r = offenseSearch(g.sim, { budget: job.budget, keepSims: 0 });
+    // the policy is the search policy (review offense-r2); the greedy one is kept for comparison
+    const greedy = playOffense(g.sim, model);
+    const p = playOffenseSearch(g.sim, model, { budget: job.policyBudget });
+    // reference = the best of search and policies (an incomplete search is not an upper bound)
+    const ref = Math.max(r.value, p.prizes, greedy.prizes);
     return {
       objective: 'offense', seed: job.seed, decks: [da.archetype, db.archetype], board,
       oracle: { value: r.value, complete: r.complete, line: r.line },
       policy: { value: p.prizes, line: p.line, steps: p.steps, ms: p.ms },
+      greedy: { value: greedy.prizes, line: greedy.line, ms: greedy.ms },
       gap: ref - p.prizes, heapMb: heapMb(),
     };
   }
@@ -209,6 +213,7 @@ async function main(): Promise<void> {
   const nEval = Number(arg('eval', '60'));
   const budget = Number(arg('budget', '3000'));
   const oppBudget = Number(arg('opp-budget', '600'));
+  const policyBudget = Number(arg('policy-budget', '100'));
   // default: as many workers as cores and free memory allow (round 2 swapped with 18 workers)
   const workers = arg('workers', 'auto') === 'auto' ? autoWorkers() : Number(arg('workers', '0'));
   const perState = Number(arg('per-state', '10'));
@@ -361,7 +366,7 @@ async function main(): Promise<void> {
   const t1 = Date.now();
   // evaluated turns are appended to battles.jsonl as they finish (resumable like the labels; a
   // resumed round refits the same model from the same labels, so earlier battles stay comparable)
-  const allEvalJobs: EvalJob[] = mkJobs(nEval, 500000).map(j => ({ kind: 'eval', objective, budget, oppBudget, modelFile, ...j }));
+  const allEvalJobs: EvalJob[] = mkJobs(nEval, 500000).map(j => ({ kind: 'eval', objective, budget, oppBudget, modelFile, policyBudget, ...j }));
   const battleFile = path.join(dir, 'battles.jsonl');
   const battles = readJsonl<BattleLog>(battleFile);
   const doneEval = new Set(battles.map(b => b.seed));
@@ -381,7 +386,8 @@ async function main(): Promise<void> {
   const mean = (f: (b: BattleLog) => number) => battles.reduce((s, b) => s + f(b), 0) / Math.max(1, battles.length);
   log(`\nevaluation on ${battles.length} fresh states (${((Date.now() - t1) / 1000).toFixed(0)} s):`);
   if (objective === 'offense') {
-    log(`  search found ${mean(b => b.oracle.value).toFixed(2)} prizes/turn, policy took ${mean(b => b.policy.value).toFixed(2)}; policy at least as good as the search on ${battles.filter(b => b.policy.value >= b.oracle.value).length}/${battles.length}; policy beat the search on ${battles.filter(b => b.policy.value > b.oracle.value).length}; mean gap to the better of the two ${mean(b => b.gap).toFixed(2)}; policy ${(mean(b => b.policy.ms) / 1000).toFixed(2)} s/turn`);
+    log(`  search found ${mean(b => b.oracle.value).toFixed(2)} prizes/turn, policy took ${mean(b => b.policy.value).toFixed(2)}; policy at least as good as the search on ${battles.filter(b => b.policy.value >= b.oracle.value).length}/${battles.length}; policy beat the search on ${battles.filter(b => b.policy.value > b.oracle.value).length}; mean gap to the best ${mean(b => b.gap).toFixed(2)}; policy ${(mean(b => b.policy.ms) / 1000).toFixed(2)} s/turn (search policy, budget ${policyBudget})`);
+    log(`  greedy policy (round-2 style): ${mean(b => b.greedy?.value ?? 0).toFixed(2)} prizes/turn, at least as good as the search on ${battles.filter(b => (b.greedy?.value ?? 0) >= b.oracle.value).length}/${battles.length}, ${(mean(b => b.greedy?.ms ?? 0) / 1000).toFixed(2)} s/turn`);
   } else {
     log(`  opponent's next-turn prizes: after policy ${mean(b => b.policy.value).toFixed(2)}, after passing at once ${mean(b => b.baseline!.passNow).toFixed(2)}, best sampled ${mean(b => b.oracle.value).toFixed(2)}; policy ${(mean(b => b.policy.ms) / 1000).toFixed(2)} s/turn`);
   }
