@@ -40,5 +40,7 @@ sim/reports/*.txt
 sim/reports/cardcheck-all.json
 sim/runs/*/data.json
 sim/runs/*/labels.jsonl
+sim/runs/*/games.jsonl
+sim/runs/*/feature-names.json
 sim/runs/smoke-*/
 sim/runs/*.out
