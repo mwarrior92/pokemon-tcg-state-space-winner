@@ -70,6 +70,7 @@ export interface Child {
   sim: Sim;
   label: string;          // action + prompt answers, readable
   step: Step;             // how to replay it from the parent (option + the mover's answers)
+  kind: MainOption['kind'];
   terminal: boolean;      // the mover's turn is over (attack resolved, turn passed, game over)
   prizes: number;         // prize cards the mover has taken this turn so far
 }
@@ -87,6 +88,46 @@ export interface ExpandOptions {
   seed?: number;
   /** replay exactly this answer path (no branching) - see replayStep */
   only?: number[];
+  /** options (by label) not to generate here: another order of the same plays covers them */
+  skip?: Set<string>;
+  /** "end turn" is valued as the prizes taken so far without playing it out, unless the
+   *  between-turns step could take a prize (see passCanScore) */
+  cheapPass?: boolean;
+}
+
+// Plays that commute with each other: the same set played in any order reaches the same position.
+// Consecutive ones are generated in one canonical (label) order only (see offenseSearch).
+export const ORDER_FREE = new Set<MainOption['kind']>(['attach', 'bench', 'evolve', 'tool']);
+
+const BETWEEN_TURNS_TEXT = /end of (your|each|the) turn|between turns|pok[eé]mon checkup/i;
+
+/** Could passing the turn take a prize? Only through the between-turns step: Poison / Burn
+ *  damage, or a card effect at the end of the turn / between turns. */
+export function passCanScore(state: State): boolean {
+  for (const p of state.players) {
+    for (const l of [p.active, ...p.bench]) {
+      if (!l.cards.length) {
+        continue;
+      }
+      if (l.specialConditions.length) {
+        return true;
+      }
+      for (const c of l.cards) {
+        const pc = c as any;
+        const texts: string[] = [...(pc.powers ?? []).map((x: any) => x.text ?? ''), ...(pc.attacks ?? []).map((x: any) => x.text ?? ''), String(pc.text ?? '')];
+        if (texts.some(t => BETWEEN_TURNS_TEXT.test(t))) {
+          return true;
+        }
+      }
+      if (l.tools.some(t => BETWEEN_TURNS_TEXT.test(String((t as any).text ?? '')))) {
+        return true;
+      }
+    }
+    if (p.stadium.cards.some(c => BETWEEN_TURNS_TEXT.test(String((c as any).text ?? '')))) {
+      return true;
+    }
+  }
+  return false;
 }
 
 function hashStr(s: string): number {
@@ -98,7 +139,7 @@ function hashStr(s: string): number {
 }
 
 /** Where state copies go (instrumentation; cheap counters). */
-export const copyStats = { copies: 0, illegal: 0, engineError: 0, deadEnd: 0, leaves: 0, duplicates: 0, illegalChanged: 0, illegalBy: new Map<string, number>(), changedBy: new Map<string, number>(), trackChanges: false };
+export const copyStats = { copies: 0, illegal: 0, engineError: 0, deadEnd: 0, leaves: 0, duplicates: 0, illegalChanged: 0, skipped: 0, cheapPasses: 0, reopened: 0, illegalBy: new Map<string, number>(), changedBy: new Map<string, number>(), trackChanges: false };
 
 /** All ways (up to caps) to play main-phase option `o` from `sim`, each a settled child. Prompts for
  *  the other player (e.g. choosing a new Active after a Knock Out) are answered at random. */
@@ -107,7 +148,14 @@ export const copyStats = { copies: 0, illegal: 0, engineError: 0, deadEnd: 0, le
  *  were spent on rejected actions, 95% of them unchanged). */
 export interface Spare {
   sim?: Sim;
+  /** the parent's position hash (computed once per expansion) */
+  parentHash?: string;
 }
+
+/** Exact check (instead of the position hash) that a rejected action left the copy unchanged.
+ *  Costs about as much as a copy; the engine patches 017-019 make rejections change nothing, and a
+ *  test checks that exactly, so searches use the hash. */
+export const exactRejectCheck = { on: false };
 
 export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes: number, opts: ExpandOptions = {}, spare?: Spare): Child[] {
   const promptCap = opts.promptCap ?? 6;
@@ -139,7 +187,10 @@ export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes
         if (t.state.logs.length && !sim.state.logs.length) {
           t.state.logs = [];
         }
-        if (spare && !t.pendingPrompt() && sameState(sim.state, t.state)) {
+        const unchanged = !t.pendingPrompt() && (exactRejectCheck.on
+          ? sameState(sim.state, t.state)
+          : stateHash(t.state) === (spare ? (spare.parentHash ??= stateHash(sim.state)) : ''));
+        if (spare && unchanged) {
           spare.sim = t;                // untouched: reuse for the next option
         } else {
           copyStats.illegalChanged++;   // the engine changed something before rejecting
@@ -208,7 +259,7 @@ export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes
     const st = t.state;
     const terminal = t.finished || st.activePlayer !== mover || st.phase !== GamePhase.PLAYER_TURN;
     copyStats.leaves++;
-    out.push({ sim: t, label: labels.join(' | '), step: { o: o.label, a: path }, terminal, prizes: startPrizes - prizesLeft(st.players[mover]) });
+    out.push({ sim: t, label: labels.join(' | '), step: { o: o.label, a: path }, kind: o.kind, terminal, prizes: startPrizes - prizesLeft(st.players[mover]) });
   }
   return out;
 }
@@ -227,6 +278,16 @@ export function children(sim: Sim, mover: number, startPrizes: number, opts: Exp
   const out: Child[] = [];
   const spare: Spare = {};
   for (const o of mainCandidates(sim.state)) {
+    if (opts.skip?.has(o.label)) {
+      copyStats.skipped++;
+      continue;
+    }
+    if (o.kind === 'pass' && opts.cheapPass && !passCanScore(sim.state)) {
+      // ending the turn here scores exactly the prizes taken so far
+      copyStats.cheapPasses++;
+      out.push({ sim, label: o.label, step: { o: o.label, a: [] }, kind: o.kind, terminal: true, prizes: startPrizes - prizesLeft(sim.state.players[mover]) });
+      continue;
+    }
     for (const c of expandAction(sim, o, mover, startPrizes, opts, spare)) {
       const k = c.terminal ? `T${c.prizes}|${c.label}` : stateHash(c.sim.state);
       if (seen.has(k)) {
@@ -253,6 +314,9 @@ export interface SearchNode {
   expanded: boolean;
   kids: { node?: SearchNode; terminal?: number; label: string }[];
   kept?: boolean;
+  /** order-free options covered by another order of the same plays (intersection over every path
+   *  that reached this position; undefined = nothing to skip) */
+  skip?: Set<string>;
 }
 
 export interface SearchResult {
@@ -279,6 +343,8 @@ export interface SearchOptions extends ExpandOptions {
   sampleSeed?: number;
   /** wall-clock cap for one search (default 15 s); the result is then marked incomplete */
   maxMs?: number;
+  /** generate commuting plays in one order only (default true; false = every order, for checks) */
+  orderReduction?: boolean;
   /** instrumentation: called for every generated child; `known` = its position was already
    *  reached by another path (the work of generating it was redundant) */
   onChild?: (c: Child, known: boolean, parentDepth: number) => void;
@@ -367,7 +433,11 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
     if (n.expanded || n.depth >= maxDepth || !n.sim) {
       continue;
     }
-    const kids = children(n.sim!, mover, startPrizes, opts);
+    const reduce = opts.orderReduction !== false;
+    // order-free options available here: a child reached by one of them skips the ones that sort
+    // before it (that order is generated from here directly)
+    const freeHere = reduce ? mainCandidates(n.sim!.state).filter(o => ORDER_FREE.has(o.kind)).map(o => o.label) : [];
+    const kids = children(n.sim!, mover, startPrizes, { ...opts, skip: n.skip, cheapPass: opts.cheapPass ?? true });
     expansions += Math.max(1, kids.length);
     n.expanded = true;
     expandedCount++;
@@ -381,9 +451,24 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
         n.kids.push({ terminal: c.prizes, label: c.label });
         best = Math.max(best, c.prizes);
       } else {
+        const fresh = !memo.has(stateHash(c.sim.state));
         const m = mk(c.sim, n.depth + 1);
         if (m === n) {
           continue;   // the action changed nothing (no-op): not a real move
+        }
+        if (reduce) {
+          // what this path lets the child skip: order-free plays available here that sort before
+          // the one just made (and only after an order-free play)
+          const skipHere = ORDER_FREE.has(c.kind) ? new Set(freeHere.filter(l => l < c.step.o)) : new Set<string>();
+          if (fresh) {
+            m.skip = skipHere.size ? skipHere : undefined;
+          } else if (m.skip) {
+            const both = new Set([...m.skip].filter(l => skipHere.has(l)));
+            if (m.expanded && both.size < m.skip.size) {
+              copyStats.reopened++;   // reached later by a path that needs more of its options
+            }
+            m.skip = both.size ? both : undefined;
+          }
         }
         n.kids.push({ node: m, label: c.label });
         if (!m.expanded && m.sim) {

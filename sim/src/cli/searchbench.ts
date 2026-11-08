@@ -36,7 +36,7 @@ for (let k = 0; k < n; k++) {
   const h0 = heap();
   copies = 0;
   peak = 0;
-  const r = offenseSearch(g.sim, { budget, keepSims: keep });
+  const r = offenseSearch(g.sim, { budget, keepSims: keep, orderReduction: !process.env.NO_ORDER, cheapPass: !process.env.NO_CHEAP_PASS });
   const h1 = heap();
   ms += r.ms;
   worst = Math.max(worst, r.ms);
@@ -47,7 +47,7 @@ for (let k = 0; k < n; k++) {
 }
 const cs = copyStats;
 const pct = (x: number) => `${(100 * x / cs.copies).toFixed(0)}%`;
-console.log(`\nstate copies in the search: ${cs.copies}; became a child ${pct(cs.leaves)} (of which ${pct(cs.duplicates)} duplicated a sibling's position), action rejected ${cs.illegal} times (${cs.illegalChanged} of them had changed the copy, which is then discarded; the rest reuse it), prompt dead end ${pct(cs.deadEnd)}, engine error ${pct(cs.engineError)}`);
+console.log(`\nstate copies in the search: ${cs.copies}; became a child ${pct(cs.leaves)} (of which ${pct(cs.duplicates)} duplicated a sibling's position), action rejected ${cs.illegal} times (${cs.illegalChanged} of them had changed the copy, which is then discarded; the rest reuse it), prompt dead end ${pct(cs.deadEnd)}, engine error ${pct(cs.engineError)}; options skipped by order reduction ${cs.skipped}, end turns not simulated ${cs.cheapPasses}, positions reached later needing skipped options ${cs.reopened}`);
 [...cs.illegalBy].sort((a, b) => b[1] - a[1]).slice(0, 15).forEach(([k, v]) => console.log(`  illegal: ${pct(v).padStart(4)} ${k}`));
 [...cs.changedBy].sort((a, b) => b[1] - a[1]).slice(0, 12).forEach(([k, v]) => console.log(`  changed: ${String(v).padStart(5)} ${k}`));
 console.log(`\ncomplete ${complete}/${n}, mean prizes ${(prizes / n).toFixed(2)}, mean positions ${(positions / n).toFixed(0)}; mean ${(ms / n / 1000).toFixed(2)} s/state, worst ${(worst / 1000).toFixed(2)} s, heap now ${heap().toFixed(0)} MB`);

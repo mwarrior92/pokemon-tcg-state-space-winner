@@ -497,7 +497,18 @@ function* usePower(next: Function, store: StoreLike, state: State, effect: UsePo
   // Run after the board animation so ability prompts are not shown on top of the overlay.
   // Validation errors (e.g. POWER_ALREADY_USED) are raised here; store.reducePrompt cleans up
   // any open prompts when those errors propagate.
-  state = store.reduceEffect(state, new PowerEffect(player, power, card, effect.benchTarget));
+  // [winner patch 019] card code often marks the Pokémon (ABILITY_USED board effect) before its
+  // own checks reject the ability; undo the marks on rejection (see patch 018)
+  const slots = [player.active, ...player.bench];
+  const marks = slots.map(s => s.boardEffect.slice());
+  try {
+    state = store.reduceEffect(state, new PowerEffect(player, power, card, effect.benchTarget));
+  } catch (e) {
+    if (e instanceof GameError) {
+      slots.forEach((s, i) => { s.boardEffect = marks[i]; });
+    }
+    throw e;
+  }
   return state;
 }
 

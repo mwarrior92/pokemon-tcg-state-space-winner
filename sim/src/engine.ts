@@ -5,3 +5,4 @@ export { ShuffleHandPrompt } from '../../engine/twinleaf/src/game/store/prompts/
 export { ShufflePrizesPrompt } from '../../engine/twinleaf/src/game/store/prompts/shuffle-prizes-prompt';
 export { ChooseAttackPrompt } from '../../engine/twinleaf/src/game/store/prompts/choose-attack-prompt';
 export * as Sets from './standard-sets';
+export { CheckHpEffect } from '../../engine/twinleaf/src/game/store/effects/check-effects';

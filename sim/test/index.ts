@@ -12,15 +12,15 @@ import {
   cardFingerprint, isKnownSmoke, isKnownStatic, loadKnownIssues, loadManifest, metaCardNames, printedCards,
   smokeTest, standardPool, staticCheck, twinleafFor,
 } from '../src/cardcheck';
-import { SHARED_CARD_FIELDS, deepCopy } from '../src/clone';
+import { SHARED_CARD_FIELDS, deepCopy, firstDifference, sameState } from '../src/clone';
 import { describeState } from '../src/describe';
-import { AttackAction, Card, CardType, PlayerType, PokemonCard, SlotType, Stage, UseAbilityAction } from '../src/engine';
+import { AttackAction, Card, CardType, GameError, PlayerType, PokemonCard, SlotType, Stage, UseAbilityAction } from '../src/engine';
 import { checkInvariants } from '../src/invariants';
 import { ownedCards, prizesLeft } from '../src/rules';
 import { children, replayStep, stateHash } from '../src/search';
 import { Rng } from '../src/rng';
 import { buildScenario } from '../src/scenario';
-import { Sim, bugLog, bugStats, legalMainOptions, randomChooser, resolvePrompts, runStep } from '../src/sim';
+import { Sim, bugLog, bugStats, legalMainOptions, mainCandidates, randomChooser, resolvePrompts, runStep } from '../src/sim';
 import { generateState } from '../src/stategen';
 
 loadCards();
@@ -348,6 +348,33 @@ test('fixed shuffles: within a turn, the same deck contents always shuffle to th
   assert.equal(order(deck), deck.slice().sort((x, y) => c.rank()!(x) - c.rank()!(y)).map(x => x.id).join(','));
   c.state.turn++;
   assert.notEqual(order(deck), deck.slice().sort((x, y) => c.rank()!(x) - c.rank()!(y)).map(x => x.id).join(','));
+});
+
+test('engine: an action the engine rejects changes nothing (patches 017-019; searches reuse the copy)', () => {
+  const d = metaDecks();
+  const rng = new Rng(31);
+  const changed = new Map<string, string>();
+  let rejected = 0;
+  for (let k = 0; k < 120; k++) {
+    const g = generateState(d[k % d.length].cards, rng.pick(d).cards, rng).sim;
+    for (const o of mainCandidates(g.state)) {
+      const t = g.copy(new Rng(1));
+      try {
+        t.apply(o.action);
+      } catch (e) {
+        if (!(e instanceof GameError)) {
+          continue;
+        }
+        rejected++;
+        t.state.logs = [];   // engine log lines are drained after every step anyway
+        if (t.pendingPrompt() || !sameState(g.state, t.state)) {
+          changed.set(`${o.label} (${(e as Error).message})`, firstDifference(g.state, t.state) ?? 'pending prompt');
+        }
+      }
+    }
+  }
+  assert.ok(rejected > 200, `only ${rejected} rejections exercised`);
+  assert.deepEqual([...changed].slice(0, 10), [], 'rejected actions that changed the state');
 });
 
 test('search: every child replays exactly from its recorded step (what parallel workers rely on)', () => {

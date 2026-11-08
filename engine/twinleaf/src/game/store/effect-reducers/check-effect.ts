@@ -574,7 +574,9 @@ export function checkStateReducer(store: StoreLike, state: State, effect: Effect
       for (let i = 0; i < attackCostIncrease; i++) {
         effect.cost.push(CardType.COLORLESS);
       }
-    } else {
+    } else if (active.attackCostIncreaseWhileActive !== 0 || active.attackCostIncreaseWhileActiveSourceCard !== undefined) {
+      // [winner patch 017] clear only what is set: a cost check (also run for attacks the engine
+      // then rejects) should not write to the state
       active.attackCostIncreaseWhileActive = 0;
       active.attackCostIncreaseWhileActiveSourceCard = undefined;
     }

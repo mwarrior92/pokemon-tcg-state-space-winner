@@ -148,7 +148,7 @@ export class ParallelSearch {
     const budget = opts.budget ?? 2000;
     const maxDepth = opts.maxDepth ?? 12;
     const maxMs = opts.maxMs ?? 15000;
-    const expandOpts: ExpandOptions = { promptCap: opts.promptCap, branchCap: opts.branchCap, seed: opts.seed };
+    const expandOpts: ExpandOptions = { promptCap: opts.promptCap, branchCap: opts.branchCap, seed: opts.seed, cheapPass: opts.cheapPass ?? true };
     const specKey = JSON.stringify(spec);
     const memo = new Map<string, PNode>();
     const nodes: PNode[] = [];

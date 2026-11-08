@@ -13,7 +13,7 @@
 //   - the deck holds no more than 60 - 7 opening - 6 prizes - turn draws, and at least one card.
 // Nothing here prefers good or bad positions; choices are uniform within the rules, with the
 // distributions documented next to each draw.
-import { CardManager, CardList, Card, EnergyCard, GamePhase, GameWinner, Player, PokemonCard, PokemonCardList, Stage, State, TrainerType } from './engine';
+import { CardManager, CardList, Card, CheckHpEffect, EnergyCard, GamePhase, GameWinner, Player, PokemonCard, PokemonCardList, Stage, State, TrainerType } from './engine';
 import { evolvesFromNames } from './cards';
 import { checkInvariants } from './invariants';
 import { isBasicPokemon, isEnergyCard, isPokemonCard, isTrainerCard, prizeValue } from './rules';
@@ -366,6 +366,25 @@ function tryGenerate(deckA: string[], deckB: string[], rng: Rng, opts: GenOption
   if (errs.length) {
     lastRejections.push(...errs);
     return undefined;
+  }
+  // the engine caches HP modifiers (tools, stadiums, abilities) in hpBonus and refreshes them on
+  // every HP check; a fresh state must start with them computed, as after any engine step
+  for (const p of players) {
+    for (const l of [p.active, ...p.bench]) {
+      if (l.cards.length) {
+        sim.store.reduceEffect(st, new CheckHpEffect(p, l));
+        // damage was drawn against printed HP; an HP-lowering effect can leave it at or above the
+        // effective HP (the Pokémon would already be Knocked Out): keep it below
+        const hp = l.getPokemonCard()!.hp + (l.hpBonus ?? 0);
+        if (hp <= 0) {
+          lastRejections.push(`${l.getPokemonCard()!.name}: effective HP ${hp}`);
+          return undefined;
+        }
+        if (l.damage >= hp) {
+          l.damage = Math.floor((hp - 1) / 10) * 10;
+        }
+      }
+    }
   }
   // fixed hidden information for the turn being tested (see Sim.chanceSeed)
   const chanceSeed = rng.int(0, 0x7fffffff);

@@ -29,6 +29,28 @@ function findPokemonTarget(state: State, player: Player, target: CardTarget): Po
   }
 }
 
+/** [winner patch 018] Run `play`; if the engine rejects it (GameError), put the player's zones and
+ *  per-turn flags back as they were before `prepare` (card code often moves cards or sets flags
+ *  before its own checks reject the play; upstream relies on the Store's full rollback, which the
+ *  simulator turns off). */
+function rejectable(player: Player, prepare: () => void, play: () => State): State {
+  const zones = [player.hand, player.supporter, player.discard, player.deck, player.lostzone, player.stadium];
+  const saved = zones.map(z => z.cards.slice());
+  const flags = { energyPlayedTurn: player.energyPlayedTurn, stadiumPlayedTurn: player.stadiumPlayedTurn, supporterTurn: player.supporterTurn };
+  try {
+    prepare();
+    return play();
+  } catch (e) {
+    if (e instanceof GameError) {
+      zones.forEach((z, i) => { z.cards = saved[i]; });
+      player.energyPlayedTurn = flags.energyPlayedTurn;
+      player.stadiumPlayedTurn = flags.stadiumPlayedTurn;
+      player.supporterTurn = flags.supporterTurn;
+    }
+    throw e;
+  }
+}
+
 export function playCardReducer(store: StoreLike, state: State, action: Action): State {
   const player = state.players[state.activePlayer];
 
@@ -60,10 +82,8 @@ export function playCardReducer(store: StoreLike, state: State, action: Action):
           if (player.energyPlayedTurn === state.turn) {
             throw new GameError(GameMessage.ENERGY_ALREADY_ATTACHED);
           }
-          player.energyPlayedTurn = state.turn;
-
           const effect = new AttachEnergyEffect(player, handCard, target);
-          return store.reduceEffect(state, effect);
+          return rejectable(player, () => { player.energyPlayedTurn = state.turn; }, () => store.reduceEffect(state, effect));
         }
       }
 
@@ -106,6 +126,7 @@ export function playCardReducer(store: StoreLike, state: State, action: Action):
       if (handCard instanceof TrainerCard) {
         const target = findPokemonTarget(state, player, action.target);
         let effect: Effect;
+        let stadiumTurnBefore = player.stadiumPlayedTurn;
         switch (handCard.trainerType) {
           case TrainerType.SUPPORTER:
             if (state.turn === 1 && handCard.firstTurn !== true) {
@@ -128,6 +149,7 @@ export function playCardReducer(store: StoreLike, state: State, action: Action):
             if (!state.rules.allowSameNameStadium && stadium && stadium.name === handCard.name) {
               throw new GameError(GameMessage.SAME_STADIUM_ALREADY_IN_PLAY);
             }
+            stadiumTurnBefore = player.stadiumPlayedTurn;
             player.stadiumPlayedTurn = state.turn;
             effect = new PlayStadiumEffect(player, handCard);
             break;
@@ -142,7 +164,17 @@ export function playCardReducer(store: StoreLike, state: State, action: Action):
             effect = new PlayItemEffect(player, handCard, target);
             break;
         }
-        return store.reduceEffect(state, effect);
+        // [winner patch 018] many Trainer cards move themselves (hand -> supporter / discard)
+        // before checking whether they can be played, then throw: undo that on rejection
+        const before = stadiumTurnBefore;
+        return rejectable(player, () => undefined, () => {
+          try {
+            return store.reduceEffect(state, effect);
+          } catch (e) {
+            player.stadiumPlayedTurn = before;   // set above, before the effect ran
+            throw e;
+          }
+        });
       }
       player.hand.moveCardTo(handCard, player.supporter);
     }

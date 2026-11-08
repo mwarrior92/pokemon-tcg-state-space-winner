@@ -516,31 +516,56 @@ export class Store implements StoreLike {
     // PowerEffect: run lockers first so they throw before ability owners mutate state.
     // CheckPokemonPowersEffect: run stadiums last so filters apply after tools / BREAK /
     // LV.X handlers contribute powers (otherwise Path to the Peak etc. get undone).
+    let rank: (c: Card) => number;
     if (effect instanceof PowerEffect) {
-      const rank = (c: Card) => {
+      rank = (c: Card) => {
         if (c.superType === SuperType.TRAINER) return 0;
         if (c.superType === SuperType.ENERGY) return 1;
         return 2;
       };
-      cards.sort((a, b) => rank(a) - rank(b));
     } else if (effect instanceof CheckPokemonPowersEffect) {
-      const rank = (c: Card) => {
+      rank = (c: Card) => {
         if (c.superType === SuperType.POKEMON) return 0;
         if (c.superType === SuperType.ENERGY) return 1;
         if (c instanceof TrainerCard && c.trainerType === TrainerType.STADIUM) return 3;
         if (c.superType === SuperType.TRAINER) return 2;
         return 2;
       };
-      cards.sort((a, b) => rank(a) - rank(b));
     } else {
-      cards.sort((a, b) => a.superType - b.superType);
+      rank = (c: Card) => c.superType;
     }
-    cards.forEach(c => {
-      if (playPokemonTargetTools.includes(c)) {
-        return;
+    // [winner patch 020] the stable sort by rank above was done for every effect (thousands per
+    // action); one pass into per-rank buckets gives the same order without comparisons
+    const buckets: Card[][] = [];
+    let sortable = true;
+    for (const c of cards) {
+      const r = rank(c);
+      if (!(r >= 0 && r < 16 && r === Math.floor(r))) {
+        sortable = false;
+        break;
+      }
+      (buckets[r] ??= []).push(c);
+    }
+    let ordered: Card[];
+    if (sortable) {
+      ordered = [];
+      for (const b of buckets) {
+        if (b) {
+          for (const c of b) {
+            ordered.push(c);
+          }
+        }
+      }
+    } else {
+      ordered = cards.sort((a, b) => rank(a) - rank(b));
+    }
+    const skipTools = playPokemonTargetTools.length > 0;
+    for (const c of ordered) {
+      if (skipTools && playPokemonTargetTools.includes(c)) {
+        continue;
       }
       state = this.callReduceEffect(c, this, state, effect);
-    });
+    }
     return state;
   }
 
