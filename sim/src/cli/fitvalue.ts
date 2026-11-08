@@ -51,6 +51,7 @@ const evaluate = (label: string, cols: number[]) => {
   const y = va.map(r => r.y);
   const acc = p.filter((pi, i) => (pi > 0.5 ? 1 : 0) === y[i]).length / p.length;
   log(`| ${label} | ${cols.length} | ${best!.ll.toFixed(3)} | ${auc(p, y).toFixed(3)} | ${(100 * acc).toFixed(1)}% | ${best!.lambda} |`);
+  best!.m.metrics = { ...(best!.m.metrics ?? {}), valLogLoss: best!.ll };
   return best!.m;
 };
 const base = 1 - va.reduce((s, r) => s + r.y, 0) / va.length;
@@ -61,11 +62,15 @@ log('|---|---|---|---|---|---|');
 const prizeCols = ['me.prizes', 'op.prizes'].map(n => names.indexOf(n)).filter(j => j >= 0);
 evaluate('prize counts only', prizeCols);
 const reachCols = names.map((n, j) => (/^(me|op)\.(prizes|reach\.|benchCount|hand|deck)/.test(n) ? j : -1)).filter(j => j >= 0);
-evaluate('prizes + reach + bench/hand/deck', reachCols);
+const compact = evaluate('prizes + reach + bench/hand/deck', reachCols);
 const all = names.map((_, j) => j);
-const full = evaluate('all cheap features', all);
+const fullModel = evaluate('all cheap features', all);
+// keep the one that predicts held-out games best
+const full = (compact.metrics!.valLogLoss <= fullModel.metrics!.valLogLoss) ? compact : fullModel;
 saveModel(full, path.join(dir, 'value-model.json'));
 log('');
-log('Largest weights of the full model (standardized):');
+log(`saved: ${full === compact ? 'prizes + reach + bench/hand/deck' : 'all cheap features'} (lower validation log loss)`);
+log('');
+log('Largest weights of the saved model (standardized):');
 importance(full).slice(0, 25).forEach(x => log(`- ${x.weight >= 0 ? '+' : ''}${x.weight.toFixed(3)} \`${x.name}\``));
 fs.writeFileSync(path.join(dir, 'value-report.md'), L.join('\n') + '\n');

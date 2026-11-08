@@ -90,7 +90,9 @@ function playGame(job: GameJob): GameRec {
     try {
       if (seat.startsWith('plan:')) {
         policy = 'plan';
-        next = planTurn(sim, winModel(seat.slice(5)), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
+        const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
+        const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
+        next = planTurn(sim, winModel(seat.slice(5)), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra }).end;
       } else if (seat === 'race' && def) {
         // policy v1: two-turn prize race from the offense and defense models
         policy = 'plan';
@@ -104,7 +106,7 @@ function playGame(job: GameJob): GameRec {
         policy = 'plan';
         const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
         const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
-        next = planTurn2(sim, raceEvaluator(off, def, 0.8, job.seed + t), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra, candidates: 3, replies: 3, replyBudget: 40 }).end;
+        next = planTurn2(sim, raceEvaluator(off, def, 0.8, job.seed + t), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra, candidates: 5, replies: 6, replyBudget: 40, risk: 0.25 }).end;
       } else if (seat.startsWith('plan2:')) {
         policy = 'plan';
         next = planTurn2(sim, winModel(seat.slice(6)), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
