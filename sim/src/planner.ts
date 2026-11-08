@@ -15,6 +15,8 @@
 // blend of the average and the lower quartile over the replies: a path that usually gets disrupted
 // loses to a slightly weaker one that holds up.
 import { CHEAP_GROUPS, features } from './features';
+import { LinearModel, Predictor } from './model';
+import { groupsFor } from './policy';
 import { GameWinner } from './engine';
 import { passTurn } from './policy';
 import { prizesLeft } from './rules';
@@ -64,6 +66,50 @@ function valueFor(win: WinModel, s: Sim, me: number): number {
   return toMove === me ? p : 1 - p;
 }
 
+/** How a planner values the end of the mover's turn. `afterTurn` gets the position at the start of
+ *  the opponent's turn (or a finished game) and the prizes both players had left when the turn
+ *  began; it returns the value for `me`. */
+export interface Evaluator {
+  afterTurn(s: Sim, me: number, startPrizes: [number, number]): number;
+}
+
+export function winEvaluator(win: WinModel): Evaluator {
+  return { afterTurn: (s, me) => valueFor(win, s, me) };
+}
+
+/** Two-turn prize race from the models trained so far (policy v1):
+ *    prizes taken this turn
+ *    - the opponent's predicted prizes on their next turn (defense model, at their turn start)
+ *    + gamma * my predicted prizes on my next turn (offense model, at my next turn start with
+ *      the opponent's turn passed)
+ *  The last term rewards building towards the next turn (benching, Energy, evolving), which
+ *  neither single-turn objective does: v0 playouts were passive and ended by deck-out. A won or
+ *  lost game counts as +-10 prizes. */
+export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, seed = 1): Evaluator {
+  const po = new Predictor(off), pd = new Predictor(def);
+  const go = groupsFor(off), gd = groupsFor(def);
+  const oo = new Set(off.names), od = new Set(def.names);
+  return {
+    afterTurn: (s, me, start) => {
+      if (s.finished) {
+        const w = s.state.winner;
+        return w === GameWinner.DRAW ? 0 : (w === GameWinner.PLAYER_1 ? 0 : 1) === me ? 10 : -10;
+      }
+      const taken = start[0] - prizesLeft(s.state.players[me]);
+      const lost = start[1] - prizesLeft(s.state.players[1 - me]);
+      const fd = features(s, me, gd, { only: od });
+      const theirs = Math.max(0, pd.predict(fd.names, fd.values));
+      const mine = passTurn(s, seed + 17);
+      let next = 0;
+      if (mine && !mine.finished && mine.state.activePlayer === me) {
+        const fo = features(mine, me, go, { only: oo });
+        next = Math.max(0, po.predict(fo.names, fo.values));
+      }
+      return taken - lost - theirs + gamma * next;
+    },
+  };
+}
+
 interface TurnSearch {
   root: PNode;
   nodes: PNode[];
@@ -72,13 +118,14 @@ interface TurnSearch {
   endings: { node: PNode; terminal?: { label: string; step: Step; value: number } ; value: number }[];
 }
 
-function searchTurn(root: Sim, win: WinModel, budget: number, maxMs: number, seed: number): TurnSearch {
+function searchTurn(root: Sim, ev: Evaluator, budget: number, maxMs: number, seed: number): TurnSearch {
   const t0 = Date.now();
   const mover = root.state.activePlayer;
   const start = prizesLeft(root.state.players[mover]);
+  const startBoth: [number, number] = [start, prizesLeft(root.state.players[1 - mover])];
   const stopValue = (s: Sim, k: number): number => {
     const after = passTurn(s, seed + k);
-    return after ? valueFor(win, after, mover) : (s.finished ? valueFor(win, s, mover) : 0);
+    return after ? ev.afterTurn(after, mover, startBoth) : (s.finished ? ev.afterTurn(s, mover, startBoth) : -1e9);
   };
   const memo = new Map<string, PNode>();
   const nodes: PNode[] = [];
@@ -112,7 +159,7 @@ function searchTurn(root: Sim, win: WinModel, budget: number, maxMs: number, see
         continue;            // = this node's stop value
       }
       if (c.terminal) {
-        const v = valueFor(win, c.sim, mover);
+        const v = ev.afterTurn(c.sim, mover, startBoth);
         n.kids.push({ terminal: v, label: c.label, step: c.step });
         endings.push({ node: n, terminal: { label: c.label, step: c.step, value: v }, value: v });
         continue;
@@ -170,11 +217,12 @@ function replayEnding(root: Sim, node: PNode, terminal?: { label: string; step: 
   return { sim: cur, line, ended: false };
 }
 
-export function planTurn(root: Sim, win: WinModel, opts: PlanOptions = {}): Plan {
+export function planTurn(root: Sim, ev: WinModel | Evaluator, opts: PlanOptions = {}): Plan {
   const t0 = Date.now();
   const mover = root.state.activePlayer;
   const start = prizesLeft(root.state.players[mover]);
-  const ts = searchTurn(root, win, opts.budget ?? 100, opts.maxMs ?? 5000, opts.seed ?? 1);
+  const e = ev instanceof WinModel ? winEvaluator(ev) : ev;
+  const ts = searchTurn(root, e, opts.budget ?? 100, opts.maxMs ?? 5000, opts.seed ?? 1);
   const best = ts.endings.reduce((a, b) => (b.value > a.value ? b : a));
   const r = replayEnding(root, best.node, best.terminal) ?? { sim: root, line: [], ended: false };
   return { line: r.line, end: r.sim, ended: r.ended, value: best.value, prizes: start - prizesLeft(r.sim.state.players[mover]), positions: ts.nodes.length, ms: Date.now() - t0 };
@@ -205,7 +253,7 @@ export function planTurn2(root: Sim, win: WinModel, opts: Plan2Options = {}): Pl
   const start = prizesLeft(root.state.players[mover]);
   const seed = opts.seed ?? 1;
   const rng = new Rng(seed * 7919 + 3);
-  const ts = searchTurn(root, win, opts.budget ?? 100, opts.maxMs ?? 5000, seed);
+  const ts = searchTurn(root, winEvaluator(win), opts.budget ?? 100, opts.maxMs ?? 5000, seed);
   // the best few distinct ways to end the turn, by their one-turn value
   const sorted = ts.endings.slice().sort((a, b) => b.value - a.value);
   const picked: { e: TurnSearch['endings'][number]; sim: Sim; line: string[]; ended: boolean; after: Sim }[] = [];
