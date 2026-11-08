@@ -1,0 +1,10 @@
+import { allCards, loadCards } from '../cards';
+import { cardFingerprint, loadManifest, smokeTest } from '../cardcheck';
+loadCards();
+const m = loadManifest();
+const names = ['Dartrix M3', 'Meowscarada ex MEM', "Steven's Skarmory DRI"];
+const by = new Map(allCards().map(c => [c.fullName, c]));
+for (const n of names) console.log(n, m[n], cardFingerprint(by.get(n)!), allCards().filter(c => c.fullName === n).length);
+smokeTest('Meowth ex M3');
+for (const n of names) console.log('after smoke', n, cardFingerprint(by.get(n)!));
+const dupes = new Map<string, number>(); allCards().forEach(c => dupes.set(c.fullName, (dupes.get(c.fullName) ?? 0) + 1));

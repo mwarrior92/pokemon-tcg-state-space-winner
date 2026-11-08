@@ -1,0 +1,49 @@
+# offense round "offense-r1": 1000 states to label, 100 to evaluate, search budget 1500, 16 workers
+labelled 2798 positions from 393 states in 1356 s; searches complete 266/393; mean root value 0.60
+target distribution: 0:2370 1:315 2:74 3:39
+fit: all 1193 features: validation MSE 0.204 (predicting the mean: 0.218, R² 0.065)
+
+feature reduction (validation MSE; lower is better):
+  all features                              1193 features  [probe]  MSE 0.204  R² 0.065
+  cheap groups only (no engine probes)       843 features  [cheap]  MSE 0.215  R² 0.011
+  all but probe-damage                       857 features  [probe]  MSE 0.212  R² 0.028
+  all but probe-ability                     1181 features  [probe]  MSE 0.207  R² 0.048
+  all but probe-hand                        1191 features  [probe]  MSE 0.204  R² 0.065
+  cheap + probe-damage                      1179 features  [probe]  MSE 0.207  R² 0.048
+  top 200 features by importance             200 features  [probe]  MSE 0.187  R² 0.140
+  top 100 features by importance             100 features  [probe]  MSE 0.186  R² 0.146
+  top 50 features by importance               50 features  [probe]  MSE 0.187  R² 0.142
+  top 25 features by importance               25 features  [probe]  MSE 0.187  R² 0.143
+chosen: "top 25 features by importance" (25 features, probe)
+
+top features of the full model (weight on a standardized scale):
+  +0.026  me.s0.a0.nowToActive
+  -0.021  me.s0.a0.gap
+  +0.021  me.s0.energy
+  -0.020  me.s0.retreatGap
+  +0.018  op.s0.damage
+  +0.015  me.handItem
+  +0.015  me.s1.weakP
+  +0.014  me.handEnergyF
+  +0.014  me.s0.a0.koTo0
+  +0.014  me.s1.stage
+  +0.013  me.s0.energyW
+  +0.012  me.s0.energyF
+  +0.012  op.s0.koThreat
+  +0.012  me.hand
+  +0.011  me.s0.abilityDamage
+  +0.010  me.s0.energyG
+  -0.010  retreated
+  +0.010  op.s5.energyL
+  +0.009  me.s0.weakP
+  -0.009  op.s0.hpLeft
+  +0.009  me.handEnergy
+  +0.009  me.s0.stage
+  +0.009  me.s0.a1.nowToActive
+  +0.008  me.s0.energyR
+  +0.008  me.s0.a1.koTo0
+
+evaluation on 100 fresh states (239 s):
+  search found 0.47 prizes/turn, policy took 0.47; policy matched the search on 91/100; mean gap 0.00; policy 24.54 s/turn
+
+review packet: C:\Users\marcw\local\winner\sim\runs\offense-r1\review-packet.md

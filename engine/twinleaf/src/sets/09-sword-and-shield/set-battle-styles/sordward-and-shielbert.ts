@@ -1,0 +1,105 @@
+import { TrainerCard } from '../../../game/store/card/trainer-card';
+import { TrainerType, SuperType } from '../../../game/store/card/card-types';
+import {
+  StoreLike,
+  State,
+  StateUtils,
+  GameMessage,
+  ConfirmPrompt,
+  Card,
+  ChooseCardsPrompt,
+  Player,
+} from '../../../game';
+import { Effect } from '../../../game/store/effects/effect';
+import { TrainerEffect } from '../../../game/store/effects/play-card-effects';
+import { DRAW_CARDS, MOVE_CARDS } from '../../../game/store/prefabs/prefabs';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+
+function* playCard(
+  next: Function,
+  store: StoreLike,
+  state: State,
+  effect: TrainerEffect,
+  self: SordwardAndShielbert,
+): IterableIterator<State> {
+  const player = effect.player;
+  const opponent = StateUtils.getOpponent(state, player);
+
+  // Check if there are any Trainer cards in the discard
+  const trainerCards = player.discard.cards.filter((c) => c.superType === SuperType.TRAINER);
+  if (trainerCards.length === 0) {
+    return state;
+  }
+
+  // Step 1: Player chooses a Trainer card from their discard pile
+  let selectedCard: Card | undefined;
+  yield store.prompt(
+    state,
+    new ChooseCardsPrompt(
+      player,
+      GameMessage.CHOOSE_CARD_TO_HAND,
+      player.discard,
+      { superType: SuperType.TRAINER },
+      { min: 1, max: 1, allowCancel: false },
+    ),
+    (selected) => {
+      selectedCard = selected && selected.length > 0 ? selected[0] : undefined;
+      next();
+    },
+  );
+
+  if (!selectedCard) {
+    return state;
+  }
+
+  // Step 2: Ask opponent if the player may take the card
+  let opponentAllows = false;
+  yield store.prompt(
+    state,
+    new ConfirmPrompt(opponent.id, GameMessage.WANT_TO_USE_ABILITY),
+    (result) => {
+      opponentAllows = result;
+      next();
+    },
+  );
+
+  if (opponentAllows) {
+    // Opponent says yes: put the trainer card into player's hand
+    MOVE_CARDS(store, state, player.discard, player.hand, { cards: [selectedCard], sourceCard: self });
+  } else {
+    // Opponent says no: draw 3 cards instead
+    DRAW_CARDS(store, state, player, 3);
+  }
+  return state;
+}
+
+export class SordwardAndShielbert extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.SUPPORTER;
+  public regulationMark: string = 'D';
+  public set: string = 'BST';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '135';
+  public name: string = 'Sordward & Shielbert';
+  public fullName: string = 'Sordward & Shielbert BST';
+  public text: string =
+    'Choose a Trainer card from your discard pile. Then, ask your opponent if you may put it into your hand. If yes, put that card into your hand. If no, draw 3 cards. You may play only 1 Supporter card during your turn.';
+
+  public canPlay(store: StoreLike, state: State, player: Player): boolean {
+    if (player.supporterTurn > 0) {
+      return false;
+    }
+    return true;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const player = effect.player;
+      MOVE_CARDS(store, state, player.hand, player.supporter, { cards: [effect.trainerCard], sourceCard: this });
+      effect.preventDefault = true;
+      const generator = playCard(() => generator.next(), store, state, effect, this);
+      return generator.next().value;
+    }
+
+    return state;
+  }
+}

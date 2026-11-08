@@ -1,0 +1,24 @@
+{
+  "name": "winner-sim",
+  "private": true,
+  "version": "0.1.0",
+  "description": "Rules-only simulation, state generation and turn search on top of the vendored Twinleaf engine (engine/twinleaf).",
+  "scripts": {
+    "build": "node build.mjs",
+    "test": "node build.mjs && node --test dist/tests.js",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "cards": "node build.mjs && node dist/cardcheck.js",
+    "cards:all": "node build.mjs && node dist/cardcheck.js --all",
+    "cards:baseline": "node build.mjs && node dist/cardbaseline.js",
+    "decks": "node build.mjs && node dist/decks.js",
+    "sync-upstream": "bash scripts/sync-upstream.sh"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "esbuild": "0.24.2",
+    "typescript": "5.6.3"
+  },
+  "dependencies": {
+    "@progress/pako-esm": "^1.0.1"
+  }
+}

@@ -1,0 +1,58 @@
+import { TrainerCard } from '../../../game/store/card/trainer-card';
+import { TrainerType } from '../../../game/store/card/card-types';
+import { StoreLike, State, StateUtils, Player, GameError, GameMessage } from '../../../game';
+import { Effect } from '../../../game/store/effects/effect';
+import { ChooseCardsPrompt } from '../../../game/store/prompts/choose-cards-prompt';
+import { MOVE_CARDS } from '../../../game/store/prefabs/prefabs';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+
+export class SurpriseBox extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.ITEM;
+  public set: string = 'UNB';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '187';
+  public name: string = 'Surprise Box';
+  public fullName: string = 'Surprise Box UNB';
+  public text: string = "Put a card from your opponent's discard pile into their hand.";
+
+  public canPlay(store: StoreLike, state: State, player: Player): boolean {
+    const opponent = StateUtils.getOpponent(state, player);
+    if (opponent.discard.cards.length === 0) {
+      return false;
+    }
+    return true;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const player = effect.player;
+      const opponent = StateUtils.getOpponent(state, player);
+
+      if (opponent.discard.cards.length === 0) {
+        throw new GameError(GameMessage.CANNOT_PLAY_THIS_CARD);
+      }
+
+      store.prompt(
+        state,
+        new ChooseCardsPrompt(
+          player,
+          GameMessage.CHOOSE_CARD_TO_HAND,
+          opponent.discard,
+          {},
+          { min: 1, max: 1, allowCancel: false },
+        ),
+        (selected) => {
+          const cards = selected || [];
+          if (cards.length > 0) {
+            MOVE_CARDS(store, state, opponent.discard, opponent.hand, {
+              cards: [cards[0]],
+              sourceCard: this,
+            });
+          }
+        },
+      );
+    }
+
+    return state;
+  }
+}

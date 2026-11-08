@@ -4,6 +4,13 @@ A chess-like **finite board-state ($S$) and macro-action ($A$) abstraction** for
 
 Instead of training a card-playing AI or running slow Monte Carlo game simulations, this engine compiles all **3,108 Standard printings (2,062 canonical cards)** into 16-dimensional mechanical capability vectors and evaluates any 60-card deck against the **52 highest-probability competitive board states** in **~2 ms per deck** using exact hypergeometric reachability, sub-additive role saturation, and prize-trade tempo math.
 
+> **2026-11 direction change.** Simulation now runs on the open-source **Twinleaf** engine, forked
+> into [`engine/twinleaf/`](engine/twinleaf) (MIT; see [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md)).
+> The new simulator, state generator, card tests and turn players live in [`sim/`](sim/README.md).
+> The CABT-based play code described below (`src/cabt_bridge.py`, `src/mcts.py`, the fitted
+> evaluation weights and every play heuristic) is **set aside**. The new turn players start from
+> the rules alone and do not reuse any of it.
+
 ---
 
 ## Quick Start (CLI Commands)

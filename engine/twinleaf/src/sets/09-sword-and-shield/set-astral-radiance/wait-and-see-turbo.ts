@@ -1,0 +1,76 @@
+import { TrainerCard } from '../../../game/store/card/trainer-card';
+import { TrainerType, SuperType, EnergyType } from '../../../game/store/card/card-types';
+import {
+  StoreLike,
+  State,
+  GameError,
+  GameMessage,
+  AttachEnergyPrompt,
+  PlayerType,
+  SlotType,
+  StateUtils,
+  GamePhase,
+  Player,
+} from '../../../game';
+import { Effect } from '../../../game/store/effects/effect';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+import { SHUFFLE_DECK, MOVE_CARDS } from '../../../game/store/prefabs/prefabs';
+
+export class WaitAndSeeTurbo extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.ITEM;
+  public regulationMark: string = 'F';
+  public set: string = 'ASR';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '158';
+  public name: string = 'Wait and See Turbo';
+  public fullName: string = 'Wait and See Turbo ASR 158';
+  public text: string =
+    'You can use this card only if you go second, and only during your first turn. Search your deck for a basic Energy card and attach it to 1 of your Pokémon. Then, shuffle your deck. Your turn ends. You may play any number of Item cards during your turn.';
+
+  public canPlay(_store: StoreLike, state: State, _player: Player): boolean {
+    if (state.turn !== 2) {
+      return false;
+    }
+    return true;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const player = effect.player;
+
+      // Can only be played if you go second and it's your first turn (turn 2)
+      if (state.turn !== 2) {
+        throw new GameError(GameMessage.CANNOT_PLAY_THIS_CARD);
+      }
+
+      state = store.prompt(
+        state,
+        new AttachEnergyPrompt(
+          player.id,
+          GameMessage.ATTACH_ENERGY_CARDS,
+          player.deck,
+          PlayerType.BOTTOM_PLAYER,
+          [SlotType.ACTIVE, SlotType.BENCH],
+          { superType: SuperType.ENERGY, energyType: EnergyType.BASIC },
+          { allowCancel: false, min: 0, max: 1 },
+        ),
+        (transfers) => {
+          transfers = transfers || [];
+          for (const transfer of transfers) {
+            const target = StateUtils.getTarget(state, player, transfer.to);
+            MOVE_CARDS(store, state, player.deck, target, {
+              cards: [transfer.card],
+              sourceCard: this,
+            });
+          }
+          SHUFFLE_DECK(store, state, player);
+
+          // Your turn ends
+          state.phase = GamePhase.BETWEEN_TURNS;
+        },
+      );
+    }
+
+    return state;
+  }
+}

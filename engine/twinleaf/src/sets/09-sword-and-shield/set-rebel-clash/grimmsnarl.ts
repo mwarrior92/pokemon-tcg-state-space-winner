@@ -1,0 +1,90 @@
+import { PokemonCard } from '../../../game/store/card/pokemon-card';
+import { Stage, CardType } from '../../../game/store/card/card-types';
+import { PowerType, StoreLike, State, StateUtils } from '../../../game';
+import { Effect } from '../../../game/store/effects/effect';
+import { CAN_APPLY_ABILITY_TO_TARGET } from '../../../game/store/prefabs/effect-of-ability-prefabs';
+import { WAS_ATTACK_USED, IS_ABILITY_BLOCKED } from '../../../game/store/prefabs/prefabs';
+import { CheckAttackCostEffect, CheckProvidedEnergyEffect } from '../../../game/store/effects/check-effects';
+
+export class Grimmsnarl extends PokemonCard {
+  public stage: Stage = Stage.STAGE_2;
+  public evolvesFrom: string = 'Morgrem';
+  public cardType: CardType[] = [D];
+  public hp: number = 170;
+  public weakness = [{ type: G }];
+  public retreat = [C, C, C];
+
+  public powers = [{
+    name: 'Dark Oath',
+    powerType: PowerType.ABILITY,
+    text: 'As long as this Pokémon is in the Active Spot, your opponent\'s Active Pokémon\'s attacks cost [C] more.'
+  }];
+
+  public attacks = [{
+    name: 'Energy Press',
+    cost: [D, C, C],
+    damage: 100,
+    damageCalculation: '+',
+    text: 'This attack does 30 more damage for each Energy attached to your opponent\'s Active Pokémon.'
+  }];
+
+  public regulationMark: string = 'D';
+  public set: string = 'RCL';
+  public setNumber: string = '125';
+  public cardImage: string = 'assets/cardback.png';
+  public name: string = 'Grimmsnarl';
+  public fullName: string = 'Grimmsnarl RCL';
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    // Dark Oath
+    if (effect instanceof CheckAttackCostEffect) {
+      const attackingPlayer = effect.player;
+      const cardList = StateUtils.findCardList(state, this);
+      const abilityOwner = StateUtils.findOwner(state, cardList);
+
+      if (abilityOwner.active.getPokemonCard() !== this) {
+        return state;
+      }
+
+      if (attackingPlayer === abilityOwner) {
+        return state;
+      }
+
+      if (IS_ABILITY_BLOCKED(store, state, abilityOwner, this)) {
+        return state;
+      }
+
+      if (!CAN_APPLY_ABILITY_TO_TARGET(
+        store,
+        state,
+        abilityOwner,
+        this.powers[0],
+        this,
+        attackingPlayer.active,
+      )) {
+        return state;
+      }
+
+      const index = effect.cost.indexOf(CardType.COLORLESS);
+      if (index > -1) {
+        effect.cost.splice(index, 0, CardType.COLORLESS);
+      } else {
+        effect.cost.push(CardType.COLORLESS);
+      }
+    }
+
+    // Energy Press
+    if (WAS_ATTACK_USED(effect, 0, this)) {
+      const player = effect.player;
+      const opponent = StateUtils.getOpponent(state, player);
+
+      const checkEnergy = new CheckProvidedEnergyEffect(opponent, opponent.active);
+      store.reduceEffect(state, checkEnergy);
+
+      const energyCount = checkEnergy.energyMap.reduce((sum, em) => sum + em.provides.length, 0);
+      effect.damage += 30 * energyCount;
+    }
+
+    return state;
+  }
+}

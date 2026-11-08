@@ -1,0 +1,63 @@
+import { TrainerCard } from '../../../game/store/card/trainer-card';
+import { TrainerType, CardTag } from '../../../game/store/card/card-types';
+import { StoreLike, State, StateUtils, Player } from '../../../game';
+import { Effect } from '../../../game/store/effects/effect';
+import { ApplyWeaknessEffect, AfterDamageEffect } from '../../../game/store/effects/attack-effects';
+import { EndTurnEffect } from '../../../game/store/effects/game-phase-effects';
+import { AttackEffect } from '../../../game/store/effects/game-effects';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+import { ADD_MARKER, HAS_MARKER, REMOVE_MARKER } from '../../../game/store/prefabs/prefabs';
+
+export class Phoebe extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.SUPPORTER;
+  public regulationMark: string = 'E';
+  public set: string = 'BST';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '130';
+  public name: string = 'Phoebe';
+  public fullName: string = 'Phoebe BST';
+  public text: string =
+    "During this turn, damage from your Pokémon VMAX's attacks isn't affected by any effects on your opponent's Active Pokémon. You may play only 1 Supporter card during your turn.";
+  public readonly PHOEBE_MARKER = 'PHOEBE_MARKER';
+
+  public canPlay(store: StoreLike, state: State, player: Player): boolean {
+    if (player.supporterTurn > 0) {
+      return false;
+    }
+    return true;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const player = effect.player;
+      ADD_MARKER(this.PHOEBE_MARKER, player, this);
+    }
+
+    // When a VMAX attacks, make damage bypass effects on opponent's Active
+    if (effect instanceof AttackEffect && HAS_MARKER(this.PHOEBE_MARKER, effect.player, this)) {
+      const sourceCard = effect.player.active.getPokemonCard();
+      if (sourceCard && sourceCard.hasTag(CardTag.POKEMON_VMAX)) {
+        const opponent = StateUtils.getOpponent(state, effect.player);
+
+        const applyWeakness = new ApplyWeaknessEffect(effect, effect.damage);
+        store.reduceEffect(state, applyWeakness);
+        const damage = applyWeakness.damage;
+
+        effect.damage = 0;
+
+        if (damage > 0) {
+          opponent.active.damage += damage;
+          const afterDamage = new AfterDamageEffect(effect, damage);
+          state = store.reduceEffect(state, afterDamage);
+        }
+      }
+    }
+
+    // Cleanup at end of turn
+    if (effect instanceof EndTurnEffect && HAS_MARKER(this.PHOEBE_MARKER, effect.player, this)) {
+      REMOVE_MARKER(this.PHOEBE_MARKER, effect.player, this);
+    }
+
+    return state;
+  }
+}

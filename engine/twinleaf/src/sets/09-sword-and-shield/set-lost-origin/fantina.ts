@@ -1,0 +1,115 @@
+import { TrainerType, CardTag } from '../../../game/store/card/card-types';
+import { Effect } from '../../../game/store/effects/effect';
+import { PutDamageEffect } from '../../../game/store/effects/attack-effects';
+import { EndTurnEffect } from '../../../game/store/effects/game-phase-effects';
+import {
+  TrainerCard,
+  Player,
+  StoreLike,
+  State,
+  GameError,
+  GameMessage,
+  StateUtils,
+  GamePhase,
+} from '../../../game';
+import { MOVE_CARDS } from '../../../game/store/prefabs/prefabs';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+
+export class Fantina extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.SUPPORTER;
+  public regulationMark: string = 'F';
+  public set: string = 'LOR';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '157';
+  public name: string = 'Fantina';
+  public fullName: string = 'Fantina LOR 157';
+  public text: string =
+    "You can use this card only if you have 10 or more cards in the Lost Zone. During your opponent's next turn, all of your Pokémon take 120 less damage from attacks from your opponent's Pokémon V (after applying Weakness and Resistance). (This includes Pokémon that come into play during that turn.) You may play only 1 Supporter card during your turn.";
+  public readonly FANTINA_MARKER = 'FANTINA_LOR_MARKER';
+  public readonly CLEAR_FANTINA_MARKER = 'FANTINA_LOR_CLEAR_MARKER';
+
+  public canPlay(_store: StoreLike, _state: State, player: Player): boolean {
+    if (player.supporterTurn > 0) {
+      return false;
+    }
+    if (player.lostzone.cards.length < 10) {
+      return false;
+    }
+    return true;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const player = effect.player;
+
+      if (player.supporterTurn > 0) {
+        throw new GameError(GameMessage.SUPPORTER_ALREADY_PLAYED);
+      }
+
+      // Can only use if you have 10+ cards in the Lost Zone
+      if (player.lostzone.cards.length < 10) {
+        throw new GameError(GameMessage.CANNOT_PLAY_THIS_CARD);
+      }
+
+      MOVE_CARDS(store, state, player.hand, player.supporter, { cards: [effect.trainerCard], sourceCard: this });
+
+      // Mark the player's side to take 120 less damage from V Pokemon during opponent's next turn
+      player.marker.addMarker(this.FANTINA_MARKER, this);
+      // Use opponent marker to know when to clear (at end of opponent's turn)
+      const opponent = StateUtils.getOpponent(state, player);
+      opponent.marker.addMarker(this.CLEAR_FANTINA_MARKER, this);
+    }
+
+    // During opponent's next turn: reduce damage from V Pokemon by 120
+    if (effect instanceof PutDamageEffect) {
+      if (state.phase !== GamePhase.ATTACK) {
+        return state;
+      }
+
+      // Find who owns the target
+      const targetPlayer = StateUtils.findOwner(state, effect.target);
+      if (!targetPlayer) {
+        return state;
+      }
+
+      // Check if Fantina marker is on the target player
+      if (!targetPlayer.marker.hasMarker(this.FANTINA_MARKER, this)) {
+        return state;
+      }
+
+      const attacker = StateUtils.findOwner(state, effect.source);
+      // Only reduce damage from opponent's attacks
+      if (targetPlayer === attacker) {
+        return state;
+      }
+
+      // Only reduce if attacker's Pokemon is a V Pokemon
+      const sourceCard = effect.source.getPokemonCard();
+      if (!sourceCard) {
+        return state;
+      }
+
+      const isV =
+        sourceCard.hasTag(CardTag.POKEMON_V) ||
+        sourceCard.hasTag(CardTag.POKEMON_VMAX) ||
+        sourceCard.hasTag(CardTag.POKEMON_VSTAR);
+
+      if (isV) {
+        effect.reduceDamage(120);
+      }
+    }
+
+    // Clear marker at end of opponent's turn
+    if (effect instanceof EndTurnEffect) {
+      const player = effect.player;
+      if (player.marker.hasMarker(this.CLEAR_FANTINA_MARKER, this)) {
+        player.marker.removeMarker(this.CLEAR_FANTINA_MARKER, this);
+        // The opponent (Fantina player) has their marker cleared
+        const opponent = StateUtils.getOpponent(state, player);
+        opponent.marker.removeMarker(this.FANTINA_MARKER, this);
+      }
+    }
+
+    return state;
+  }
+}

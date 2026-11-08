@@ -1,0 +1,75 @@
+import { SuperType, TrainerType } from '../../../game/store/card/card-types';
+import { Effect } from '../../../game/store/effects/effect';
+import { HealEffect } from '../../../game/store/effects/game-effects';
+import {
+  TrainerCard,
+  CardTarget,
+  PlayerType,
+  SlotType,
+  GameMessage,
+  StoreLike,
+  State,
+  Player,
+  ChoosePokemonPrompt,
+} from '../../../game';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+
+export class MoomooCheese extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.ITEM;
+  public regulationMark: string = 'D';
+  public set: string = 'VIV';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '156';
+  public name: string = 'Moomoo Cheese';
+  public fullName: string = 'Moomoo Cheese VIV';
+  public text: string =
+    'Heal 30 damage from up to 2 of your Pokémon that have Energy attached. You may play any number of Item cards during your turn.';
+
+  public canPlay(store: StoreLike, state: State, player: Player): boolean {
+    return true;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const player = effect.player;
+
+      // Build blocked list for Pokemon without energy
+      const blockedTo: CardTarget[] = [];
+      player.forEachPokemon(PlayerType.BOTTOM_PLAYER, (cardList, card, target) => {
+        if (!cardList.cards.some((c) => c.superType === SuperType.ENERGY)) {
+          blockedTo.push(target);
+        }
+      });
+
+      // Check if there are valid targets (Pokemon with energy)
+      if (blockedTo.length >= player.bench.length + 1) {
+        // All Pokemon blocked - none have energy, card still played but no effect
+        return state;
+      }
+
+      return store.prompt(
+        state,
+        new ChoosePokemonPrompt(
+          player.id,
+          GameMessage.CHOOSE_POKEMON_TO_HEAL,
+          PlayerType.BOTTOM_PLAYER,
+          [SlotType.ACTIVE, SlotType.BENCH],
+          { allowCancel: false, min: 0, max: 2, blocked: blockedTo },
+        ),
+        (targets) => {
+          if (!targets || targets.length === 0) {
+            return;
+          }
+          targets.forEach((target) => {
+            if (target.damage > 0) {
+              const healEffect = new HealEffect(player, target, 30);
+              store.reduceEffect(state, healEffect);
+            }
+          });
+        },
+      );
+    }
+
+    return state;
+  }
+}

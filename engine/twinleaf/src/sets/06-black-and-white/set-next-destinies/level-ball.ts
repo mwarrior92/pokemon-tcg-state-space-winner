@@ -1,0 +1,49 @@
+import { GameError, GameMessage, Player, State, StoreLike, TrainerCard, TrainerType } from '../../../game';
+import { SuperType } from '../../../game/store/card/card-types';
+import { PokemonCard } from '../../../game/store/card/pokemon-card';
+import { Effect } from '../../../game/store/effects/effect';
+import { SEARCH_DECK_FOR_CARDS_TO_HAND } from '../../../game/store/prefabs/prefabs';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+
+export class LevelBall extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.ITEM;
+  public set: string = 'NXD';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '89';
+  public name: string = 'Level Ball';
+  public fullName: string = 'Level Ball NXD';
+  public text: string =
+    'Search your deck for a Pokemon with 90 HP or less, reveal it, ' +
+    'and put it into your hand. Shuffle your deck afterward.';
+
+  public canPlay(_store: StoreLike, _state: State, player: Player): boolean {
+    return player.deck.cards.length > 0;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const player = effect.player;
+
+      if (player.deck.cards.length === 0) {
+        throw new GameError(GameMessage.CANNOT_PLAY_THIS_CARD);
+      }
+
+      const blocked: number[] = [];
+      player.deck.cards.forEach((card, index) => {
+        if (card instanceof PokemonCard && card.hp > 90) {
+          blocked.push(index);
+        }
+      });
+
+      SEARCH_DECK_FOR_CARDS_TO_HAND(
+        store,
+        state,
+        player,
+        this,
+        { superType: SuperType.POKEMON },
+        { min: 0, max: 1, allowCancel: false, blocked },
+      );
+    }
+    return state;
+  }
+}

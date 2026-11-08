@@ -1,0 +1,105 @@
+import { TrainerCard } from '../../../game/store/card/trainer-card';
+import { TrainerType, SuperType } from '../../../game/store/card/card-types';
+import {
+  Card,
+  CardList,
+  ChooseCardsPrompt,
+  GameMessage,
+  StoreLike,
+  State,
+  StateUtils,
+  Player,
+} from '../../../game';
+import { Effect } from '../../../game/store/effects/effect';
+import { TrainerEffect } from '../../../game/store/effects/play-card-effects';
+import { SHUFFLE_DECK, SHOW_CARDS_TO_PLAYER, MOVE_CARDS } from '../../../game/store/prefabs/prefabs';
+import { WAS_TRAINER_USED } from '../../../game/store/prefabs/trainer-prefabs';
+
+function* playCard(
+  next: Function,
+  store: StoreLike,
+  state: State,
+  self: Gordie,
+  effect: TrainerEffect,
+): IterableIterator<State> {
+  const player = effect.player;
+  const opponent = StateUtils.getOpponent(state, player);
+
+  MOVE_CARDS(store, state, player.hand, player.supporter, {
+    cards: [effect.trainerCard],
+    sourceCard: self,
+  });
+  effect.preventDefault = true;
+
+  if (player.deck.cards.length === 0) {
+    return state;
+  }
+
+  // Take top 7 cards into a temp list
+  const topCards = new CardList();
+  const count = Math.min(7, player.deck.cards.length);
+  MOVE_CARDS(store, state, player.deck, topCards, { count: count, sourceCard: self });
+
+  // Block non-Energy cards so player can only select Energy
+  const blocked: number[] = [];
+  topCards.cards.forEach((c, index) => {
+    if (c.superType !== SuperType.ENERGY) {
+      blocked.push(index);
+    }
+  });
+
+  let cards: Card[] = [];
+  yield store.prompt(
+    state,
+    new ChooseCardsPrompt(
+      player,
+      GameMessage.CHOOSE_CARD_TO_HAND,
+      topCards,
+      { superType: SuperType.ENERGY },
+      { min: 0, max: count, allowCancel: false, blocked },
+    ),
+    (selected) => {
+      cards = selected || [];
+      next();
+    },
+  );
+
+  // Move selected energy cards to hand, shuffle rest back into deck
+  MOVE_CARDS(store, state, topCards, player.hand, { cards: cards, sourceCard: self });
+  MOVE_CARDS(store, state, topCards, player.deck, { sourceCard: self });
+
+  // Reveal selected energy cards to opponent (card text says "reveal")
+  if (cards.length > 0) {
+    SHOW_CARDS_TO_PLAYER(store, state, opponent, cards);
+  }
+
+  return SHUFFLE_DECK(store, state, player);
+}
+
+export class Gordie extends TrainerCard {
+  protected _trainerType: TrainerType = TrainerType.SUPPORTER;
+  public regulationMark: string = 'E';
+  public set: string = 'EVS';
+  public cardImage: string = 'assets/cardback.png';
+  public setNumber: string = '149';
+  public name: string = 'Gordie';
+  public fullName: string = 'Gordie EVS';
+  public text: string =
+    'Look at the top 7 cards of your deck. You may reveal any number of Energy cards you find there and put them into your hand. Shuffle the other cards back into your deck. You may play only 1 Supporter card during your turn.';
+
+  public canPlay(store: StoreLike, state: State, player: Player): boolean {
+    if (player.supporterTurn > 0) {
+      return false;
+    }
+    return true;
+  }
+
+  public reduceEffect(store: StoreLike, state: State, effect: Effect): State {
+    if (WAS_TRAINER_USED(effect, this)) {
+      const generator = playCard(() => generator.next(), store, state, this, effect);
+      return generator.next().value;
+    }
+
+    return state;
+  }
+}
