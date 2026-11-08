@@ -9,6 +9,7 @@ import { CardList, GameError, GamePhase, Player, PokemonCardList, Prompt, State 
 import { prizesLeft } from './rules';
 import { Rng } from './rng';
 import { DeadEnd, MainOption, Sim, mainCandidates, promptOptions } from './sim';
+import { firstDifference, sameState } from './clone';
 
 // ---------------------------------------------------------------- canonical key
 
@@ -41,7 +42,7 @@ function playerKey(p: Player, st: State): string {
   return [names(p.hand), names(p.discard), p.deck.cards.length, ordered(p.deck), p.prizes.map(ordered).join('/'), names(p.lostzone), names(p.stadium),
     names(p.supporter), slotKey(p.active), p.bench.map(slotKey).sort().join(';'), markers(p),
     p.energyPlayedTurn === st.turn ? 'E' : '', p.retreatedTurn === st.turn ? 'R' : '', p.stadiumPlayedTurn === st.turn ? 'S' : '',
-    p.usedVSTAR ? 'V' : ''].join('|');
+    p.usedVSTAR ? 'V' : '', p.supporterTurn].join('|');
 }
 
 export function stateKey(st: State): string {
@@ -96,9 +97,19 @@ function hashStr(s: string): number {
   return h >>> 0;
 }
 
+/** Where state copies go (instrumentation; cheap counters). */
+export const copyStats = { copies: 0, illegal: 0, engineError: 0, deadEnd: 0, leaves: 0, duplicates: 0, illegalChanged: 0, illegalBy: new Map<string, number>(), changedBy: new Map<string, number>(), trackChanges: false };
+
 /** All ways (up to caps) to play main-phase option `o` from `sim`, each a settled child. Prompts for
  *  the other player (e.g. choosing a new Active after a Knock Out) are answered at random. */
-export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes: number, opts: ExpandOptions = {}): Child[] {
+/** A copy of the parent that the engine rejected an action on without changing anything: the
+ *  next option tried from the same parent reuses it instead of copying again (41% of all copies
+ *  were spent on rejected actions, 95% of them unchanged). */
+export interface Spare {
+  sim?: Sim;
+}
+
+export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes: number, opts: ExpandOptions = {}, spare?: Spare): Child[] {
   const promptCap = opts.promptCap ?? 6;
   const branchCap = opts.branchCap ?? 12;
   const base = (opts.seed ?? 1) ^ hashStr(o.label);
@@ -108,14 +119,43 @@ export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes
   const moverId = sim.state.players[mover].id;
   while (pending.length && out.length < branchCap) {
     const prefix = pending.pop()!;
-    const t = sim.copy(new Rng(base));     // same chance on every replay of this action
+    let t: Sim;
+    if (spare?.sim) {
+      t = spare.sim;
+      spare.sim = undefined;
+      t.rng = new Rng(base);
+    } else {
+      t = sim.copy(new Rng(base));     // same chance on every replay of this action
+      copyStats.copies++;
+    }
     const labels: string[] = [o.label];
     try {
       t.apply(o.action);
     } catch (e) {
       if (e instanceof GameError) {
+        copyStats.illegal++;
+        // the engine logs some actions before rejecting them (e.g. "used ability X"); logs are
+        // drained after every step anyway, so they do not count as a change
+        if (t.state.logs.length && !sim.state.logs.length) {
+          t.state.logs = [];
+        }
+        if (spare && !t.pendingPrompt() && sameState(sim.state, t.state)) {
+          spare.sim = t;                // untouched: reuse for the next option
+        } else {
+          copyStats.illegalChanged++;   // the engine changed something before rejecting
+          if (copyStats.trackChanges) {
+            const d = t.pendingPrompt() ? 'pending prompt' : (firstDifference(sim.state, t.state) ?? '?').replace(/\[\d+\]/g, '[i]');
+            const key = `${o.label.startsWith("play ") ? o.label : o.label.split(" ")[0]} | ${(e as Error).message} | ${d}`;
+            copyStats.changedBy.set(key, (copyStats.changedBy.get(key) ?? 0) + 1);
+          }
+        }
+        {
+          const why = `${o.label.split(' ')[0]} ${o.label.split(' ')[0] === 'play' || o.label.split(' ')[0] === 'attack' ? '' : ''}| ${(e as Error).message}`;
+          copyStats.illegalBy.set(why, (copyStats.illegalBy.get(why) ?? 0) + 1);
+        }
         return out;      // illegal here
       }
+      copyStats.engineError++;
       return out;        // engine error on this action: treat as unplayable
     }
     // path = answer index chosen at each of the mover's prompts so far; the first replay of a
@@ -162,10 +202,12 @@ export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes
       }
     }
     if (!ok) {
+      copyStats.deadEnd++;
       continue;
     }
     const st = t.state;
     const terminal = t.finished || st.activePlayer !== mover || st.phase !== GamePhase.PLAYER_TURN;
+    copyStats.leaves++;
     out.push({ sim: t, label: labels.join(' | '), step: { o: o.label, a: path }, terminal, prizes: startPrizes - prizesLeft(st.players[mover]) });
   }
   return out;
@@ -183,10 +225,13 @@ export function replayStep(sim: Sim, step: Step, mover: number, startPrizes: num
 export function children(sim: Sim, mover: number, startPrizes: number, opts: ExpandOptions = {}): Child[] {
   const seen = new Set<string>();
   const out: Child[] = [];
+  const spare: Spare = {};
   for (const o of mainCandidates(sim.state)) {
-    for (const c of expandAction(sim, o, mover, startPrizes, opts)) {
+    for (const c of expandAction(sim, o, mover, startPrizes, opts, spare)) {
       const k = c.terminal ? `T${c.prizes}|${c.label}` : stateHash(c.sim.state);
-      if (!seen.has(k)) {
+      if (seen.has(k)) {
+        copyStats.duplicates++;
+      } else {
         seen.add(k);
         out.push(c);
       }
@@ -234,6 +279,9 @@ export interface SearchOptions extends ExpandOptions {
   sampleSeed?: number;
   /** wall-clock cap for one search (default 15 s); the result is then marked incomplete */
   maxMs?: number;
+  /** instrumentation: called for every generated child; `known` = its position was already
+   *  reached by another path (the work of generating it was redundant) */
+  onChild?: (c: Child, known: boolean, parentDepth: number) => void;
 }
 
 /** Breadth-first over the turn (shortest lines first), positions merged by key, values backed up
@@ -328,6 +376,7 @@ export function offenseSearch(root: Sim, opts: SearchOptions = {}): SearchResult
     }
     release(n);
     for (const c of kids) {
+      opts.onChild?.(c, !c.terminal && memo.has(stateHash(c.sim.state)), n.depth);
       if (c.terminal) {
         n.kids.push({ terminal: c.prizes, label: c.label });
         best = Math.max(best, c.prizes);

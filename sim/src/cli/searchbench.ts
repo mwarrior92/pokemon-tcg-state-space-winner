@@ -2,7 +2,7 @@
 //   node --expose-gc dist/searchbench.js [n=12] [budget=3000] [seed=202] [keepSims]
 import { loadCards, metaDecks } from '../cards';
 import { Rng } from '../rng';
-import { offenseSearch } from '../search';
+import { copyStats, offenseSearch } from '../search';
 import { Sim } from '../sim';
 import { generateState } from '../stategen';
 
@@ -28,6 +28,7 @@ Sim.prototype.copy = function (this: Sim, r?: Rng) {
   }
   return realCopy.call(this, r);
 };
+copyStats.trackChanges = !!process.env.TRACK_CHANGES;
 let ms = 0, worst = 0, complete = 0, prizes = 0, positions = 0;
 for (let k = 0; k < n; k++) {
   const a = rng.pick(decks), b = rng.pick(decks);
@@ -44,4 +45,9 @@ for (let k = 0; k < n; k++) {
   positions += r.nodes.length;
   console.log(`${String(k).padStart(3)} T${String(g.info.turn).padStart(2)} prizes ${r.value} ${r.complete ? 'complete' : 'partial '} ${String(r.expansions).padStart(5)} steps ${String(r.nodes.length).padStart(5)} nodes ${String(copies).padStart(6)} copies ${(r.ms / 1000).toFixed(2)} s  held ${(h1 - h0).toFixed(0)} MB, peak heap ${peak.toFixed(0)} MB (${(peak - h0).toFixed(0)} over start)`);
 }
+const cs = copyStats;
+const pct = (x: number) => `${(100 * x / cs.copies).toFixed(0)}%`;
+console.log(`\nstate copies in the search: ${cs.copies}; became a child ${pct(cs.leaves)} (of which ${pct(cs.duplicates)} duplicated a sibling's position), action rejected ${cs.illegal} times (${cs.illegalChanged} of them had changed the copy, which is then discarded; the rest reuse it), prompt dead end ${pct(cs.deadEnd)}, engine error ${pct(cs.engineError)}`);
+[...cs.illegalBy].sort((a, b) => b[1] - a[1]).slice(0, 15).forEach(([k, v]) => console.log(`  illegal: ${pct(v).padStart(4)} ${k}`));
+[...cs.changedBy].sort((a, b) => b[1] - a[1]).slice(0, 12).forEach(([k, v]) => console.log(`  changed: ${String(v).padStart(5)} ${k}`));
 console.log(`\ncomplete ${complete}/${n}, mean prizes ${(prizes / n).toFixed(2)}, mean positions ${(positions / n).toFixed(0)}; mean ${(ms / n / 1000).toFixed(2)} s/state, worst ${(worst / 1000).toFixed(2)} s, heap now ${heap().toFixed(0)} MB`);

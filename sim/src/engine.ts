@@ -4,4 +4,4 @@ export * from '../../engine/twinleaf/src/game';
 export { ShuffleHandPrompt } from '../../engine/twinleaf/src/game/store/prompts/shuffle-hand-prompt';
 export { ShufflePrizesPrompt } from '../../engine/twinleaf/src/game/store/prompts/shuffle-prizes-prompt';
 export { ChooseAttackPrompt } from '../../engine/twinleaf/src/game/store/prompts/choose-attack-prompt';
-export * as Sets from '../../engine/twinleaf/src/sets';
+export * as Sets from './standard-sets';

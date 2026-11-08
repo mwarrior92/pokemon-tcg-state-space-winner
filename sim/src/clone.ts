@@ -19,6 +19,106 @@ export const SHARED_CARD_FIELDS = new Set([
 ]);
 export const ONE_LEVEL_CARD_FIELDS = new Set(['attacks', 'powers']);
 
+/** True when `b` (a deepCopy of `a`, possibly changed since) still equals `a` exactly: same
+ *  structure, same primitive values, same shared references. Reads only. Used to reuse a copy on
+ *  which the engine rejected an action without changing anything. */
+export function sameState(a: any, b: any): boolean {
+  const seen = new Set<any>();
+  const rec = (x: any, y: any): boolean => {
+    if (x === y) {
+      return true;     // primitives, and fields shared between copies
+    }
+    if (x === null || y === null || typeof x !== 'object' || typeof y !== 'object') {
+      return false;
+    }
+    if (seen.has(x)) {
+      return true;     // compared already (aliasing / cycles)
+    }
+    seen.add(x);
+    if (Object.getPrototypeOf(x) !== Object.getPrototypeOf(y)) {
+      return false;
+    }
+    if (Array.isArray(x)) {
+      if (x.length !== y.length) {
+        return false;
+      }
+      for (let i = 0; i < x.length; i++) {
+        if (!rec(x[i], y[i])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (x instanceof Map || x instanceof Set) {
+      if (x.size !== y.size) {
+        return false;
+      }
+      // deepCopy rebuilds them in insertion order, so entries line up pairwise
+      const ix = [...x.entries()], iy = [...y.entries()];
+      for (let i = 0; i < ix.length; i++) {
+        if (!rec(ix[i][0], iy[i][0]) || !rec(ix[i][1], iy[i][1])) {
+          return false;
+        }
+      }
+      return true;
+    }
+    if (x instanceof Date) {
+      return x.getTime() === y.getTime();
+    }
+    const kx = Object.keys(x);
+    if (kx.length !== Object.keys(y).length) {
+      return false;
+    }
+    for (let i = 0; i < kx.length; i++) {
+      const k = kx[i];
+      if (!rec(x[k], y[k])) {
+        return false;
+      }
+    }
+    return true;
+  };
+  return rec(a, b);
+}
+
+/** Path of the first difference between `a` and its copy `b` (debugging aid). */
+export function firstDifference(a: any, b: any, path = 'state', seen = new Set<any>()): string | undefined {
+  if (a === b) {
+    return undefined;
+  }
+  if (a === null || b === null || typeof a !== 'object' || typeof b !== 'object') {
+    return path;
+  }
+  if (seen.has(a)) {
+    return undefined;
+  }
+  seen.add(a);
+  if (Array.isArray(a)) {
+    if (a.length !== b.length) {
+      return `${path}.length`;
+    }
+    for (let i = 0; i < a.length; i++) {
+      const d = firstDifference(a[i], b[i], `${path}[${i}]`, seen);
+      if (d) {
+        return d;
+      }
+    }
+    return undefined;
+  }
+  if (Object.getPrototypeOf(a) !== Object.getPrototypeOf(b)) {
+    return `${path} (type)`;
+  }
+  for (const k of new Set([...Object.keys(a), ...Object.keys(b)])) {
+    if ((k in a) !== (k in b)) {
+      return `${path}.${k} (${k in a ? 'removed' : 'added'})`;
+    }
+    const d = firstDifference(a[k], b[k], `${path}.${k}`, seen);
+    if (d) {
+      return d;
+    }
+  }
+  return undefined;
+}
+
 export function deepCopy<T>(root: T): T {
   const seen = new Map<any, any>();
 

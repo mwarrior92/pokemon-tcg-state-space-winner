@@ -188,7 +188,9 @@ export function mainCandidates(state: State): MainOption[] {
   const seenHand = new Set<string>();
   // once-per-turn rules the engine would reject anyway (cheap pre-filter; the engine still decides)
   const energyDone = me.energyPlayedTurn === state.turn && !state.rules.unlimitedEnergyAttachments && !(me as any).usedDragonsWish;
-  const supporterDone = me.supporter.cards.length > 0;
+  // the engine and ~420 Supporter cards check supporterTurn; many Supporters leave the Supporter
+  // zone right after resolving, so the zone alone misses them
+  const supporterDone = me.supporter.cards.length > 0 || me.supporterTurn > 0;
   const retreatDone = me.retreatedTurn === state.turn;
 
   me.hand.cards.forEach((c: Card, hi: number) => {

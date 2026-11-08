@@ -1,0 +1,79 @@
+# offense round "offense-r2": 800 states to label, 100 to evaluate, search budget 3000, 9 workers
+  labelled 50/800 (45 s; last 50 in 45 s, 5.8 s/job in a worker; max worker heap 1070 MB)
+  labelled 100/800 (84 s; last 50 in 39 s, 5.9 s/job in a worker; max worker heap 1198 MB)
+  labelled 150/800 (121 s; last 50 in 37 s, 5.4 s/job in a worker; max worker heap 1080 MB)
+  labelled 200/800 (161 s; last 50 in 40 s, 5.3 s/job in a worker; max worker heap 1101 MB)
+  labelled 250/800 (202 s; last 50 in 41 s, 5.9 s/job in a worker; max worker heap 1020 MB)
+  labelled 300/800 (246 s; last 50 in 44 s, 6.4 s/job in a worker; max worker heap 1076 MB)
+  labelled 350/800 (286 s; last 50 in 40 s, 6.2 s/job in a worker; max worker heap 1045 MB)
+  labelled 400/800 (329 s; last 50 in 43 s, 6.7 s/job in a worker; max worker heap 1085 MB)
+  labelled 450/800 (376 s; last 50 in 47 s, 7.0 s/job in a worker; max worker heap 975 MB)
+  labelled 500/800 (418 s; last 50 in 42 s, 6.4 s/job in a worker; max worker heap 1140 MB)
+  labelled 550/800 (476 s; last 50 in 58 s, 8.3 s/job in a worker; max worker heap 1086 MB)
+  labelled 600/800 (520 s; last 50 in 45 s, 6.7 s/job in a worker; max worker heap 973 MB)
+  labelled 650/800 (566 s; last 50 in 46 s, 7.0 s/job in a worker; max worker heap 1121 MB)
+  labelled 700/800 (619 s; last 50 in 52 s, 7.7 s/job in a worker; max worker heap 1092 MB)
+  labelled 750/800 (668 s; last 50 in 49 s, 7.0 s/job in a worker; max worker heap 1084 MB)
+  labelled 800/800 (772 s; last 50 in 104 s, 11.1 s/job in a worker; max worker heap 977 MB)
+labelled 7489 positions from 794 states in 773 s; searches complete 236/794; mean root value 0.53
+target distribution: 0:6487 1:753 2:214 3:30 4:4 5:1
+fit: all 1236 features: validation MSE 0.185 (predicting the mean: 0.235, R² 0.212)
+
+feature reduction (validation MSE; lower is better):
+  all features                              1236 features  [probe]  MSE 0.185  R² 0.212
+  cheap groups only (no engine probes)       886 features  [cheap]  MSE 0.185  R² 0.212
+  all but probe-damage                       900 features  [probe]  MSE 0.182  R² 0.226
+  all but probe-ability                     1224 features  [probe]  MSE 0.190  R² 0.195
+  all but probe-hand                        1234 features  [probe]  MSE 0.185  R² 0.212
+  cheap + probe-damage                      1222 features  [probe]  MSE 0.190  R² 0.195
+  top 200 features by importance             200 features  [probe]  MSE 0.181  R² 0.229
+  top 100 features by importance             100 features  [probe]  MSE 0.177  R² 0.249
+  top 50 features by importance               50 features  [probe]  MSE 0.176  R² 0.251
+  top 25 features by importance               25 features  [probe]  MSE 0.162  R² 0.313
+  top 200 cheap features by importance       200 features  [cheap]  MSE 0.183  R² 0.222
+  top 100 cheap features by importance       100 features  [cheap]  MSE 0.182  R² 0.227
+  top 50 cheap features by importance         50 features  [cheap]  MSE 0.181  R² 0.232
+  reach + board + resources only             239 features  [cheap]  MSE 0.182  R² 0.227
+chosen: "top 25 features by importance" (25 features, probe)
+
+top features of the full model (weight on a standardized scale):
+  +0.035  me.reach.maxPrize
+  +0.031  me.reach.ko0
+  +0.026  me.s0.a0.nowToActive
+  +0.025  me.s2.abilityDamage
+  +0.025  me.reach.count
+  +0.022  me.s0.abilityDamage
+  +0.019  me.s1.abilityDamage
+  -0.016  me.s0.a0.gap
+  +0.016  op.s1.energyM
+  +0.016  me.s0.energy
+  +0.015  me.s3.abilityDamage
+  +0.014  me.s1.energyW
+  +0.013  me.s0.a0.koTo0
+  +0.012  op.s5.a1.koTo4
+  +0.011  me.s4.energyW
+  +0.011  me.counterAbilities
+  +0.011  me.s0.a1.nowToActive
+  +0.010  op.s0.damage
+  +0.010  me.s0.energyP
+  -0.010  me.s0.retreatGap
+  +0.009  me.reach.oneShort3
+  +0.009  op.s4.typeD
+  -0.009  retreated
+  +0.009  me.s0.energyC
+  +0.009  me.s1.stage
+  evaluated 10/100 (35 s; last 10 in 35 s, 2.6 s/job in a worker; max worker heap 813 MB)
+  evaluated 20/100 (54 s; last 10 in 19 s, 8.1 s/job in a worker; max worker heap 1140 MB)
+  evaluated 30/100 (66 s; last 10 in 12 s, 9.9 s/job in a worker; max worker heap 1181 MB)
+  evaluated 40/100 (87 s; last 10 in 21 s, 5.6 s/job in a worker; max worker heap 1309 MB)
+  evaluated 50/100 (98 s; last 10 in 11 s, 8.0 s/job in a worker; max worker heap 1655 MB)
+  evaluated 60/100 (121 s; last 10 in 23 s, 4.6 s/job in a worker; max worker heap 1008 MB)
+  evaluated 70/100 (144 s; last 10 in 22 s, 20.1 s/job in a worker; max worker heap 1476 MB)
+  evaluated 80/100 (169 s; last 10 in 26 s, 9.1 s/job in a worker; max worker heap 1365 MB)
+  evaluated 90/100 (197 s; last 10 in 28 s, 11.9 s/job in a worker; max worker heap 1570 MB)
+  evaluated 100/100 (218 s; last 10 in 21 s, 21.0 s/job in a worker; max worker heap 1429 MB)
+
+evaluation on 100 fresh states (218 s):
+  search found 0.57 prizes/turn, policy took 0.60; policy at least as good as the search on 93/100; policy beat the search on 7; mean gap to the better of the two 0.07; policy 10.10 s/turn
+
+review packet: C:\Users\marcw\local\winner\sim\runs\offense-r2\review-packet.md

@@ -71,8 +71,15 @@ function* playCard(
 
   // Blocking pokemon cards, that cannot be valid evolutions
   const blocked: number[] = [];
+  // [winner patch 016] the card must have no Abilities AND evolve from one of your Pokémon
+  // (upstream blocked only cards failing both, so a non-evolution without an Ability could be
+  // chosen and the next prompt had no legal target)
   player.deck.cards.forEach((card, index) => {
-    if (card instanceof PokemonCard && !evolutionNames.includes(card.name)) {
+    if (card instanceof PokemonCard) {
+      if (!evolutionNames.includes(card.name)) {
+        blocked.push(index);
+        return;
+      }
       const powersEffect = new CheckPokemonPowersEffect(player, card);
       state = store.reduceEffect(state, powersEffect);
       if (powersEffect.powers.some((power) => power.powerType === PowerType.ABILITY)) {

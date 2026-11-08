@@ -33,6 +33,7 @@ matches/choice_data_endturn.npz
 # sim/ (TypeScript simulator): dependencies, bundles, profiles, bulky run data
 sim/node_modules/
 sim/dist/
+sim/dist-tools/
 sim/prof/
 sim/prof.js
 sim/reports/*.txt
