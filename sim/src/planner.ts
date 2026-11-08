@@ -75,10 +75,16 @@ function valueFor(win: WinModel, s: Sim, me: number): number {
  *  began; it returns the value for `me`. */
 export interface Evaluator {
   afterTurn(s: Sim, me: number, startPrizes: [number, number]): number;
+  /** cheaper stand-in for afterTurn used while searching; the best endings are then re-ranked
+   *  with afterTurn (optional) */
+  quick?(s: Sim, me: number, startPrizes: [number, number]): number;
+  /** value for `me` at the start of its next turn (after the opponent's reply), with the prizes
+   *  both had left when `me`'s previous turn began */
+  atMyTurn(s: Sim, me: number, startPrizes: [number, number]): number;
 }
 
 export function winEvaluator(win: WinModel): Evaluator {
-  return { afterTurn: (s, me) => valueFor(win, s, me) };
+  return { afterTurn: (s, me) => valueFor(win, s, me), atMyTurn: (s, me) => valueFor(win, s, me) };
 }
 
 /** Two-turn prize race from the models trained so far (policy v1):
@@ -93,7 +99,18 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
   const po = new Predictor(off), pd = new Predictor(def);
   const go = groupsFor(off), gd = groupsFor(def);
   const oo = new Set(off.names), od = new Set(def.names);
+  const quick = (s: Sim, me: number, start: [number, number]): number => {
+    if (s.finished) {
+      const w = s.state.winner;
+      return w === GameWinner.DRAW ? 0 : (w === GameWinner.PLAYER_1 ? 0 : 1) === me ? 10 : -10;
+    }
+    const taken = start[0] - prizesLeft(s.state.players[me]);
+    const lost = start[1] - prizesLeft(s.state.players[1 - me]);
+    const fd = features(s, me, gd, { only: od });
+    return taken - lost - Math.max(0, pd.predict(fd.names, fd.values));
+  };
   return {
+    quick,
     afterTurn: (s, me, start) => {
       if (s.finished) {
         const w = s.state.winner;
@@ -111,6 +128,17 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
       }
       return taken - lost - theirs + gamma * next;
     },
+    atMyTurn: (s, me, start) => {
+      if (s.finished) {
+        const w = s.state.winner;
+        return w === GameWinner.DRAW ? 0 : (w === GameWinner.PLAYER_1 ? 0 : 1) === me ? 10 : -10;
+      }
+      // prizes both sides took over the two turns, plus what I can take now
+      const taken = start[0] - prizesLeft(s.state.players[me]);
+      const lost = start[1] - prizesLeft(s.state.players[1 - me]);
+      const fo = features(s, me, go, { only: oo });
+      return taken - lost + Math.max(0, po.predict(fo.names, fo.values));
+    },
   };
 }
 
@@ -122,11 +150,13 @@ interface TurnSearch {
   endings: { node: PNode; terminal?: { label: string; step: Step; value: number } ; value: number }[];
 }
 
-function searchTurn(root: Sim, ev: Evaluator, budget: number, maxMs: number, seed: number): TurnSearch {
+function searchTurn(root: Sim, full: Evaluator, budget: number, maxMs: number, seed: number, rerank = 8): TurnSearch {
   const t0 = Date.now();
   const mover = root.state.activePlayer;
   const start = prizesLeft(root.state.players[mover]);
   const startBoth: [number, number] = [start, prizesLeft(root.state.players[1 - mover])];
+  // while searching, the evaluator's quick value if it has one
+  const ev: Evaluator = full.quick ? { ...full, afterTurn: full.quick } : full;
   const stopValue = (s: Sim, k: number): number => {
     const after = passTurn(s, seed + k);
     return after ? ev.afterTurn(after, mover, startBoth) : (s.finished ? ev.afterTurn(s, mover, startBoth) : -1e9);
@@ -208,6 +238,35 @@ function searchTurn(root: Sim, ev: Evaluator, budget: number, maxMs: number, see
     }
     if (n !== rootNode) {
       n.sim = undefined;
+    }
+  }
+  // re-rank the best endings with the full value (e.g. the race's next-turn term)
+  if (full.quick && rerank > 0) {
+    const top = endings.slice().sort((a, b) => b.value - a.value).slice(0, rerank);
+    for (const e of top) {
+      const r = replayEnding(root, e.node, e.terminal);
+      const after = r ? (r.ended || r.sim.finished ? r.sim : passTurn(r.sim, seed + 3)) : undefined;
+      if (!after) {
+        continue;
+      }
+      e.value = full.afterTurn(after, mover, startBoth);
+      if (e.terminal) {
+        e.terminal.value = e.value;
+        const k = e.node.kids.find(x => x.terminal !== undefined && x.label === e.terminal!.label);
+        if (k) {
+          k.terminal = e.value;
+        }
+      } else {
+        e.node.stop = e.value;
+      }
+    }
+    // endings not re-ranked keep their quick value: rank them below the re-ranked ones
+    const reranked = new Set(top);
+    const floor = Math.min(...top.map(e => e.value));
+    for (const e of endings) {
+      if (!reranked.has(e) && e.value > floor) {
+        e.value = floor - 1e-6;
+      }
     }
   }
   for (let pass = 0; pass < 2; pass++) {
@@ -295,13 +354,15 @@ export interface Plan2Options extends PlanOptions {
   risk?: number;         // weight of the lower quartile in the score (0 = average only)
 }
 
-export function planTurn2(root: Sim, win: WinModel, opts: Plan2Options = {}): Plan {
+export function planTurn2(root: Sim, ev: WinModel | Evaluator, opts: Plan2Options = {}): Plan {
   const t0 = Date.now();
   const mover = root.state.activePlayer;
   const start = prizesLeft(root.state.players[mover]);
+  const startBoth: [number, number] = [start, prizesLeft(root.state.players[1 - mover])];
   const seed = opts.seed ?? 1;
   const rng = new Rng(seed * 7919 + 3);
-  const ts = searchTurn(root, winEvaluator(win), opts.budget ?? 100, opts.maxMs ?? 5000, seed);
+  const e = ev instanceof WinModel ? winEvaluator(ev) : ev;
+  const ts = searchTurn(root, e, opts.budget ?? 100, opts.maxMs ?? 5000, seed);
   // the best few distinct ways to end the turn, by their one-turn value
   const sorted = ts.endings.slice().sort((a, b) => b.value - a.value);
   const picked: { e: TurnSearch['endings'][number]; sim: Sim; line: string[]; ended: boolean; after: Sim }[] = [];
@@ -325,24 +386,32 @@ export function planTurn2(root: Sim, win: WinModel, opts: Plan2Options = {}): Pl
     seen.add(k);
     picked.push({ e, sim: r.sim, line: r.line, ended: r.ended, after });
   }
+  for (const x of opts.extra ?? []) {
+    const after = x.ended || x.sim.finished ? x.sim : passTurn(x.sim, seed + 5);
+    if (after && !seen.has(stateHash(after.state))) {
+      seen.add(stateHash(after.state));
+      picked.push({ e: sorted[0], sim: x.sim, line: x.line, ended: x.ended || x.sim.finished || x.sim.state.activePlayer !== mover, after });
+    }
+  }
   if (!picked.length) {
-    return { ...planTurn(root, win, opts), ms: Date.now() - t0 };
+    return { ...planTurn(root, e, opts), ms: Date.now() - t0 };
   }
   const risk = opts.risk ?? 0.5;
   const scored = picked.map(p => {
     const vals: number[] = [];
     if (p.after.finished) {
-      vals.push(valueFor(win, p.after, mover));
+      vals.push(e.atMyTurn(p.after, mover, startBoth));
     } else {
       for (let i = 0; i < (opts.replies ?? 4); i++) {
         const s = p.after.copy(rng.fork());
         resampleHidden(s, mover, rng);
-        const reply = planTurn(s, win, { budget: opts.replyBudget ?? 60, maxMs: 2000, seed: seed + 101 * i });
+        // the opponent plans its reply with the same evaluator, from its side
+        const reply = planTurn(s, e, { budget: opts.replyBudget ?? 60, maxMs: 2000, seed: seed + 101 * i });
         let next: Sim | undefined = reply.end;
         if (!reply.ended && !next.finished) {
           next = passTurn(next, seed + 977 * i);
         }
-        vals.push(next ? valueFor(win, next, mover) : 0.5);
+        vals.push(next ? e.atMyTurn(next, mover, startBoth) : e.afterTurn(p.after, mover, startBoth));
       }
     }
     vals.sort((a, b) => a - b);

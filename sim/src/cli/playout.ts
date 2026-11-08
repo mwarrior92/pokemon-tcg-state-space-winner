@@ -3,7 +3,7 @@
 //
 //   node dist/playout.js --games 200 --offense runs/offense-r3/model.json --defense runs/defense-r1/model.json [--run name]
 //     [--workers auto] [--budget 100] [--max-turns 80] [--seed n] [--vectors]
-//     [--A v0|race|plan:<value-model.json>|plan2:<value-model.json>] [--B ...]   (head to head; seats swap every game)
+//     [--A v0|race|race2|plan:<value-model.json>|plan2:<value-model.json>] [--B ...]   (head to head; seats swap every game)
 //
 // Turn policy (both sides, v0): the offense search policy; if it finds no prize this turn, the
 // defense policy instead (set up so the opponent's next turn takes as few prizes as possible).
@@ -99,6 +99,12 @@ function playGame(job: GameJob): GameRec {
         const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
         const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
         next = planTurn(sim, raceEvaluator(off, def, 0.8, job.seed + t), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra }).end;
+      } else if (seat === 'race2' && def) {
+        // v2: the two-turn prize race tested against sampled opponent replies (disruption-aware)
+        policy = 'plan';
+        const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
+        const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
+        next = planTurn2(sim, raceEvaluator(off, def, 0.8, job.seed + t), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra, candidates: 3, replies: 3, replyBudget: 40 }).end;
       } else if (seat.startsWith('plan2:')) {
         policy = 'plan';
         next = planTurn2(sim, winModel(seat.slice(6)), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
@@ -235,7 +241,7 @@ function report(dir: string, games: GameRec[]): void {
     for (const sp of specs) {
       const mine = decided.filter(g => g.seats.includes(sp));
       const won = mine.filter(g => g.seats[g.winner] === sp).length;
-      const kind = sp.startsWith('plan2:') ? 'two-turn planner' : sp.startsWith('plan:') ? 'one-turn planner' : sp === 'race' ? 'v1 (two-turn prize race)' : 'v0 (offense, else defense)';
+      const kind = sp.startsWith('plan2:') ? 'two-turn planner' : sp.startsWith('plan:') ? 'one-turn planner' : sp === 'race' ? 'v1 (two-turn prize race)' : sp === 'race2' ? 'v2 (prize race vs sampled replies)' : 'v0 (offense, else defense)';
       L.push(`- ${kind}${sp.includes(':') ? ` with \`${path.basename(path.dirname(sp.replace(/^plan2?:/, '')))}\`` : ''}: won ${won}/${mine.length} (${(100 * won / Math.max(1, mine.length)).toFixed(0)}%)`);
     }
   }

@@ -10,7 +10,8 @@ entries.tests = 'test/index.ts';
 
 await build({
   entryPoints: entries,
-  outdir: 'dist',
+  // SIM_OUT=dist-tools builds elsewhere (e.g. while a run is using dist/)
+  outdir: process.env.SIM_OUT ?? 'dist',
   bundle: true,
   platform: 'node',
   target: 'node20',
@@ -29,7 +30,7 @@ await build({
 const SLOW = 'var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);';
 const FAST = 'var __cjsCache = new WeakMap(); var __toCommonJS = (mod) => { let r = __cjsCache.get(mod); if (!r) { r = __copyProps(__defProp({}, "__esModule", { value: true }), mod); __cjsCache.set(mod, r); } return r; };';
 for (const name of Object.keys(entries)) {
-  const f = `dist/${name}.js`;
+  const f = `${process.env.SIM_OUT ?? 'dist'}/${name}.js`;
   const src = readFileSync(f, 'utf8');
   if (src.includes(SLOW)) {
     writeFileSync(f, src.replace(SLOW, FAST));
