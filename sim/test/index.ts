@@ -85,6 +85,11 @@ test('cards: new or changed Standard cards pass the static and in-play checks', 
     console.log('  (after reviewing, record them with: node dist/cardbaseline.js)');
   }
   assert.deepEqual(failures, []);
+  // and none disappeared: every recorded Standard card still has an engine definition loaded
+  // (the simulator loads only the modern eras plus listed reprints, see src/standard-sets.ts)
+  const pool = standardPool();
+  const lost = Object.keys(manifest).filter(name => !pool.has(name));
+  assert.deepEqual(lost, [], 'Standard cards no longer loaded (add their files to src/standard-sets.ts, or rebaseline if intended)');
 });
 
 test('cards: every Standard card file in the engine is registered in its set (new files are not silently ignored)', () => {
