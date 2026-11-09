@@ -1,0 +1,30 @@
+Pokémon: 14
+4 Archen WHT 50
+4 Mega Kangaskhan ex MEG 104
+2 Archeops WHT 51
+2 Latias ex SSP 76
+1 Fezandipiti ex ASC 142
+1 Lillie's Clefairy ex JTG 56
+
+Trainer: 30
+4 Antique Plume Fossil WHT 79
+4 Boss's Orders MEG 114
+4 Lillie's Determination MEG 119
+3 Poké Pad POR 81
+3 Ultra Ball MEG 131
+2 Crispin SCR 133
+2 Crushing Hammer POR 71
+2 Night Stretcher ASC 196
+1 Area Zero Underdepths SCR 131
+1 Judge POR 76
+1 Jumbo Ice Cream PFL 91
+1 Rare Candy MEG 125
+1 Risky Ruins MEG 127
+1 Rosa's Encouragement POR 84
+
+Energy: 16
+9 Fighting Energy MEE 14
+4 Telepathic Psychic Energy POR 88
+3 Psychic Energy MEE 13
+
+Total Cards: 60
