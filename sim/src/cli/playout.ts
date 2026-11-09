@@ -108,8 +108,11 @@ function playGame(job: GameJob): GameRec {
         const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
         next = planTurn2(sim, raceEvaluator(off, def, 0.8, job.seed + t), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra, candidates: 5, replies: 6, replyBudget: 40, risk: 0.25 }).end;
       } else if (seat.startsWith('plan2:')) {
+        // the win model, tested against sampled replies (same settings as v2), with the tactical line
         policy = 'plan';
-        next = planTurn2(sim, winModel(seat.slice(6)), { budget: job.budget, maxMs: 4000, seed: job.seed + t }).end;
+        const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
+        const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
+        next = planTurn2(sim, winModel(seat.slice(6)), { budget: job.budget, maxMs: 4000, seed: job.seed + t, extra, candidates: 5, replies: 6, replyBudget: 40, risk: 0.25 }).end;
       } else {
         const o = playOffenseSearch(sim, off, { budget: job.budget, maxMs: 3000 });
         if (o.prizes > 0 || !def) {
