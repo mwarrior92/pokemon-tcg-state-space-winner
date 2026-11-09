@@ -7,7 +7,8 @@ import { test } from 'node:test';
 import * as assert from 'node:assert/strict';
 import * as fs from 'fs';
 import * as path from 'path';
-import { REPO_ROOT, allCards, loadCards, metaDecks } from '../src/cards';
+import { REPO_ROOT, allCards, cardsNamed, loadCards, loadMetaLists, metaDecks, resolveEntry } from '../src/cards';
+import { sideEffects, unusableCards } from '../src/usability';
 import {
   cardFingerprint, isKnownSmoke, isKnownStatic, loadKnownIssues, loadManifest, metaCardNames, printedCards,
   smokeTest, standardPool, staticCheck, twinleafFor,
@@ -500,3 +501,61 @@ void UseAbilityAction;
 void PlayerType;
 void SlotType;
 void deepCopy;
+
+test('usability: group needs, harm both ways, and Pokémon used by other cards (forward and reverse)', () => {
+  const one = (name: string, pred: (c: Card) => boolean = () => true) => {
+    const c = cardsNamed(name).find(pred);
+    assert.ok(c, name);
+    return c!.fullName;
+  };
+  const why = (cards: string[], name: string) => unusableCards(cards).find(u => engineCard(u.card)?.name === name)?.reason;
+  const v3 = deckFromText(fs.readFileSync(path.join(REPO_ROOT, 'sim', 'runs', 'deck-archeops-v3', 'deck.txt'), 'utf8')).deck.cards;
+  const base = v3.filter(n => engineCard(n)?.name !== 'Area Zero Underdepths');
+  const zero = one('Area Zero Underdepths');
+  const teraPika = one('Lapras ex', c => c.tags.some(t => String(t) === 'Tera'));   // no ability, needs Water
+  // forward: Area Zero needs a Tera Pokémon
+  assert.match(why([...base, zero], 'Area Zero Underdepths') ?? '', /needs a Tera Pokémon/);
+  // reverse: a Tera Pokémon the list cannot attack with is still used by Area Zero (and meets it)
+  assert.match(why([...base, teraPika], 'Lapras ex') ?? '', /needs Water/);
+  assert.equal(why([...base, zero, teraPika], 'Lapras ex'), undefined);
+  assert.equal(why([...base, zero, teraPika], 'Area Zero Underdepths'), undefined);
+  // harmful: Nighttime Mine is fine with no Tera Pokémon, a noted side effect with one, unusable when they are the list
+  const mine = one('Nighttime Mine');
+  assert.equal(why([...base, mine], 'Nighttime Mine'), undefined);
+  assert.deepEqual(sideEffects([...base, mine]), []);
+  assert.equal(why([...base, mine, teraPika], 'Nighttime Mine'), undefined);
+  assert.match(sideEffects([...base, mine, teraPika])[0]?.note ?? '', /also hurts your own Tera Pokémon \(Lapras ex/);
+  const pikaList = [...Array(4).fill(teraPika), mine, ...base.filter(n => !(engineCard(n) instanceof PokemonCard))];
+  assert.match(why(pikaList, 'Nighttime Mine') ?? '', /hurts your own Tera Pokémon/);
+  // searches: Buddy-Buddy Poffin needs a Basic of 70 HP or less
+  const poffin = one('Buddy-Buddy Poffin');
+  assert.match(why([...base, poffin], 'Buddy-Buddy Poffin') ?? '', /Basic Pokémon with 70 HP or less to search for/);
+  // copying attacks from the deck: Slowking makes a Stage 2 usable without its line
+  const slowking = one('Slowking', c => c instanceof PokemonCard && c.attacks.some(a => /choose 1 of its attacks/i.test(a.text)));
+  const slowpoke = one((engineCard(slowking) as PokemonCard).evolvesFrom);
+  const metagross = one('Metagross', c => c instanceof PokemonCard && c.evolvesFrom === 'Metang');
+  assert.match(why([...base, metagross], 'Metagross') ?? '', /nothing to evolve it from/);
+  assert.equal(why([...base, slowpoke, slowking, metagross], 'Metagross'), undefined);
+  // copying attacks of Benched N's Pokémon: N's Zoroark ex uses any N's Pokémon, payable or not
+  const zoroark = one("N's Zoroark ex"), zorua = one((engineCard(zoroark) as PokemonCard).evolvesFrom);
+  const reshiram = one("N's Reshiram");
+  assert.ok(why([...base, reshiram], "N's Reshiram"));
+  assert.equal(why([...base, zorua, zoroark, reshiram], "N's Reshiram"), undefined);
+  // clauses: Rosa's Encouragement needs Basic Energy and a Stage 2 (Archeops); Clive counts the opponent's Supporters
+  const rosa = one("Rosa's Encouragement"), clive = one('Clive');
+  assert.equal(why([...base, rosa], "Rosa's Encouragement"), undefined);
+  assert.match(why([...base.filter(n => engineCard(n)?.name !== 'Archeops'), rosa], "Rosa's Encouragement") ?? '', /needs a Stage 2 Pokémon/);
+  assert.equal(why([...base, clive], 'Clive'), undefined);
+});
+
+test('usability: no card in a real meta list is flagged unusable (false-alarm check)', () => {
+  const bad: string[] = [];
+  for (const l of loadMetaLists()) {
+    const cards = l.cards.flatMap(e => {
+      const c = resolveEntry(e).card;
+      return c ? Array(Number(e.count) || 1).fill(c.fullName) : [];
+    });
+    unusableCards(cards).forEach(u => bad.push(`${engineCard(u.card)?.name}: ${u.reason}`));
+  }
+  assert.deepEqual([...new Set(bad)], []);
+});

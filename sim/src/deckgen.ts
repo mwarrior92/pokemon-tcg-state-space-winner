@@ -16,7 +16,7 @@ import { Deck, allCards, buildDeck, cardsNamed, loadCards, loadMetaLists, normNa
 import { checkLegal, engineCard, isBasicEnergy, standardNames } from './decklist';
 import { Rng } from './rng';
 import { cutWeight, fit, profile } from './synergy';
-import { deckFacts, unusableCards, whyUnusable } from './usability';
+import { deckFacts, sideEffect, unusableCards, whyUnusable } from './usability';
 
 interface CardStat {
   lists: number;          // lists that include it
@@ -404,8 +404,9 @@ export function mutate(cards: string[], pool: string[], core: Map<string, number
       after.splice(after.indexOf(out), 1);
       const prof = profile(after);
       const facts = deckFacts(after);
-      // cards the deck could not use get almost no weight (and are rejected below)
-      const byFit = (n: string) => fit(n, prof) / (printings.get(nameOf(n)) ?? 1) * (whyUnusable(n, facts) ? 0.02 : 1);
+      // cards the deck could not use get almost no weight (and are rejected below); cards that would
+      // also hurt some of its own cards (Team Rocket's Watchtower with a Meowth ex) are tried less often
+      const byFit = (n: string) => fit(n, prof) / (printings.get(nameOf(n)) ?? 1) * (whyUnusable(n, facts) ? 0.02 : sideEffect(n, facts) ? 0.3 : 1);
       let inn: string | undefined;
       if (kind === 0) {
         inn = pickWeighted(rng, pool, byFit);                // a card from the pool

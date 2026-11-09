@@ -114,15 +114,29 @@ Output in `runs/deck-<name>/`:
   whether the deck's attacks use the type. Nothing is ruled out, so multi-type decks stay possible.
   `node dist/fitshow.js --list my-deck.txt` (or `--seed "<card>"`) prints the likeliest additions
   and cuts.
-- **Every card must be usable** (`usability.ts`): a rules check from costs and texts. A Pokémon needs
-  an attack the deck's Energy can pay, an ability whose requirements the deck meets, or to be part
-  of a line (an evolution needs its pre-evolution, Fossil, or Rare Candy and its Basic); Trainers
-  and Special Energy need what their text asks for ("Grass Energy", "Fire Pokémon", Rare Candy a
-  Stage 2). Cards other cards use by name or group ("N's Pokémon"), and attack sources for
-  Slowking, count as usable. A change may not add an unusable card or strand a usable one, and seed
-  builds skip unusable staples. It flags no card in any of the 512 meta lists
-  (`node dist/usablecheck.js --meta`; `--list my-deck.txt` checks one list). The report's
-  **Card usage** table adds how often each card was really used in the final test games.
+- **Every card must be usable** (`usability.ts`): a rules check from costs and texts. Each text is
+  read into conditions on kinds of cards ("Tera Pokémon", "Basic Pokémon with 70 HP or less",
+  "Benched N's Pokémon", "Pokémon Tools"). Each condition records whose cards it is about (yours, the
+  opponent's, or both) and what it does with them: it can enable, copy attacks, search, target or
+  harm. The check runs both ways:
+  - **Helpful cards** need cards in the list that meet their conditions. Area Zero Underdepths needs
+    a Tera Pokémon, Rosa's Encouragement needs Basic Energy and a Stage 2. Sentences and clauses must
+    all be met; "or" and lists of search targets are alternatives.
+  - **Harmful cards** should hurt none of your own cards (Nighttime Mine with your Tera Pokémon,
+    Path to the Peak with your Rule Box Pokémon). If what they hurt is a third of your Pokémon or
+    more, the card is unusable. A smaller hit is noted in the report as a side effect, and the
+    builder adds such cards less often: 70 meta lists run Team Rocket's Watchtower with a Meowth ex.
+  - **Reverse:** a Pokémon is usable if another card uses it. Examples are N's Zoroark ex copying
+    Benched N's Pokémon, Slowking copying deck-top Pokémon (no evolution line needed), and Area Zero
+    needing a Tera Pokémon in play. Being searched for or targeted is not a use.
+  - **Pokémon** also count as usable with an attack the deck's Energy can pay (if it does no damage,
+    its text must work), an ability whose conditions are met, or a place in a line. An evolution
+    needs its pre-evolution, its Fossil, or Rare Candy and its Basic.
+
+  A change may not add an unusable card or strand a usable one, and seed builds skip unusable
+  staples. It flags no card in any of the 512 meta lists (`node dist/usablecheck.js --meta`).
+  `--list my-deck.txt` checks one list, and `--conds` prints how every Trainer text is read. The
+  report's **Card usage** table adds how often each card was really used in the final test games.
 - A default run plays about 760 games, roughly 30 minutes on 8 workers.
 
 **Limits:** the result measures how well the simulator pilots the deck. Decks whose plan needs

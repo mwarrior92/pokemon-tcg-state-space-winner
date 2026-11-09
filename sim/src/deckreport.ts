@@ -13,7 +13,7 @@ import * as path from 'path';
 import { REPO_ROOT } from './cards';
 import { PokemonCard } from './engine';
 import { engineCard, formatDeckList } from './decklist';
-import { unusableCards } from './usability';
+import { sideEffects, unusableCards } from './usability';
 import { GameRec } from './playgame';
 
 export interface DeckStats {
@@ -348,9 +348,10 @@ export function renderReport(s: DeckStats, cards: string[], extra: { title: stri
   L.push('| card | copies | used in games | uses per game | note |');
   L.push('|---|---|---|---|---|');
   const why = new Map(unusableCards(cards).map(u => [engineCard(u.card)?.name ?? u.card, u.reason]));
+  const side = new Map(sideEffects(cards).map(u => [engineCard(u.card)?.name ?? u.card, u.note]));
   (s.usage ?? []).forEach(u => {
     const base = why.has(u.card) ? `**cannot be used:** ${why.get(u.card)}` : u.games === 0 ? '**never used**' : u.games < 0.1 ? 'rarely used' : '';
-    const note = [base, u.noEffect ? `played ${u.noEffect} times with no effect` : ''].filter(Boolean).join('; ');
+    const note = [base, side.get(u.card) ?? '', u.noEffect ? `played ${u.noEffect} times with no effect` : ''].filter(Boolean).join('; ');
     L.push(`| ${u.card} | ${u.copies} | ${pct(u.games)} | ${u.perGame.toFixed(1)} | ${note} |`);
   });
   L.push('');
