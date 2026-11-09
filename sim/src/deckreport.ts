@@ -38,7 +38,7 @@ export interface DeckStats {
   winCards: { card: string; wins: number; losses: number }[];
   /** per card name in the list: share of games it was used in (attack, ability, evolved into or
    *  from, played, attached) and uses per game */
-  usage: { card: string; copies: number; games: number; perGame: number }[];
+  usage: { card: string; copies: number; games: number; perGame: number; noEffect: number }[];
   lossCards: { card: string; wins: number; losses: number }[];
 }
 
@@ -103,7 +103,7 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
   const opening = new Map<string, number>();
   const useW = new Map<string, number>(), useL = new Map<string, number>();
   let gamesW = 0, gamesL = 0;
-  const usedGames = new Map<string, number>(), usedTimes = new Map<string, number>();
+  const usedGames = new Map<string, number>(), usedTimes = new Map<string, number>(), noEffect = new Map<string, number>();
   const pokeNames = new Set([...new Set(cards)].map(n => engineCard(n)).filter(c => c instanceof PokemonCard).map(c => c!.name));
   for (const g of decided) {
     const usedHere = new Set<string>();
@@ -170,7 +170,12 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
         } else if ((mm = /^attach (.+?) -> /.exec(head))) {
           u.push(mm[1]);
         } else if (['play', 'tool', 'stadium'].includes(a.kind)) {
-          u.push(a.what);
+          // "play Buddy-Buddy Poffin | nothing": played, but it found / did nothing
+          if (/ \| nothing$/.test(l)) {
+            noEffect.set(a.what, (noEffect.get(a.what) ?? 0) + 1);
+          } else {
+            u.push(a.what);
+          }
         }
         u.forEach(x => {
           usedHere.add(x);
@@ -232,6 +237,7 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
     usage: [...new Set(cards.map(c => engineCard(c)?.name ?? c))].map(card => ({
       card, copies: cards.filter(c => (engineCard(c)?.name ?? c) === card).length,
       games: n ? (usedGames.get(card) ?? 0) / n : 0, perGame: n ? (usedTimes.get(card) ?? 0) / n : 0,
+      noEffect: noEffect.get(card) ?? 0,
     })).sort((a, b) => a.games - b.games),
     lossCards: diff.filter(d => d.losses > d.wins).sort((a, b) => (b.losses - b.wins) - (a.losses - a.wins)).slice(0, 4),
   };
@@ -337,13 +343,14 @@ export function renderReport(s: DeckStats, cards: string[], extra: { title: stri
     L.push('');
     L.push('## Card usage');
   L.push('');
-  L.push('How often each card was actually used: attacked or used an ability with, evolved into or from, played, or attached. Cards used in few games are candidates to cut; the rules check says why a card cannot be used at all with the rest of the list.');
+  L.push('How often each card was actually used: attacked or used an ability with, evolved into or from, played (to some effect), or attached. Plays that found or did nothing are not uses. Cards used in few games are candidates to cut; the rules check says why a card cannot be used at all with the rest of the list.');
   L.push('');
   L.push('| card | copies | used in games | uses per game | note |');
   L.push('|---|---|---|---|---|');
   const why = new Map(unusableCards(cards).map(u => [engineCard(u.card)?.name ?? u.card, u.reason]));
   (s.usage ?? []).forEach(u => {
-    const note = why.has(u.card) ? `**cannot be used:** ${why.get(u.card)}` : u.games === 0 ? '**never used**' : u.games < 0.1 ? 'rarely used' : '';
+    const base = why.has(u.card) ? `**cannot be used:** ${why.get(u.card)}` : u.games === 0 ? '**never used**' : u.games < 0.1 ? 'rarely used' : '';
+    const note = [base, u.noEffect ? `played ${u.noEffect} times with no effect` : ''].filter(Boolean).join('; ');
     L.push(`| ${u.card} | ${u.copies} | ${pct(u.games)} | ${u.perGame.toFixed(1)} | ${note} |`);
   });
   L.push('');

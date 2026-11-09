@@ -310,6 +310,32 @@ export function seedDeck(seedQuery: string): SeedDeck {
     add(c, Math.min(st.copies, 60 - roomForEnergy - cards.length));
   }
   energies.forEach(([c, k]) => add(c, k));
+  // repair: a staple chosen early can end up unusable in the finished list (Buddy-Buddy Poffin with
+  // no Basic of 70 HP or less); take such cards out (never the seed's line) and refill
+  const lineNames = new Set(line.map(c => c.fullName));
+  const removed = new Set<string>();
+  for (let guard = 0; guard < 5; guard++) {
+    const bad = unusableCards(cards).filter(u => !lineNames.has(u.card));
+    if (!bad.length) {
+      break;
+    }
+    bad.forEach(u => removed.add(u.card));
+    for (let i = cards.length - 1; i >= 0; i--) {
+      if (bad.some(u => u.card === cards[i])) {
+        cards.splice(i, 1);
+      }
+    }
+    // top up with the most common usable staple if short
+    for (const st of staples(3)) {
+      if (cards.length >= 60) {
+        break;
+      }
+      const c = engineCard(st.card);
+      if (c && !removed.has(st.card) && !c.tags.includes(CardTag.ACE_SPEC) && !whyUnusable(st.card, deckFacts([...cards, st.card]))) {
+        add(c, 60 - cards.length);
+      }
+    }
+  }
   // top up with the most common staple if short
   for (const st of staples(3)) {
     if (cards.length >= 60) {
@@ -370,7 +396,9 @@ export function mutate(cards: string[], pool: string[], core: Map<string, number
       if (!removable.length) {
         break;
       }
-      const out = pickWeighted(rng, removable, n => cutWeight(n, next))!;
+      // cards the list cannot use are by far the likeliest cuts
+      const nextFacts = deckFacts(next);
+      const out = pickWeighted(rng, removable, n => cutWeight(n, next) * (whyUnusable(n, nextFacts) ? 20 : 1))!;
       const kind = rng.int(0, 2);
       const after = next.slice();
       after.splice(after.indexOf(out), 1);

@@ -9,10 +9,12 @@
 // always usable (it pays Colorless costs).
 //
 // Text requirements: "<type> Energy" / "[X] Energy" needs Energy of that type in the deck, "<type>
-// Pokémon" a Pokémon of that type, "Stage 2" a Stage 2 Pokémon; mentions about the opponent's side
-// are ignored. A text whose requirements are all unmet makes that effect unusable; meeting any one
+// Pokémon" a Pokémon of that type, "Stage 2" a Stage 2 Pokémon, and a deck search needs something in
+// the deck it can find ("search your deck for up to 2 Basic Pokémon with 70 HP or less" needs such a
+// Basic; likewise Evolution / Stage 1 / typed / ex / no-Rule-Box Pokémon, Supporter, Item, Tool and
+// Basic Energy cards); mentions about the opponent's side are ignored. A text whose requirements are all unmet makes that effect unusable; meeting any one
 // is enough (texts often offer alternatives).
-import { Card, CardType, EnergyCard, PokemonCard, Stage, TrainerCard } from './engine';
+import { Card, CardTag, CardType, EnergyCard, PokemonCard, Stage, SuperType, TrainerCard, TrainerType } from './engine';
 import { engineCard, isBasicEnergy } from './decklist';
 import { cardsNamed } from './cards';
 
@@ -31,7 +33,20 @@ const TYPE_NAME: Partial<Record<CardType, string>> = {
 const T = '(?:\\b(?:Grass|Fire|Water|Lightning|Psychic|Fighting|Darkness|Metal)\\b|\\[[GRWLPFDM]\\])';
 const REQ = new RegExp(`(${T}(?:\\s*(?:,|or|and)\\s*${T})*)\\s+(Energy|Pokémon)`, 'g');
 
-interface Req { kind: 'energy' | 'pokemon' | 'stage2'; types: CardType[] }
+interface Search {
+  what: 'pokemon' | 'supporter' | 'item' | 'tool' | 'basic-energy';
+  stage?: 'basic' | 'stage1' | 'stage2' | 'evolution';
+  types?: CardType[];
+  maxHp?: number;
+  ex?: boolean;
+  noRuleBox?: boolean;
+  text: string;                    // as written, for the reason
+}
+interface Req { kind: 'energy' | 'pokemon' | 'stage2' | 'search'; types: CardType[]; search?: Search }
+
+const SEARCH_POKEMON = /search your deck for (?:up to \w+ |an? |any number of )?((?:(Basic|Stage 1|Stage 2|Evolution) )?(?:(\[[GRWLPFDMC]\]|Grass|Fire|Water|Lightning|Psychic|Fighting|Darkness|Metal|Colorless) )?Pok[eé]mon( ex)?( that doesn't have a Rule Box)?(?: with (\d+) HP or less)?)/gi;
+const SEARCH_OTHER = /search your deck for (?:up to \w+ |an? |any number of )?(Supporter|Item|Pokémon Tool|Basic Energy) cards?/gi;
+const RULE_BOX = /^(ex|EX|GX|V|VMAX|VSTAR|V-UNION|Radiant|Prism Star|Break|Mega EX|Mega ex|Lv.X)$/;
 
 const reqCache = new Map<string, Req[]>();
 /** requirements a text puts on your own deck */
@@ -54,6 +69,17 @@ export function textNeeds(text: string): Req[] {
   if (/\bStage 2\b/.test(text) && !/\bStage 1\b/.test(text) && !/opponent/i.test(text)) {   // Rare Candy, not Dawn
     out.push({ kind: 'stage2', types: [] });
   }
+  // deck searches: something in the deck must match
+  for (const sm of text.matchAll(SEARCH_POKEMON)) {
+    const st = sm[2] ? ({ Basic: 'basic', 'Stage 1': 'stage1', 'Stage 2': 'stage2', Evolution: 'evolution' } as const)[sm[2] as 'Basic'] : undefined;
+    const tw = sm[3]?.replace(/[[\]]/g, '');
+    const t = tw === 'C' || tw === 'Colorless' ? CardType.COLORLESS : tw ? TYPE_WORD[tw] : undefined;
+    out.push({ kind: 'search', types: [], search: { what: 'pokemon', stage: st, types: t !== undefined ? [t] : undefined, maxHp: sm[6] ? Number(sm[6]) : undefined, ex: !!sm[4], noRuleBox: !!sm[5], text: sm[1] } });
+  }
+  for (const sm of text.matchAll(SEARCH_OTHER)) {
+    const what = ({ Supporter: 'supporter', Item: 'item', 'Pokémon Tool': 'tool', 'Basic Energy': 'basic-energy' } as const)[sm[1] as 'Item'];
+    out.push({ kind: 'search', types: [], search: { what, text: `${sm[1]} card` } });
+  }
   reqCache.set(text, out);
   return out;
 }
@@ -66,10 +92,11 @@ export interface DeckFacts {
   evolvesFrom: Set<string>;        // names something in the deck evolves from
   stage2: boolean;                 // a Stage 2 whose line can be played
   texts: string;                   // every text in the deck (for cards that name other cards)
+  cards: Card[];                   // the distinct cards
 }
 
 export function deckFacts(cards: string[]): DeckFacts {
-  const f: DeckFacts = { names: new Set(), energy: new Set(), anyEnergy: false, pokeTypes: new Set(), evolvesFrom: new Set(), stage2: false, texts: '' };
+  const f: DeckFacts = { names: new Set(), energy: new Set(), anyEnergy: false, pokeTypes: new Set(), evolvesFrom: new Set(), stage2: false, texts: '', cards: [] };
   const texts: string[] = [];
   const cs = [...new Set(cards)].map(n => engineCard(n)).filter((c): c is Card => !!c);
   for (const c of cs) {
@@ -98,21 +125,46 @@ export function deckFacts(cards: string[]): DeckFacts {
     }
   }
   f.texts = texts.join('\n');
+  f.cards = cs;
   f.stage2 = cs.some(c => c instanceof PokemonCard && c.stage === Stage.STAGE_2);
   return f;
 }
 
-function unmet(reqs: Req[], f: DeckFacts): string | undefined {
+/** can a deck search find this card? */
+function found(s: Search, c: Card): boolean {
+  if (s.what === 'supporter' || s.what === 'item' || s.what === 'tool') {
+    const t = { supporter: TrainerType.SUPPORTER, item: TrainerType.ITEM, tool: TrainerType.TOOL }[s.what];
+    return c instanceof TrainerCard && c.trainerType === t;
+  }
+  if (s.what === 'basic-energy') {
+    return isBasicEnergy(c);
+  }
+  if (!(c instanceof PokemonCard) || c.superType !== SuperType.POKEMON) {
+    return false;                    // Fossils are Items in the deck, not Pokémon
+  }
+  if (s.stage === 'basic' && c.stage !== Stage.BASIC) return false;
+  if (s.stage === 'stage1' && c.stage !== Stage.STAGE_1) return false;
+  if (s.stage === 'stage2' && c.stage !== Stage.STAGE_2) return false;
+  if (s.stage === 'evolution' && c.stage === Stage.BASIC) return false;
+  if (s.types && !s.types.some(t => c.cardType.includes(t))) return false;
+  if (s.maxHp !== undefined && c.hp > s.maxHp) return false;
+  if (s.ex && !c.tags.includes(CardTag.POKEMON_ex)) return false;
+  if (s.noRuleBox && c.tags.some(t => RULE_BOX.test(String(t)))) return false;
+  return true;
+}
+
+function unmet(reqs: Req[], f: DeckFacts, self?: Card): string | undefined {
   if (!reqs.length) {
     return undefined;
   }
-  const ok = (r: Req) => r.kind === 'stage2' ? f.stage2
+  const ok = (r: Req) => r.kind === 'search' ? f.cards.some(c => c !== self && found(r.search!, c))
+    : r.kind === 'stage2' ? f.stage2
     : r.kind === 'energy' ? f.anyEnergy || r.types.some(t => f.energy.has(t))
       : r.types.some(t => f.pokeTypes.has(t));
   if (reqs.some(ok)) {
     return undefined;
   }
-  const say = (r: Req) => r.kind === 'stage2' ? 'a Stage 2 Pokémon' : `${r.types.map(t => TYPE_NAME[t]).join(' or ')} ${r.kind === 'energy' ? 'Energy' : 'Pokémon'}`;
+  const say = (r: Req) => r.kind === 'search' ? `a ${r.search!.text} to search for` : r.kind === 'stage2' ? 'a Stage 2 Pokémon' : `${r.types.map(t => TYPE_NAME[t]).join(' or ')} ${r.kind === 'energy' ? 'Energy' : 'Pokémon'}`;
   return [...new Set(reqs.map(say))].join(' / ');
 }
 
@@ -168,7 +220,7 @@ export function whyUnusable(n: string, f: DeckFacts): string | undefined {
   if (c instanceof TrainerCard || c instanceof EnergyCard) {
     // for Special Energy, Energy types in its text are what it provides, not requirements
     const reqs = textNeeds((c as any).text ?? '').filter(r => !(c instanceof EnergyCard && r.kind === 'energy'));
-    const u = unmet(reqs, f);
+    const u = unmet(reqs, f, c);
     return u ? `needs ${u}` : undefined;
   }
   return undefined;
