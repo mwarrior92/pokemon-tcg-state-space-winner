@@ -1,7 +1,8 @@
 // Fit the win-probability model on a playout run (needs --vectors) and report how well it predicts
 // held-out games, against a baseline that only knows the prize counts.
-//   node dist/fitvalue.js [run=playout-v0]
-// Writes runs/<run>/value-model.json and runs/<run>/value-report.md.
+//   node dist/fitvalue.js [run=playout-v0] [--with otherRun,...] [--out dir]
+// Writes <out>/value-model.json and <out>/value-report.md (out defaults to runs/<run>). Games from
+// the --with runs are added (they must have the same feature names).
 import * as fs from 'fs';
 import * as path from 'path';
 import { REPO_ROOT } from '../cards';
@@ -9,9 +10,23 @@ import { importance, saveModel } from '../model';
 import { WinModel, auc, fitLogistic, logLoss } from '../value';
 
 const run = process.argv[2] ?? 'playout-v0';
-const dir = path.join(REPO_ROOT, 'sim', 'runs', run);
-const names: string[] = JSON.parse(fs.readFileSync(path.join(dir, 'feature-names.json'), 'utf8'));
-const games = fs.readFileSync(path.join(dir, 'games.jsonl'), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
+const argOf = (n: string) => {
+  const i = process.argv.indexOf(`--${n}`);
+  return i >= 0 ? process.argv[i + 1] : undefined;
+};
+const runsDir = path.join(REPO_ROOT, 'sim', 'runs');
+const runs = [run, ...(argOf('with') ?? '').split(',').filter(Boolean)];
+const dir = path.join(runsDir, argOf('out') ?? run);
+fs.mkdirSync(dir, { recursive: true });
+const names: string[] = JSON.parse(fs.readFileSync(path.join(runsDir, run, 'feature-names.json'), 'utf8'));
+const games: any[] = [];
+for (const r of runs) {
+  const nm: string[] = JSON.parse(fs.readFileSync(path.join(runsDir, r, 'feature-names.json'), 'utf8'));
+  if (nm.join('|') !== names.join('|')) {
+    throw new Error(`${r}: different feature names`);
+  }
+  games.push(...fs.readFileSync(path.join(runsDir, r, 'games.jsonl'), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)));
+}
 const rows: { x: number[]; y: number; g: number }[] = [];
 games.forEach((g: any, gi: number) => {
   if (g.winner !== 0 && g.winner !== 1) {
@@ -29,7 +44,7 @@ const log = (s: string) => {
   console.log(s);
   L.push(s);
 };
-log(`# Win-probability model for ${run}`);
+log(`# Win-probability model from ${runs.join(', ')}`);
 log('');
 log(`${rows.length} turn-start positions from ${new Set(rows.map(r => r.g)).size} decided games; ${tr.length} train, ${va.length} validation (by game).`);
 log('');

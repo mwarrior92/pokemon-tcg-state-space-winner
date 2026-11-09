@@ -139,7 +139,10 @@ function playGame(job: GameJob): GameRec {
   if (sim.finished) {
     winner = sim.state.winner === GameWinner.PLAYER_1 ? 0 : sim.state.winner === GameWinner.PLAYER_2 ? 1 : sim.state.winner === GameWinner.DRAW ? 2 : -1;
     const w = winner < 2 && winner >= 0 ? sim.state.players[winner] : undefined;
-    reason = w && prizesLeft(w) === 0 ? 'prizes' : winner === 2 ? 'draw' : 'deck out / no Pokémon';
+    // the loser ran out of cards to draw, or had no Pokémon left in play
+    const loser = winner === 0 || winner === 1 ? sim.state.players[1 - winner] : undefined;
+    const noPokemon = loser && ![loser.active, ...loser.bench].some(l => l.cards.length);
+    reason = w && prizesLeft(w) === 0 ? 'prizes' : winner === 2 ? 'draw' : noPokemon ? 'no Pokémon in play' : loser && loser.deck.cards.length === 0 ? 'deck out' : 'other';
   }
   return { seed: job.seed, decks: [decks[job.a].archetype, decks[job.b].archetype], seats: job.seats, startTurn: g.info.turn, turns, winner, reason, ms: Date.now() - t0 };
 }
