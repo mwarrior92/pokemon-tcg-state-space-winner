@@ -53,7 +53,7 @@ export function wilson(w: number, n: number): [number, number] {
   }
   const z = 1.96, p = w / n, d = 1 + z * z / n;
   const c = p + z * z / (2 * n), m = z * Math.sqrt(p * (1 - p) / n + z * z / (4 * n * n));
-  return [(c - m) / d, (c + m) / d];
+  return [Math.max(0, (c - m) / d), Math.min(1, (c + m) / d)];
 }
 
 /** what an action label is about: "attack Phantom Dive" -> attack Phantom Dive, etc. */

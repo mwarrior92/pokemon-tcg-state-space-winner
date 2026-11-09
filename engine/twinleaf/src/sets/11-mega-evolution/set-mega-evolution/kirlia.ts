@@ -35,6 +35,7 @@ export class Kirlia extends PokemonCard {
   public cardType: CardType[] = [P];
   public hp: number = 100;
   public weakness = [{ type: D }];
+  public resistance = [{ type: CardType.FIGHTING, value: -30 }]; // [winner patch 021]
   public retreat = [C];
 
   public attacks = [{

@@ -319,7 +319,8 @@
   "Genesect exSIR SV11B|abilities": "translated name: engine \"Metal Signal\", printed \"Metallic Signal\" (cosmetic)",
   "VictiniRRB SV11B|attack names": "translated name: engine \"V Force\", printed \"V-Force\" (cosmetic)",
   "Charjabug SCR|attack names": "translated name: engine \"Line Up\", printed \"Parallel Placement\" (cosmetic)",
-  "Altaria SSP|attack names": "translated name: engine \"Humming Charge | Cotton Wing\", printed \"Humming Charge | Cotton Wings\" (cosmetic)"
+  "Altaria SSP|attack names": "translated name: engine \"Humming Charge | Cotton Wing\", printed \"Humming Charge | Cotton Wings\" (cosmetic)",
+  "Archen SV11W|evolvesFrom": "typo in the printed data (\"Antiuqe Plume Fossil\"); the engine name is right (cosmetic)"
  },
  "smoke": {}
 }
