@@ -1,0 +1,204 @@
+{
+ "seed": 774894013,
+ "decks": [
+  "Mew Box",
+  "Lucario Hariyama"
+ ],
+ "seats": [
+  "plan2:C:\\Users\\marcw\\local\\winner\\sim\\runs\\value-v2\\value-model.json",
+  "plan2:C:\\Users\\marcw\\local\\winner\\sim\\runs\\playout-v1\\value-model.json"
+ ],
+ "startTurn": 7,
+ "turns": [
+  {
+   "turn": 8,
+   "mover": 0,
+   "cat": "race:behind ready:1-0 ko:no threat:no exposed:no",
+   "prizes": [
+    6,
+    3
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 3290,
+   "board": "Turn 7, P1 to move\nP1 (to move): prizes 6  deck 39  discard 7  hand 1\n  Active: Lillie's Clefairy ex 190/190 E:-\n  Bench0: Mew ex 160/160 E:Telepathic Psychic\n  Bench1: Meowth ex 110/170 E:Telepathic Psychic W\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Hand: Mega Kangaskhan ex\nP2: prizes 3  deck 36  discard 7  hand 6\n  Active: Hariyama (on Makuhita) 80/150 E:-\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench1: Shaymin 80/80 E:-\n  Bench2: Mega Lucario ex (on Riolu) 330/340 E:-\n  Bench3: Riolu 60/80 E:-\n  Hand: Team Rocket's Petrel, Judge, Fighting Energy, Lillie's Determination, Solrock, Boss's Orders",
+   "line": []
+  },
+  {
+   "turn": 9,
+   "mover": 1,
+   "cat": "race:ahead ready:0-1 ko:no threat:no exposed:none",
+   "prizes": [
+    6,
+    3
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 8926,
+   "board": "Turn 8, P2 to move\nP1: prizes 6  deck 39  discard 7  hand 1\n  Active: Lillie's Clefairy ex 190/190 E:-\n  Bench0: Mew ex 160/160 E:Telepathic Psychic\n  Bench1: Meowth ex 110/170 E:Telepathic Psychic W\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Hand: Mega Kangaskhan ex\nP2 (to move): prizes 3  deck 35  discard 7  hand 7\n  Active: Hariyama (on Makuhita) 80/150 E:-\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench1: Shaymin 80/80 E:-\n  Bench2: Mega Lucario ex (on Riolu) 330/340 E:-\n  Bench3: Riolu 60/80 E:-\n  Hand: Team Rocket's Petrel, Judge, Fighting Energy, Lillie's Determination, Solrock, Boss's Orders, Fighting Energy",
+   "line": [
+    "play Judge",
+    "bench Solrock"
+   ]
+  },
+  {
+   "turn": 10,
+   "mover": 0,
+   "cat": "race:behind ready:1-0 ko:no threat:no exposed:no",
+   "prizes": [
+    6,
+    3
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 8596,
+   "board": "Turn 9, P1 to move\nP1 (to move): prizes 6  deck 35  discard 7  hand 5\n  Active: Lillie's Clefairy ex 190/190 E:-\n  Bench0: Mew ex 160/160 E:Telepathic Psychic\n  Bench1: Meowth ex 110/170 E:Telepathic Psychic W\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Hand: Latias ex, Psychic Energy, Mew ex, Mew ex, Fighting Energy\nP2: prizes 3  deck 37  discard 8  hand 3\n  Active: Hariyama (on Makuhita) 80/150 E:-\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench1: Shaymin 80/80 E:-\n  Bench2: Mega Lucario ex (on Riolu) 330/340 E:-\n  Bench3: Riolu 60/80 E:-\n  Bench4: Solrock 110/110 E:-\n  Hand: Lillie's Determination, Fighting Energy, Switch",
+   "line": [
+    "bench Latias ex",
+    "retreat to bench1 Meowth ex",
+    "attach Psychic Energy -> active Meowth ex",
+    "attack Tuck Tail | own bench0 Mew ex"
+   ]
+  },
+  {
+   "turn": 11,
+   "mover": 1,
+   "cat": "race:ahead ready:0-1 ko:no threat:yes exposed:none",
+   "prizes": [
+    6,
+    3
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 33512,
+   "board": "Turn 10, P2 to move\nP1: prizes 6  deck 35  discard 7  hand 7\n  Active: Mew ex 160/160 E:Telepathic Psychic\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Hand: Mew ex, Mew ex, Fighting Energy, Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy\nP2 (to move): prizes 3  deck 36  discard 8  hand 4\n  Active: Hariyama (on Makuhita) 20/150 E:-\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench1: Shaymin 80/80 E:-\n  Bench2: Mega Lucario ex (on Riolu) 330/340 E:-\n  Bench3: Riolu 60/80 E:-\n  Bench4: Solrock 110/110 E:-\n  Hand: Lillie's Determination, Fighting Energy, Switch, Premium Power Pro",
+   "line": [
+    "attach Fighting Energy -> bench2 Mega Lucario ex",
+    "play Switch | own bench2 Mega Lucario ex",
+    "attack Aura Jab | Fighting Energy -> own bench4 Solrock, Fighting Energy -> own bench1 Shaymin"
+   ]
+  },
+  {
+   "turn": 12,
+   "mover": 0,
+   "cat": "race:behind ready:1-2 ko:no threat:yes exposed:yes",
+   "prizes": [
+    6,
+    3
+   ],
+   "took": 3,
+   "policy": "plan",
+   "ms": 11034,
+   "board": "Turn 11, P1 to move\nP1 (to move): prizes 6  deck 34  discard 7  hand 8\n  Active: Mew ex 60/160 E:Telepathic Psychic\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Hand: Mew ex, Mew ex, Fighting Energy, Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy, Ciphermaniac's Codebreaking\nP2: prizes 3  deck 36  discard 7  hand 2\n  Active: Mega Lucario ex (on Riolu) 330/340 E:F\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench1: Shaymin 80/80 E:F\n  Bench2: Hariyama (on Makuhita) 20/150 E:-\n  Bench3: Riolu 60/80 E:-\n  Bench4: Solrock 110/110 E:F\n  Hand: Lillie's Determination, Premium Power Pro",
+   "line": [
+    "attach Fighting Energy -> active Mew ex",
+    "ability Memory Helix (active Mew ex) | Lillie's Clefairy ex: Full Moon Rondo | take 3 prizes"
+   ]
+  },
+  {
+   "turn": 13,
+   "mover": 1,
+   "cat": "race:even ready:1-1 ko:no threat:no exposed:no",
+   "prizes": [
+    3,
+    3
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 21707,
+   "board": "Turn 12, P2 to move\nP1: prizes 3  deck 34  discard 7  hand 10\n  Active: Mew ex 60/160 E:Telepathic Psychic F\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Hand: Mew ex, Mew ex, Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy, Ciphermaniac's Codebreaking, Koraidon ex, Cyrano, Meowth ex\nP2 (to move): prizes 3  deck 35  discard 10  hand 3\n  Active: Shaymin 80/80 E:F\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench2: Hariyama (on Makuhita) 20/150 E:-\n  Bench3: Riolu 60/80 E:-\n  Bench4: Solrock 110/110 E:F\n  Hand: Lillie's Determination, Premium Power Pro, Air Balloon",
+   "line": [
+    "tool Air Balloon -> bench2 Hariyama",
+    "retreat to bench4 Solrock"
+   ]
+  },
+  {
+   "turn": 14,
+   "mover": 0,
+   "cat": "race:even ready:1-1 ko:no threat:no exposed:no",
+   "prizes": [
+    3,
+    3
+   ],
+   "took": 1,
+   "policy": "plan",
+   "ms": 6344,
+   "board": "Turn 13, P1 to move\nP1 (to move): prizes 3  deck 33  discard 7  hand 11\n  Active: Mew ex 60/160 E:Telepathic Psychic F\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Hand: Mew ex, Mew ex, Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy, Ciphermaniac's Codebreaking, Koraidon ex, Cyrano, Meowth ex, Unown\nP2: prizes 3  deck 35  discard 11  hand 2\n  Active: Solrock 110/110 E:F\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench2: Hariyama (on Makuhita) 20/150 E:- +Air Balloon\n  Bench3: Riolu 60/80 E:-\n  Bench4: Shaymin 80/80 E:-\n  Hand: Lillie's Determination, Premium Power Pro",
+   "line": [
+    "bench Mew ex",
+    "ability Memory Helix (active Mew ex) | Lillie's Clefairy ex: Full Moon Rondo | take a prize"
+   ]
+  },
+  {
+   "turn": 15,
+   "mover": 1,
+   "cat": "race:behind ready:0-1 ko:no threat:yes exposed:none",
+   "prizes": [
+    2,
+    3
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 19100,
+   "board": "Turn 14, P2 to move\nP1: prizes 2  deck 33  discard 7  hand 11\n  Active: Mew ex 60/160 E:Telepathic Psychic F\n  Bench0: Mew ex 160/160 E:-\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Hand: Mew ex, Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy, Ciphermaniac's Codebreaking, Koraidon ex, Cyrano, Meowth ex, Unown, Mega Kangaskhan ex\nP2 (to move): prizes 3  deck 34  discard 13  hand 3\n  Active: Hariyama (on Makuhita) 20/150 E:- +Air Balloon\n  Bench0: Hariyama (on Makuhita) 150/150 E:-\n  Bench3: Riolu 60/80 E:-\n  Bench4: Shaymin 80/80 E:-\n  Hand: Lillie's Determination, Premium Power Pro, Lillie's Determination",
+   "line": [
+    "play Lillie's Determination",
+    "attach Fighting Energy -> active Hariyama",
+    "retreat to bench0 Hariyama"
+   ]
+  },
+  {
+   "turn": 16,
+   "mover": 0,
+   "cat": "race:ahead ready:1-0 ko:no threat:no exposed:no",
+   "prizes": [
+    2,
+    3
+   ],
+   "took": 1,
+   "policy": "plan",
+   "ms": 5278,
+   "board": "Turn 15, P1 to move\nP1 (to move): prizes 2  deck 32  discard 7  hand 12\n  Active: Mew ex 60/160 E:Telepathic Psychic F\n  Bench0: Mew ex 160/160 E:-\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Hand: Mew ex, Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy, Ciphermaniac's Codebreaking, Koraidon ex, Cyrano, Meowth ex, Unown, Mega Kangaskhan ex, Night Stretcher\nP2: prizes 3  deck 30  discard 15  hand 5\n  Active: Hariyama (on Makuhita) 150/150 E:-\n  Bench0: Hariyama (on Makuhita) 20/150 E:- +Air Balloon\n  Bench3: Riolu 60/80 E:-\n  Bench4: Shaymin 80/80 E:-\n  Hand: Lunatone, Poké Pad, Poké Pad, Lillie's Determination, Premium Power Pro",
+   "line": [
+    "bench Mew ex",
+    "ability Memory Helix (active Mew ex) | Lillie's Clefairy ex: Full Moon Rondo | take a prize"
+   ]
+  },
+  {
+   "turn": 17,
+   "mover": 1,
+   "cat": "race:behind ready:0-1 ko:no threat:yes exposed:none",
+   "prizes": [
+    1,
+    3
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 12087,
+   "board": "Turn 16, P2 to move\nP1: prizes 1  deck 32  discard 7  hand 12\n  Active: Mew ex 60/160 E:Telepathic Psychic F\n  Bench0: Mew ex 160/160 E:-\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Bench4: Mew ex 160/160 E:-\n  Hand: Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy, Ciphermaniac's Codebreaking, Koraidon ex, Cyrano, Meowth ex, Unown, Mega Kangaskhan ex, Night Stretcher, Crispin\nP2 (to move): prizes 3  deck 29  discard 17  hand 6\n  Active: Riolu 60/80 E:-\n  Bench0: Hariyama (on Makuhita) 20/150 E:- +Air Balloon\n  Bench4: Shaymin 80/80 E:-\n  Hand: Lunatone, Poké Pad, Poké Pad, Lillie's Determination, Premium Power Pro, Fighting Energy",
+   "line": [
+    "bench Lunatone",
+    "play Poké Pad | nothing"
+   ]
+  },
+  {
+   "turn": 17,
+   "mover": 0,
+   "cat": "race:ahead ready:1-0 ko:yes threat:no exposed:no",
+   "prizes": [
+    1,
+    3
+   ],
+   "took": 1,
+   "policy": "plan",
+   "ms": 899,
+   "board": "Turn 17, P1 to move\nP1 (to move): prizes 1  deck 31  discard 7  hand 13\n  Active: Mew ex 60/160 E:Telepathic Psychic F\n  Bench0: Mew ex 160/160 E:-\n  Bench1: Lillie's Clefairy ex 190/190 E:-\n  Bench2: Wellspring Mask Ogerpon ex 150/210 E:-\n  Bench3: Latias ex 210/210 E:-\n  Bench4: Mew ex 160/160 E:-\n  Hand: Meowth ex, Telepathic Psychic Energy, Water Energy, Psychic Energy, Ciphermaniac's Codebreaking, Koraidon ex, Cyrano, Meowth ex, Unown, Mega Kangaskhan ex, Night Stretcher, Crispin, Area Zero Underdepths\nP2: prizes 3  deck 29  discard 18  hand 4\n  Active: Riolu 60/80 E:-\n  Bench0: Hariyama (on Makuhita) 20/150 E:- +Air Balloon\n  Bench1: Lunatone 110/110 E:-\n  Bench4: Shaymin 80/80 E:-\n  Hand: Poké Pad, Lillie's Determination, Premium Power Pro, Fighting Energy",
+   "line": [
+    "ability Memory Helix (active Mew ex) | Mew ex: Teleportation Burst | yes | own bench0 Mew ex"
+   ]
+  }
+ ],
+ "winner": 0,
+ "reason": "prizes",
+ "ms": 130827
+}

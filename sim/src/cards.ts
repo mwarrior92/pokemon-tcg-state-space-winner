@@ -168,6 +168,14 @@ export function metaDecks(limit = 1000): Deck[] {
   return [...best.values()].sort((a, b) => (share.get(b.archetype)! - share.get(a.archetype)!)).slice(0, limit);
 }
 
+/** Share of the meta decklists for each archetype (sums to 1). */
+export function metaShares(): Map<string, number> {
+  const lists = loadMetaLists();
+  const share = new Map<string, number>();
+  lists.forEach(l => share.set(l.deck, (share.get(l.deck) ?? 0) + 1 / lists.length));
+  return share;
+}
+
 export function isPokemon(c: Card): c is PokemonCard {
   return c.superType === SuperType.POKEMON;
 }

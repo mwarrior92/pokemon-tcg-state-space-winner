@@ -5,6 +5,7 @@
   "description": "Rules-only simulation, state generation and turn search on top of the vendored Twinleaf engine (engine/twinleaf).",
   "scripts": {
     "build": "node build.mjs",
+    "deck": "node dist/deckbuilder.js",
     "test": "node build.mjs && node --test dist/tests.js",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "cards": "node build.mjs && node dist/cardcheck.js",

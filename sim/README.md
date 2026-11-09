@@ -76,6 +76,39 @@ states per second.
   expanded positions and the part of the queue the budget cannot reach, and stops at `maxMs`
   (15 s). Round 2 of offense training ran 18 workers that each held up to 0.7 GB and swapped.
 
+## Deck builder and tester
+
+```
+node dist/deckbuilder.js --seed "Mega Gardevoir ex"       # build a deck around a card, optimise it, test it
+node dist/deckbuilder.js --list my-deck.txt               # test a list (Pokémon TCG Live export format)
+node dist/deckbuilder.js --list my-deck.txt --optimize    # improve a list, then test it
+node dist/deckbuilder.js --export "Dragapult" --out dragapult.txt   # a meta deck's list to start from
+```
+
+Output in `runs/deck-<name>/`:
+- `report.md`: the deck list, the optimiser's changes, win rate against the meta field with a 95%
+  range, the matchup table, stuck statistics, how the deck takes prizes, a recommended play style
+  and the engine card checks;
+- `deck.txt`, `stats.json` and `games.jsonl`.
+
+**How it works:**
+- **Games:** full games from turn 1 against the meta decks, by their share of the decklists. Both
+  sides are piloted by the same policy (`--pilot`, default v1 `race`; `plan2:<win model>` is
+  stronger and slower).
+- **Building from a seed** (`deckgen.ts`), all from the 512 meta lists:
+  - if the card is played in the meta lists, start from the best-placed list that plays it;
+  - otherwise, its evolution line in the usual counts for its stage, basic Energy for its attack
+    costs, and the most common staples (Trainers, plus support Basics that stand alone).
+- **Optimising:** each round tries a few legal one- or two-card changes. All candidates play the
+  same fresh set of games, and a change is kept if its score (win rate minus `--stuck-weight` ×
+  share of turns stuck) is at least 2 points better.
+- **Options:** `--iterations 4`, `--mutants 3`, `--screen 24` games per candidate, `--games 120` for
+  the final test. A default run takes roughly 15 minutes on 8 workers.
+
+**Limits:** the result measures how well the simulator pilots the deck. Decks whose plan needs
+long ability chains are likely under-played, and set-up choices are made at random. Compare a new
+deck with meta decks tested the same way.
+
 ## Training rounds and review
 
 `node dist/train.js offense --states 1000 --eval 100 --run name` writes `runs/<run>/` containing

@@ -22,6 +22,9 @@ import { Rng } from '../src/rng';
 import { buildScenario } from '../src/scenario';
 import { Sim, bugLog, bugStats, legalMainOptions, mainCandidates, randomChooser, resolvePrompts, runStep } from '../src/sim';
 import { generateState } from '../src/stategen';
+import { checkLegal, deckFromText, engineCard, formatDeckList, isBasicEnergy } from '../src/decklist';
+import { mutate, seedDeck } from '../src/deckgen';
+import { newGameStart } from '../src/playgame';
 
 loadCards();
 const known = loadKnownIssues();
@@ -419,6 +422,56 @@ test('search: two orders of the same independent plays reach the same hash (path
     found++;
   }
   assert.ok(found >= 1, 'no state with both an attach and a bench option');
+});
+
+// ---------------------------------------------------------------- deck builder
+
+test('decklists: export format round-trips, and legality catches broken lists', () => {
+  const d = metaDecks()[0];
+  const text = formatDeckList(d.cards);
+  const back = deckFromText(text).deck;
+  assert.deepEqual(back.missing, []);
+  assert.deepEqual(back.cards.slice().sort(), d.cards.slice().sort());
+  assert.ok(checkLegal(back, engineCard).ok, checkLegal(back, engineCard).problems.join('; '));
+  // 59 cards, and 5 copies of a non-Energy card
+  const short = { ...back, cards: back.cards.slice(1) };
+  assert.ok(checkLegal(short, engineCard).problems.some(p => p.includes('59 cards')));
+  const nonEnergy = back.cards.find(n => !isBasicEnergy(engineCard(n)))!;
+  const five = { ...back, cards: [...back.cards.filter(n => n !== nonEnergy).slice(0, 55), ...Array(5).fill(nonEnergy)] };
+  assert.ok(checkLegal(five, engineCard).problems.some(p => p.includes('copies')));
+});
+
+test('deck builder: a seed card gives a legal 60-card deck with its line, and changes stay legal', () => {
+  // not in the meta lists: built from its line + staples
+  const g = seedDeck('Mega Gardevoir ex');
+  assert.equal(g.cards.length, 60);
+  assert.ok(checkLegal({ id: 'g', archetype: 'g', cards: g.cards, missing: [] }, engineCard).ok);
+  for (const n of ['Ralts', 'Kirlia', 'Mega Gardevoir ex']) {
+    assert.ok(g.cards.some(c => engineCard(c)?.name === n), `${n} in the deck`);
+  }
+  assert.ok(!g.cards.some(c => engineCard(c)?.name === 'Dreepy'), 'no other deck\'s evolution line as a staple');
+  // played in the meta lists: starts from a meta list
+  const h = seedDeck('Hydrapple ex');
+  assert.match(h.how, /meta lists/);
+  // the optimiser's changes are legal and keep the line
+  const rng = new Rng(3);
+  for (let i = 0; i < 30; i++) {
+    const c = mutate(g.cards, g.pool, g.core, rng);
+    assert.ok(c, 'a change was found');
+    assert.ok(checkLegal({ id: 'm', archetype: 'm', cards: c!.cards, missing: [] }, engineCard).ok, c!.what);
+    for (const [n, k] of g.core) {
+      assert.ok(c!.cards.filter(x => x === n).length >= k, `${n} kept (${c!.what})`);
+    }
+  }
+});
+
+test('full games from turn 1 finish with a winner and keep every card', () => {
+  const d = metaDecks();
+  for (let k = 0; k < 2; k++) {
+    const sim = newGameStart(d[k].cards, d[k + 3].cards, 500 + k);
+    assert.equal(sim.state.turn, 1);
+    assert.deepEqual(checkInvariants(sim.state, { settled: true }), []);
+  }
 });
 
 // ---------------------------------------------------------------- full games

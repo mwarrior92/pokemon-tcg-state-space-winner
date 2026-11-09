@@ -1,0 +1,369 @@
+{
+ "about": "Win rate of the side to move, by state category (categories.ts), over pooled playouts of the v1/v2/win-model policies. Used by the deck builder to call a turn ideal (>= 75%) or non-ideal (<= 40%). Regenerate after policies change.",
+ "games": 1599,
+ "runs": [
+  "playout-v1b-vs-v0",
+  "playout-v1q-vs-v0",
+  "playout-v1",
+  "playout-v2-vs-v1",
+  "playout-win-vs-v1",
+  "playout-v2b-vs-v1",
+  "playout-v2-confirm",
+  "playout-win2-vs-v2",
+  "playout-win2b-vs-win2"
+ ],
+ "categories": {
+  "race:ahead ready:0-0 ko:no threat:no exposed:none": {
+   "turns": 602,
+   "winRate": 0.7442
+  },
+  "race:ahead ready:0-0 ko:no threat:yes exposed:none": {
+   "turns": 148,
+   "winRate": 0.5338
+  },
+  "race:ahead ready:0-0 ko:yes threat:no exposed:none": {
+   "turns": 64,
+   "winRate": 0.75
+  },
+  "race:ahead ready:0-1 ko:no threat:no exposed:none": {
+   "turns": 431,
+   "winRate": 0.6009
+  },
+  "race:ahead ready:0-1 ko:no threat:yes exposed:none": {
+   "turns": 240,
+   "winRate": 0.3958
+  },
+  "race:ahead ready:0-1 ko:yes threat:no exposed:none": {
+   "turns": 49,
+   "winRate": 0.8367
+  },
+  "race:ahead ready:0-2 ko:no threat:no exposed:none": {
+   "turns": 146,
+   "winRate": 0.6712
+  },
+  "race:ahead ready:0-2 ko:no threat:yes exposed:none": {
+   "turns": 114,
+   "winRate": 0.4035
+  },
+  "race:ahead ready:1-0 ko:no threat:no exposed:no": {
+   "turns": 886,
+   "winRate": 0.7833
+  },
+  "race:ahead ready:1-0 ko:no threat:yes exposed:no": {
+   "turns": 86,
+   "winRate": 0.4419
+  },
+  "race:ahead ready:1-0 ko:no threat:yes exposed:yes": {
+   "turns": 69,
+   "winRate": 0.7391
+  },
+  "race:ahead ready:1-0 ko:yes threat:no exposed:no": {
+   "turns": 261,
+   "winRate": 0.8812
+  },
+  "race:ahead ready:1-1 ko:no threat:no exposed:no": {
+   "turns": 398,
+   "winRate": 0.7714
+  },
+  "race:ahead ready:1-1 ko:no threat:yes exposed:no": {
+   "turns": 108,
+   "winRate": 0.5556
+  },
+  "race:ahead ready:1-1 ko:no threat:yes exposed:yes": {
+   "turns": 75,
+   "winRate": 0.4933
+  },
+  "race:ahead ready:1-1 ko:yes threat:no exposed:no": {
+   "turns": 136,
+   "winRate": 0.9191
+  },
+  "race:ahead ready:1-1 ko:yes threat:yes exposed:yes": {
+   "turns": 23,
+   "winRate": 0.7391
+  },
+  "race:ahead ready:1-2 ko:no threat:no exposed:no": {
+   "turns": 117,
+   "winRate": 0.6239
+  },
+  "race:ahead ready:1-2 ko:no threat:yes exposed:no": {
+   "turns": 55,
+   "winRate": 0.4909
+  },
+  "race:ahead ready:1-2 ko:no threat:yes exposed:yes": {
+   "turns": 36,
+   "winRate": 0.4444
+  },
+  "race:ahead ready:1-2 ko:yes threat:no exposed:no": {
+   "turns": 46,
+   "winRate": 0.8696
+  },
+  "race:ahead ready:2-0 ko:no threat:no exposed:no": {
+   "turns": 340,
+   "winRate": 0.8676
+  },
+  "race:ahead ready:2-0 ko:no threat:yes exposed:no": {
+   "turns": 33,
+   "winRate": 0.7576
+  },
+  "race:ahead ready:2-0 ko:yes threat:no exposed:no": {
+   "turns": 160,
+   "winRate": 0.9625
+  },
+  "race:ahead ready:2-1 ko:no threat:no exposed:no": {
+   "turns": 194,
+   "winRate": 0.7268
+  },
+  "race:ahead ready:2-1 ko:no threat:yes exposed:no": {
+   "turns": 94,
+   "winRate": 0.5851
+  },
+  "race:ahead ready:2-1 ko:yes threat:no exposed:no": {
+   "turns": 89,
+   "winRate": 0.8764
+  },
+  "race:ahead ready:2-2 ko:no threat:no exposed:no": {
+   "turns": 76,
+   "winRate": 0.6974
+  },
+  "race:ahead ready:2-2 ko:no threat:yes exposed:no": {
+   "turns": 35,
+   "winRate": 0.4857
+  },
+  "race:ahead ready:2-2 ko:yes threat:no exposed:no": {
+   "turns": 16,
+   "winRate": 0.8125
+  },
+  "race:behind ready:0-0 ko:no threat:no exposed:none": {
+   "turns": 620,
+   "winRate": 0.3435
+  },
+  "race:behind ready:0-0 ko:no threat:yes exposed:none": {
+   "turns": 131,
+   "winRate": 0.229
+  },
+  "race:behind ready:0-0 ko:yes threat:no exposed:none": {
+   "turns": 80,
+   "winRate": 0.6375
+  },
+  "race:behind ready:0-1 ko:no threat:no exposed:none": {
+   "turns": 941,
+   "winRate": 0.2933
+  },
+  "race:behind ready:0-1 ko:no threat:yes exposed:none": {
+   "turns": 471,
+   "winRate": 0.172
+  },
+  "race:behind ready:0-1 ko:yes threat:no exposed:none": {
+   "turns": 70,
+   "winRate": 0.7143
+  },
+  "race:behind ready:0-2 ko:no threat:no exposed:none": {
+   "turns": 321,
+   "winRate": 0.1776
+  },
+  "race:behind ready:0-2 ko:no threat:yes exposed:none": {
+   "turns": 266,
+   "winRate": 0.1015
+  },
+  "race:behind ready:0-2 ko:yes threat:no exposed:none": {
+   "turns": 16,
+   "winRate": 0.375
+  },
+  "race:behind ready:1-0 ko:no threat:no exposed:no": {
+   "turns": 478,
+   "winRate": 0.5084
+  },
+  "race:behind ready:1-0 ko:no threat:yes exposed:no": {
+   "turns": 42,
+   "winRate": 0.2381
+  },
+  "race:behind ready:1-0 ko:no threat:yes exposed:yes": {
+   "turns": 37,
+   "winRate": 0.3784
+  },
+  "race:behind ready:1-0 ko:yes threat:no exposed:no": {
+   "turns": 118,
+   "winRate": 0.7458
+  },
+  "race:behind ready:1-1 ko:no threat:no exposed:no": {
+   "turns": 387,
+   "winRate": 0.385
+  },
+  "race:behind ready:1-1 ko:no threat:yes exposed:no": {
+   "turns": 149,
+   "winRate": 0.2617
+  },
+  "race:behind ready:1-1 ko:no threat:yes exposed:yes": {
+   "turns": 79,
+   "winRate": 0.2152
+  },
+  "race:behind ready:1-1 ko:yes threat:no exposed:no": {
+   "turns": 76,
+   "winRate": 0.7237
+  },
+  "race:behind ready:1-1 ko:yes threat:yes exposed:yes": {
+   "turns": 15,
+   "winRate": 0.5333
+  },
+  "race:behind ready:1-2 ko:no threat:no exposed:no": {
+   "turns": 203,
+   "winRate": 0.3793
+  },
+  "race:behind ready:1-2 ko:no threat:yes exposed:no": {
+   "turns": 81,
+   "winRate": 0.1728
+  },
+  "race:behind ready:1-2 ko:no threat:yes exposed:yes": {
+   "turns": 47,
+   "winRate": 0.2553
+  },
+  "race:behind ready:1-2 ko:yes threat:no exposed:no": {
+   "turns": 63,
+   "winRate": 0.5556
+  },
+  "race:behind ready:2-0 ko:no threat:no exposed:no": {
+   "turns": 148,
+   "winRate": 0.4122
+  },
+  "race:behind ready:2-0 ko:no threat:yes exposed:no": {
+   "turns": 21,
+   "winRate": 0.5238
+  },
+  "race:behind ready:2-0 ko:yes threat:no exposed:no": {
+   "turns": 61,
+   "winRate": 0.7705
+  },
+  "race:behind ready:2-1 ko:no threat:no exposed:no": {
+   "turns": 137,
+   "winRate": 0.562
+  },
+  "race:behind ready:2-1 ko:no threat:yes exposed:no": {
+   "turns": 70,
+   "winRate": 0.3
+  },
+  "race:behind ready:2-1 ko:yes threat:no exposed:no": {
+   "turns": 56,
+   "winRate": 0.6607
+  },
+  "race:behind ready:2-1 ko:yes threat:yes exposed:no": {
+   "turns": 17,
+   "winRate": 0.4118
+  },
+  "race:behind ready:2-2 ko:no threat:no exposed:no": {
+   "turns": 60,
+   "winRate": 0.4833
+  },
+  "race:behind ready:2-2 ko:no threat:yes exposed:no": {
+   "turns": 38,
+   "winRate": 0.2368
+  },
+  "race:behind ready:2-2 ko:yes threat:no exposed:no": {
+   "turns": 24,
+   "winRate": 0.6667
+  },
+  "race:even ready:0-0 ko:no threat:no exposed:none": {
+   "turns": 358,
+   "winRate": 0.5084
+  },
+  "race:even ready:0-0 ko:no threat:yes exposed:none": {
+   "turns": 55,
+   "winRate": 0.4364
+  },
+  "race:even ready:0-0 ko:yes threat:no exposed:none": {
+   "turns": 23,
+   "winRate": 0.7826
+  },
+  "race:even ready:0-1 ko:no threat:no exposed:none": {
+   "turns": 326,
+   "winRate": 0.4479
+  },
+  "race:even ready:0-1 ko:no threat:yes exposed:none": {
+   "turns": 170,
+   "winRate": 0.2706
+  },
+  "race:even ready:0-1 ko:yes threat:no exposed:none": {
+   "turns": 39,
+   "winRate": 0.5641
+  },
+  "race:even ready:0-2 ko:no threat:no exposed:none": {
+   "turns": 146,
+   "winRate": 0.3904
+  },
+  "race:even ready:0-2 ko:no threat:yes exposed:none": {
+   "turns": 103,
+   "winRate": 0.2621
+  },
+  "race:even ready:1-0 ko:no threat:no exposed:no": {
+   "turns": 326,
+   "winRate": 0.6626
+  },
+  "race:even ready:1-0 ko:no threat:yes exposed:no": {
+   "turns": 31,
+   "winRate": 0.6129
+  },
+  "race:even ready:1-0 ko:no threat:yes exposed:yes": {
+   "turns": 30,
+   "winRate": 0.4
+  },
+  "race:even ready:1-0 ko:yes threat:no exposed:no": {
+   "turns": 77,
+   "winRate": 0.8701
+  },
+  "race:even ready:1-1 ko:no threat:no exposed:no": {
+   "turns": 192,
+   "winRate": 0.5833
+  },
+  "race:even ready:1-1 ko:no threat:yes exposed:no": {
+   "turns": 96,
+   "winRate": 0.6042
+  },
+  "race:even ready:1-1 ko:no threat:yes exposed:yes": {
+   "turns": 32,
+   "winRate": 0.4375
+  },
+  "race:even ready:1-1 ko:yes threat:no exposed:no": {
+   "turns": 76,
+   "winRate": 0.5132
+  },
+  "race:even ready:1-2 ko:no threat:no exposed:no": {
+   "turns": 75,
+   "winRate": 0.3733
+  },
+  "race:even ready:1-2 ko:no threat:yes exposed:no": {
+   "turns": 30,
+   "winRate": 0.2333
+  },
+  "race:even ready:1-2 ko:no threat:yes exposed:yes": {
+   "turns": 20,
+   "winRate": 0.3
+  },
+  "race:even ready:1-2 ko:yes threat:no exposed:no": {
+   "turns": 32,
+   "winRate": 0.6875
+  },
+  "race:even ready:2-0 ko:no threat:no exposed:no": {
+   "turns": 135,
+   "winRate": 0.6889
+  },
+  "race:even ready:2-0 ko:no threat:yes exposed:no": {
+   "turns": 20,
+   "winRate": 0.75
+  },
+  "race:even ready:2-0 ko:yes threat:no exposed:no": {
+   "turns": 53,
+   "winRate": 0.9057
+  },
+  "race:even ready:2-1 ko:no threat:no exposed:no": {
+   "turns": 72,
+   "winRate": 0.75
+  },
+  "race:even ready:2-1 ko:no threat:yes exposed:no": {
+   "turns": 50,
+   "winRate": 0.54
+  },
+  "race:even ready:2-1 ko:yes threat:no exposed:no": {
+   "turns": 28,
+   "winRate": 0.9286
+  }
+ }
+}

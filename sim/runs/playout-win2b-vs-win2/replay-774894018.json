@@ -1,0 +1,125 @@
+{
+ "seed": 774894018,
+ "decks": [
+  "Slowking",
+  "Mew Box"
+ ],
+ "seats": [
+  "plan2:C:\\Users\\marcw\\local\\winner\\sim\\runs\\playout-v1\\value-model.json",
+  "plan2:C:\\Users\\marcw\\local\\winner\\sim\\runs\\value-v2\\value-model.json"
+ ],
+ "startTurn": 3,
+ "turns": [
+  {
+   "turn": 4,
+   "mover": 0,
+   "cat": "race:behind ready:0-0 ko:no threat:no exposed:none",
+   "prizes": [
+    6,
+    4
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 3903,
+   "board": "Turn 3, P1 to move\nP1 (to move): prizes 6  deck 44  discard 7  hand 1\n  Active: Slowking (on Slowpoke) 120/120 E:-\n  Hand: Ciphermaniac's Codebreaking\nP2: prizes 4  deck 46  discard 0  hand 6\n  Active: Meowth ex 170/170 E:Telepathic Psychic P\n  Bench0: Koraidon ex 170/230 E:-\n  Hand: Boss's Orders, Area Zero Underdepths, Dusk Ball, Mega Kangaskhan ex, Mew ex, Wellspring Mask Ogerpon ex",
+   "line": [
+    "end turn"
+   ]
+  },
+  {
+   "turn": 5,
+   "mover": 1,
+   "cat": "race:ahead ready:0-0 ko:no threat:no exposed:none",
+   "prizes": [
+    6,
+    4
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 2145,
+   "board": "Turn 4, P2 to move\nP1: prizes 6  deck 44  discard 7  hand 1\n  Active: Slowking (on Slowpoke) 120/120 E:-\n  Hand: Ciphermaniac's Codebreaking\nP2 (to move): prizes 4  deck 45  discard 0  hand 7\n  Active: Meowth ex 170/170 E:Telepathic Psychic P\n  Bench0: Koraidon ex 170/230 E:-\n  Hand: Boss's Orders, Area Zero Underdepths, Dusk Ball, Mega Kangaskhan ex, Mew ex, Wellspring Mask Ogerpon ex, Crispin",
+   "line": [
+    "play Area Zero Underdepths",
+    "play Crispin | Psychic Energy + Water Energy | Water Energy -> own active Meowth ex",
+    "play Dusk Ball | Latias ex",
+    "bench Latias ex",
+    "attach Psychic Energy -> bench1 Latias ex",
+    "bench Mew ex",
+    "attack Tuck Tail | own bench0 Koraidon ex"
+   ]
+  },
+  {
+   "turn": 6,
+   "mover": 0,
+   "cat": "race:behind ready:0-0 ko:no threat:no exposed:none",
+   "prizes": [
+    6,
+    4
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 3867,
+   "board": "Turn 5, P1 to move\nStadium: Area Zero Underdepths\nP1 (to move): prizes 6  deck 43  discard 7  hand 2\n  Active: Slowking (on Slowpoke) 60/120 E:-\n  Hand: Ciphermaniac's Codebreaking, Mega Kangaskhan ex\nP2: prizes 4  deck 42  discard 2  hand 7\n  Active: Koraidon ex 170/230 E:-\n  Bench1: Latias ex 210/210 E:P\n  Bench2: Mew ex 160/160 E:-\n  Hand: Boss's Orders, Mega Kangaskhan ex, Wellspring Mask Ogerpon ex, Meowth ex, Telepathic Psychic Energy, Psychic Energy, Water Energy",
+   "line": [
+    "play Ciphermaniac's Codebreaking | Psychic Energy + Latias ex | keep order"
+   ]
+  },
+  {
+   "turn": 7,
+   "mover": 1,
+   "cat": "race:ahead ready:0-0 ko:no threat:no exposed:none",
+   "prizes": [
+    6,
+    4
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 2150,
+   "board": "Turn 6, P2 to move\nStadium: Area Zero Underdepths\nP1: prizes 6  deck 43  discard 8  hand 1\n  Active: Slowking (on Slowpoke) 60/120 E:-\n  Hand: Mega Kangaskhan ex\nP2 (to move): prizes 4  deck 41  discard 2  hand 8\n  Active: Koraidon ex 170/230 E:-\n  Bench1: Latias ex 210/210 E:P\n  Bench2: Mew ex 160/160 E:-\n  Hand: Boss's Orders, Mega Kangaskhan ex, Wellspring Mask Ogerpon ex, Meowth ex, Telepathic Psychic Energy, Psychic Energy, Water Energy, Mega Kangaskhan ex",
+   "line": [
+    "bench Wellspring Mask Ogerpon ex",
+    "retreat to bench2 Mew ex"
+   ]
+  },
+  {
+   "turn": 8,
+   "mover": 0,
+   "cat": "race:behind ready:0-0 ko:no threat:no exposed:none",
+   "prizes": [
+    6,
+    4
+   ],
+   "took": 0,
+   "policy": "plan",
+   "ms": 4755,
+   "board": "Turn 7, P1 to move\nStadium: Area Zero Underdepths\nP1 (to move): prizes 6  deck 42  discard 8  hand 2\n  Active: Slowking (on Slowpoke) 60/120 E:-\n  Hand: Mega Kangaskhan ex, Psychic Energy\nP2: prizes 4  deck 41  discard 2  hand 7\n  Active: Mew ex 160/160 E:-\n  Bench0: Wellspring Mask Ogerpon ex 210/210 E:-\n  Bench1: Latias ex 210/210 E:P\n  Bench2: Koraidon ex 170/230 E:-\n  Hand: Boss's Orders, Mega Kangaskhan ex, Meowth ex, Telepathic Psychic Energy, Psychic Energy, Water Energy, Mega Kangaskhan ex",
+   "line": []
+  },
+  {
+   "turn": 8,
+   "mover": 1,
+   "cat": "race:ahead ready:0-0 ko:no threat:no exposed:none",
+   "prizes": [
+    6,
+    4
+   ],
+   "took": 1,
+   "policy": "plan",
+   "ms": 2603,
+   "board": "Turn 8, P2 to move\nStadium: Area Zero Underdepths\nP1: prizes 6  deck 42  discard 8  hand 2\n  Active: Slowking (on Slowpoke) 60/120 E:-\n  Hand: Mega Kangaskhan ex, Psychic Energy\nP2 (to move): prizes 4  deck 40  discard 2  hand 8\n  Active: Mew ex 160/160 E:-\n  Bench0: Wellspring Mask Ogerpon ex 210/210 E:-\n  Bench1: Latias ex 210/210 E:P\n  Bench2: Koraidon ex 170/230 E:-\n  Hand: Boss's Orders, Mega Kangaskhan ex, Meowth ex, Telepathic Psychic Energy, Psychic Energy, Water Energy, Mega Kangaskhan ex, Cyrano",
+   "line": [
+    "bench Meowth ex | yes | Crispin",
+    "play Crispin | Fighting Energy + Psychic Energy | Fighting Energy -> own bench1 Latias ex",
+    "attach Telepathic Psychic Energy -> bench1 Latias ex | Latias ex + Mew ex",
+    "bench Mega Kangaskhan ex",
+    "bench Mega Kangaskhan ex",
+    "retreat to bench1 Latias ex",
+    "attack Eon Blade"
+   ]
+  }
+ ],
+ "winner": 1,
+ "reason": "no Pokémon in play",
+ "ms": 19443,
+ "first": 0
+}
