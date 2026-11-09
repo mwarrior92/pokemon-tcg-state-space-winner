@@ -1,0 +1,181 @@
+// Can each card in a list be used for something, given the rest of the list? A rules check from the
+// cards' costs and texts, used by the deck builder (a change may not add a card it cannot use, nor
+// strand a card that was usable) and in the deck report next to how often each card was really used.
+//
+// A Pokémon is usable if it can pay for one of its attacks with the deck's Energy (Colorless costs
+// are paid by anything), or has an ability whose text requirements the deck meets, or is what
+// another Pokémon in the deck evolves from. An evolution needs its pre-evolution (or Fossil) in the
+// deck. A Trainer or Special Energy is usable when its text requirements are met. Basic Energy is
+// always usable (it pays Colorless costs).
+//
+// Text requirements: "<type> Energy" / "[X] Energy" needs Energy of that type in the deck, "<type>
+// Pokémon" a Pokémon of that type, "Stage 2" a Stage 2 Pokémon; mentions about the opponent's side
+// are ignored. A text whose requirements are all unmet makes that effect unusable; meeting any one
+// is enough (texts often offer alternatives).
+import { Card, CardType, EnergyCard, PokemonCard, Stage, TrainerCard } from './engine';
+import { engineCard, isBasicEnergy } from './decklist';
+import { cardsNamed } from './cards';
+
+const TYPE_WORD: Record<string, CardType> = {
+  Grass: CardType.GRASS, Fire: CardType.FIRE, Water: CardType.WATER, Lightning: CardType.LIGHTNING,
+  Psychic: CardType.PSYCHIC, Fighting: CardType.FIGHTING, Darkness: CardType.DARK, Metal: CardType.METAL,
+  G: CardType.GRASS, R: CardType.FIRE, W: CardType.WATER, L: CardType.LIGHTNING, P: CardType.PSYCHIC,
+  F: CardType.FIGHTING, D: CardType.DARK, M: CardType.METAL,
+};
+const TYPES = [CardType.GRASS, CardType.FIRE, CardType.WATER, CardType.LIGHTNING, CardType.PSYCHIC,
+  CardType.FIGHTING, CardType.DARK, CardType.METAL];
+const TYPE_NAME: Partial<Record<CardType, string>> = {
+  [CardType.GRASS]: 'Grass', [CardType.FIRE]: 'Fire', [CardType.WATER]: 'Water', [CardType.LIGHTNING]: 'Lightning',
+  [CardType.PSYCHIC]: 'Psychic', [CardType.FIGHTING]: 'Fighting', [CardType.DARK]: 'Darkness', [CardType.METAL]: 'Metal',
+};
+const T = '(?:\\b(?:Grass|Fire|Water|Lightning|Psychic|Fighting|Darkness|Metal)\\b|\\[[GRWLPFDM]\\])';
+const REQ = new RegExp(`(${T}(?:\\s*(?:,|or|and)\\s*${T})*)\\s+(Energy|Pokémon)`, 'g');
+
+interface Req { kind: 'energy' | 'pokemon' | 'stage2'; types: CardType[] }
+
+const reqCache = new Map<string, Req[]>();
+/** requirements a text puts on your own deck */
+export function textNeeds(text: string): Req[] {
+  const hit = reqCache.get(text);
+  if (hit) {
+    return hit;
+  }
+  const out: Req[] = [];
+  let m: RegExpExecArray | null;
+  REQ.lastIndex = 0;
+  while ((m = REQ.exec(text))) {
+    const before = text.slice(Math.max(0, m.index - 40), m.index);
+    if (/opponent'?s?\s+(?:\w+\s+){0,3}$/i.test(before) || /your opponent\b[^.]*$/i.test(before)) {
+      continue;                      // about the opponent's side
+    }
+    const types = [...m[1].matchAll(new RegExp(T, 'g'))].map(x => TYPE_WORD[x[0].replace(/[[\]]/g, '')]).filter(t => t !== undefined);
+    out.push({ kind: m[2] === 'Energy' ? 'energy' : 'pokemon', types });
+  }
+  if (/\bStage 2\b/.test(text) && !/\bStage 1\b/.test(text) && !/opponent/i.test(text)) {   // Rare Candy, not Dawn
+    out.push({ kind: 'stage2', types: [] });
+  }
+  reqCache.set(text, out);
+  return out;
+}
+
+export interface DeckFacts {
+  names: Set<string>;
+  energy: Set<CardType>;           // Energy types the deck's Energy cards provide
+  anyEnergy: boolean;              // some Energy provides every type
+  pokeTypes: Set<CardType>;
+  evolvesFrom: Set<string>;        // names something in the deck evolves from
+  stage2: boolean;                 // a Stage 2 whose line can be played
+  texts: string;                   // every text in the deck (for cards that name other cards)
+}
+
+export function deckFacts(cards: string[]): DeckFacts {
+  const f: DeckFacts = { names: new Set(), energy: new Set(), anyEnergy: false, pokeTypes: new Set(), evolvesFrom: new Set(), stage2: false, texts: '' };
+  const texts: string[] = [];
+  const cs = [...new Set(cards)].map(n => engineCard(n)).filter((c): c is Card => !!c);
+  for (const c of cs) {
+    f.names.add(c.name);
+    if (c instanceof EnergyCard) {
+      c.provides.forEach(t => (t === CardType.ANY ? (f.anyEnergy = true) : f.energy.add(t)));
+      if (!isBasicEnergy(c)) {
+        // Special Energy often says what it provides only in its text (Team Rocket's, Prism, Legacy)
+        const text = (c as any).text ?? '';
+        if (/every type of Energy/i.test(text)) {
+          f.anyEnergy = true;
+        }
+        textNeeds(text).filter(r => r.kind === 'energy').forEach(r => r.types.forEach(t => f.energy.add(t)));
+      }
+    }
+    texts.push((c as any).text ?? '');
+    if (c instanceof PokemonCard) {
+      c.attacks.forEach(a => texts.push(a.text ?? ''));
+      c.powers.forEach(p => texts.push(p.text ?? ''));
+    }
+    if (c instanceof PokemonCard) {
+      c.cardType.forEach(t => f.pokeTypes.add(t));
+      if (c.evolvesFrom) {
+        f.evolvesFrom.add(c.evolvesFrom);
+      }
+    }
+  }
+  f.texts = texts.join('\n');
+  f.stage2 = cs.some(c => c instanceof PokemonCard && c.stage === Stage.STAGE_2);
+  return f;
+}
+
+function unmet(reqs: Req[], f: DeckFacts): string | undefined {
+  if (!reqs.length) {
+    return undefined;
+  }
+  const ok = (r: Req) => r.kind === 'stage2' ? f.stage2
+    : r.kind === 'energy' ? f.anyEnergy || r.types.some(t => f.energy.has(t))
+      : r.types.some(t => f.pokeTypes.has(t));
+  if (reqs.some(ok)) {
+    return undefined;
+  }
+  const say = (r: Req) => r.kind === 'stage2' ? 'a Stage 2 Pokémon' : `${r.types.map(t => TYPE_NAME[t]).join(' or ')} ${r.kind === 'energy' ? 'Energy' : 'Pokémon'}`;
+  return [...new Set(reqs.map(say))].join(' / ');
+}
+
+/** does a card other than `c` name it in its text? */
+function namedElsewhere(c: PokemonCard, f: DeckFacts): boolean {
+  const own = [...c.attacks.map(a => a.text ?? ''), ...c.powers.map(p => p.text ?? '')].join('\n');
+  const count = (x: string) => x.split(c.name).length - 1;
+  return count(f.texts) > count(own);
+}
+
+/** why card `n` cannot be used in a deck with these facts, or undefined if it can */
+export function whyUnusable(n: string, f: DeckFacts): string | undefined {
+  const c = engineCard(n);
+  if (!c || isBasicEnergy(c)) {
+    return undefined;
+  }
+  if (c instanceof PokemonCard) {
+    // a deck that uses the attacks of Pokémon from its deck or discard (Slowking's Seek Inspiration:
+    // "choose 1 of its attacks and use it") can use any Pokémon without a Rule Box for its attacks
+    const ruleBox = c.tags.some(t => /^(EX|GX|V|VMAX|VSTAR|V-UNION|Radiant|Prism Star|Break|Mega EX|Mega ex|Lv.X)$/i.test(String(t)));
+    if (/choose 1 of its attacks and use it/i.test(f.texts) && !ruleBox && c.attacks.length) {
+      return undefined;
+    }
+    if (c.evolvesFrom && !f.names.has(c.evolvesFrom)) {
+      // a Stage 2 straight from its Basic with Rare Candy
+      const basic = c.stage === Stage.STAGE_2 ? cardsNamed(c.evolvesFrom).map(x => (x as PokemonCard).evolvesFrom).find(Boolean) : undefined;
+      if (!(basic && f.names.has(basic) && f.names.has('Rare Candy'))) {
+        return `nothing to evolve it from (needs ${c.evolvesFrom})`;
+      }
+    }
+    if (f.evolvesFrom.has(c.name)) {
+      return undefined;              // part of a line in the deck
+    }
+    // another card uses it by name, or as one of a group ("N's Pokémon" for N's Zoroark ex's Night Joker)
+    const owner = /^(.+?'s) /.exec(c.name)?.[1];
+    if ((owner && f.texts.includes(`${owner} Pokémon`)) || namedElsewhere(c, f)) {
+      return undefined;
+    }
+    const payable = (cost: CardType[]) => cost.every(t => t === CardType.COLORLESS || !TYPES.includes(t) || f.anyEnergy || f.energy.has(t));
+    const attackOk = c.attacks.some(a => payable(a.cost) && !unmet(textNeeds(a.text ?? ''), f));
+    const abilityOk = c.powers.some(p => !unmet(textNeeds(p.text ?? ''), f));
+    if (attackOk || abilityOk) {
+      return undefined;
+    }
+    const why: string[] = [];
+    if (c.attacks.length) {
+      const need = [...new Set(c.attacks.flatMap(a => a.cost.filter(t => TYPES.includes(t) && !f.energy.has(t))))].map(t => TYPE_NAME[t]);
+      why.push(need.length ? `no attack the deck's Energy can pay (needs ${need.join(' or ')} Energy)` : 'its attacks need cards the deck does not have');
+    }
+    c.powers.forEach(p => why.push(`${p.name} needs ${unmet(textNeeds(p.text ?? ''), f)}`));
+    return why.join('; ') || 'no attack or ability';
+  }
+  if (c instanceof TrainerCard || c instanceof EnergyCard) {
+    // for Special Energy, Energy types in its text are what it provides, not requirements
+    const reqs = textNeeds((c as any).text ?? '').filter(r => !(c instanceof EnergyCard && r.kind === 'energy'));
+    const u = unmet(reqs, f);
+    return u ? `needs ${u}` : undefined;
+  }
+  return undefined;
+}
+
+/** every card in the list that cannot be used, with the reason */
+export function unusableCards(cards: string[]): { card: string; reason: string }[] {
+  const f = deckFacts(cards);
+  return [...new Set(cards)].map(n => ({ card: n, reason: whyUnusable(n, f) })).filter((x): x is { card: string; reason: string } => !!x.reason);
+}

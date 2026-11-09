@@ -114,6 +114,15 @@ Output in `runs/deck-<name>/`:
   whether the deck's attacks use the type. Nothing is ruled out, so multi-type decks stay possible.
   `node dist/fitshow.js --list my-deck.txt` (or `--seed "<card>"`) prints the likeliest additions
   and cuts.
+- **Every card must be usable** (`usability.ts`): a rules check from costs and texts. A Pokémon needs
+  an attack the deck's Energy can pay, an ability whose requirements the deck meets, or to be part
+  of a line (an evolution needs its pre-evolution, Fossil, or Rare Candy and its Basic); Trainers
+  and Special Energy need what their text asks for ("Grass Energy", "Fire Pokémon", Rare Candy a
+  Stage 2). Cards other cards use by name or group ("N's Pokémon"), and attack sources for
+  Slowking, count as usable. A change may not add an unusable card or strand a usable one, and seed
+  builds skip unusable staples. It flags no card in any of the 512 meta lists
+  (`node dist/usablecheck.js --meta`; `--list my-deck.txt` checks one list). The report's
+  **Card usage** table adds how often each card was really used in the final test games.
 - A default run plays about 760 games, roughly 30 minutes on 8 workers.
 
 **Limits:** the result measures how well the simulator pilots the deck. Decks whose plan needs

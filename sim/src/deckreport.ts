@@ -13,6 +13,7 @@ import * as path from 'path';
 import { REPO_ROOT } from './cards';
 import { PokemonCard } from './engine';
 import { engineCard, formatDeckList } from './decklist';
+import { unusableCards } from './usability';
 import { GameRec } from './playgame';
 
 export interface DeckStats {
@@ -35,6 +36,9 @@ export interface DeckStats {
   attackers: { what: string; who: string; prizes: number; share: number; uses: number }[];
   opening: { action: string; share: number }[];
   winCards: { card: string; wins: number; losses: number }[];
+  /** per card name in the list: share of games it was used in (attack, ability, evolved into or
+   *  from, played, attached) and uses per game */
+  usage: { card: string; copies: number; games: number; perGame: number }[];
   lossCards: { card: string; wins: number; losses: number }[];
 }
 
@@ -99,7 +103,10 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
   const opening = new Map<string, number>();
   const useW = new Map<string, number>(), useL = new Map<string, number>();
   let gamesW = 0, gamesL = 0;
+  const usedGames = new Map<string, number>(), usedTimes = new Map<string, number>();
+  const pokeNames = new Set([...new Set(cards)].map(n => engineCard(n)).filter(c => c instanceof PokemonCard).map(c => c!.name));
   for (const g of decided) {
+    const usedHere = new Set<string>();
     const me = seatOf(g);
     const won = g.winner === me;
     const opp = g.decks[1 - me];
@@ -151,6 +158,24 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
       }
       for (const l of line) {
         const a = actionOf(l);
+        const head = l.split(' | ')[0];
+        const u: string[] = [];
+        let mm: RegExpExecArray | null;
+        if (a.kind === 'attack') {
+          u.push(...(attackOwners.get(a.what) ?? []));
+        } else if ((mm = /^ability .+? \((?:active|bench\d) (.+)\)$/.exec(head))) {
+          u.push(mm[1]);
+        } else if ((mm = /^evolve (?:active|bench\d) (.+) -> (.+)$/.exec(head))) {
+          u.push(mm[1], mm[2]);
+        } else if ((mm = /^attach (.+?) -> /.exec(head))) {
+          u.push(mm[1]);
+        } else if (['play', 'tool', 'stadium'].includes(a.kind)) {
+          u.push(a.what);
+        }
+        u.forEach(x => {
+          usedHere.add(x);
+          usedTimes.set(x, (usedTimes.get(x) ?? 0) + 1);
+        });
         if (a.kind === 'attack') {
           const k = `attack ${a.what}`;
           const x = attack.get(k) ?? { prizes: 0, uses: 0 };
@@ -170,6 +195,7 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
         }
       }
     });
+    usedHere.forEach(x => usedGames.set(x, (usedGames.get(x) ?? 0) + 1));
     const fp = own.findIndex(t => t.took > 0);
     if (fp >= 0) {
       firstPrize.push(fp + 1);
@@ -203,6 +229,10 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
     attackers,
     opening: [...opening].map(([action, k]) => ({ action, share: k / Math.max(1, firstTwo) })).sort((a, b) => b.share - a.share).slice(0, 8),
     winCards: diff.filter(d => d.wins > d.losses).sort((a, b) => (b.wins - b.losses) - (a.wins - a.losses)).slice(0, 6),
+    usage: [...new Set(cards.map(c => engineCard(c)?.name ?? c))].map(card => ({
+      card, copies: cards.filter(c => (engineCard(c)?.name ?? c) === card).length,
+      games: n ? (usedGames.get(card) ?? 0) / n : 0, perGame: n ? (usedTimes.get(card) ?? 0) / n : 0,
+    })).sort((a, b) => a.games - b.games),
     lossCards: diff.filter(d => d.losses > d.wins).sort((a, b) => (b.losses - b.wins) - (a.losses - a.wins)).slice(0, 4),
   };
 }
@@ -305,7 +335,19 @@ export function renderReport(s: DeckStats, cards: string[], extra: { title: stri
   advice(s).forEach(a => L.push(`- ${a}`));
   if (extra.cardIssues?.length) {
     L.push('');
-    L.push('## Card implementation checks');
+    L.push('## Card usage');
+  L.push('');
+  L.push('How often each card was actually used: attacked or used an ability with, evolved into or from, played, or attached. Cards used in few games are candidates to cut; the rules check says why a card cannot be used at all with the rest of the list.');
+  L.push('');
+  L.push('| card | copies | used in games | uses per game | note |');
+  L.push('|---|---|---|---|---|');
+  const why = new Map(unusableCards(cards).map(u => [engineCard(u.card)?.name ?? u.card, u.reason]));
+  (s.usage ?? []).forEach(u => {
+    const note = why.has(u.card) ? `**cannot be used:** ${why.get(u.card)}` : u.games === 0 ? '**never used**' : u.games < 0.1 ? 'rarely used' : '';
+    L.push(`| ${u.card} | ${u.copies} | ${pct(u.games)} | ${u.perGame.toFixed(1)} | ${note} |`);
+  });
+  L.push('');
+  L.push('## Card implementation checks');
     L.push('');
     extra.cardIssues.forEach(c => L.push(`- ${c}`));
   }

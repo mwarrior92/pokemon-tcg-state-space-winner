@@ -25,6 +25,7 @@ import { REPO_ROOT, loadCards, metaDecks, metaShares } from '../cards';
 import { isKnownSmoke, isKnownStatic, loadKnownIssues, smokeTest, standardPool, staticCheck } from '../cardcheck';
 import { checkLegal, deckFromText, engineCard, formatDeckList } from '../decklist';
 import { candidatePool, mutate, mutateN, seedDeck } from '../deckgen';
+import { unusableCards } from '../usability';
 import { DeckStats, deckScore, deckStats, renderReport } from '../deckreport';
 import { GameRec, GameSpec, playGame } from '../playgame';
 import { autoWorkers, isMainThread, runPool, serveJobs } from '../pool';
@@ -167,6 +168,10 @@ async function main(): Promise<void> {
     return decks.map((_, di) => recs.filter((r, k) => r && jobs[k].di === di) as GameRec[]);
   };
   const startCards = cards.slice();
+  const startBad = unusableCards(cards);
+  if (startBad.length) {
+    how.push(`Cards in the starting list that the rules check says cannot be used: ${startBad.map(u => `${engineCard(u.card)?.name} (${u.reason})`).join('; ')}.`);
+  }
   console.log(`# ${name}: ${how.join(' ')}`);
   console.log(`  pilot ${pilot}, ${workers} workers, output ${dir}`);
 

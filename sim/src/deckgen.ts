@@ -16,6 +16,7 @@ import { Deck, allCards, buildDeck, cardsNamed, loadCards, loadMetaLists, normNa
 import { checkLegal, engineCard, isBasicEnergy, standardNames } from './decklist';
 import { Rng } from './rng';
 import { cutWeight, fit, profile } from './synergy';
+import { deckFacts, unusableCards, whyUnusable } from './usability';
 
 interface CardStat {
   lists: number;          // lists that include it
@@ -296,6 +297,10 @@ export function seedDeck(seedQuery: string): SeedDeck {
     if (!c || cards.some(n => engineCard(n)?.name === c.name)) {
       continue;
     }
+    // skip staples this deck could not use (e.g. Teal Mask Ogerpon ex without Grass Energy)
+    if (whyUnusable(st.card, deckFacts([...cards, ...energies.filter(([e]) => e).map(([e]) => e!.fullName), st.card]))) {
+      continue;
+    }
     if (c.tags.includes(CardTag.ACE_SPEC)) {
       if (ace) {
         continue;
@@ -311,7 +316,7 @@ export function seedDeck(seedQuery: string): SeedDeck {
       break;
     }
     const c = engineCard(st.card);
-    if (c && !c.tags.includes(CardTag.ACE_SPEC)) {
+    if (c && !c.tags.includes(CardTag.ACE_SPEC) && !whyUnusable(st.card, deckFacts([...cards, st.card]))) {
       add(c, 60 - cards.length);
     }
   }
@@ -351,9 +356,11 @@ export function mutate(cards: string[], pool: string[], core: Map<string, number
   const nameOf = (n: string) => engineCard(n)?.name ?? n;
   const printings = new Map<string, number>();
   new Set(pool).forEach(n => printings.set(nameOf(n), (printings.get(nameOf(n)) ?? 0) + 1));
+  const baseBad = unusableCards(cards).length;
   for (let tries = 0; tries < 50; tries++) {
     let next = cards.slice();
     const steps: string[] = [];
+    const added: string[] = [];
     const k = rng.chance(0.6) ? 1 : 2;
     for (let i = 0; i < k; i++) {
       const removable = [...new Set(next)].filter(n => {
@@ -368,8 +375,9 @@ export function mutate(cards: string[], pool: string[], core: Map<string, number
       const after = next.slice();
       after.splice(after.indexOf(out), 1);
       const prof = profile(after);
-      // a name's weight is shared by its printings, so a card with three printings is not tripled
-      const byFit = (n: string) => fit(n, prof) / (printings.get(nameOf(n)) ?? 1);
+      const facts = deckFacts(after);
+      // cards the deck could not use get almost no weight (and are rejected below)
+      const byFit = (n: string) => fit(n, prof) / (printings.get(nameOf(n)) ?? 1) * (whyUnusable(n, facts) ? 0.02 : 1);
       let inn: string | undefined;
       if (kind === 0) {
         inn = pickWeighted(rng, pool, byFit);                // a card from the pool
@@ -386,12 +394,18 @@ export function mutate(cards: string[], pool: string[], core: Map<string, number
       }
       next.splice(next.indexOf(out), 1);
       next.push(inn);
+      added.push(inn);
       steps.push(`-1 ${engineCard(out)?.name ?? out}, +1 ${engineCard(inn)?.name ?? inn}`);
     }
     if (!steps.length) {
       continue;
     }
     const d: Deck = { id: 'x', archetype: 'x', cards: next, missing: [] };
+    // every card must stay usable: no unusable card added, none stranded (e.g. its Energy cut)
+    const bad = unusableCards(next);
+    if (bad.length > baseBad || bad.some(b => added.includes(b.card))) {
+      continue;
+    }
     if (checkLegal(d, engineCard).ok) {
       next = next.slice().sort();
       return { cards: next, what: steps.join('; ') };
