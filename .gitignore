@@ -44,3 +44,4 @@ sim/runs/*/games.jsonl
 sim/runs/*/feature-names.json
 sim/runs/smoke-*/
 sim/runs/*.out
+sim/data/

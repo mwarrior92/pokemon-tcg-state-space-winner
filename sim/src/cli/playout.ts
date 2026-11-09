@@ -14,7 +14,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { REPO_ROOT, loadCards, metaDecks } from '../cards';
-import { GameRec, playGame as playShared } from '../playgame';
+import { GameRec, GameSpec, playGame as playShared } from '../playgame';
+import { archiveGames } from '../archive';
 import { CHEAP_GROUPS, features } from '../features';
 import { autoWorkers, isMainThread, runPool, serveJobs } from '../pool';
 import { Rng } from '../rng';
@@ -25,13 +26,17 @@ interface GameJob { seed: number; a: number; b: number; offense: string; defense
 
 // ---------------------------------------------------------------- worker
 
-function playGame(job: GameJob): GameRec {
+function specOf(job: GameJob): GameSpec {
   const decks = metaDecks();
-  return playShared({
+  return {
     seed: job.seed, decks: [decks[job.a].cards, decks[job.b].cards], names: [decks[job.a].archetype, decks[job.b].archetype],
     start: job.full ? 'full' : 'generated', offense: job.offense, defense: job.defense, budget: job.budget, maxTurns: job.maxTurns,
     seats: job.seats, vectors: job.vectors, log: job.log ? 'board' : undefined,
-  });
+  };
+}
+
+function playGame(job: GameJob): GameRec {
+  return playShared(specOf(job));
 }
 
 serveJobs((job: GameJob) => {
@@ -194,8 +199,9 @@ async function main(): Promise<void> {
   let n = 0;
   await runPool<GameJob, GameRec>(__filename, todo, {
     workers,
-    onResult: g => {
+    onResult: (g, k) => {
       fs.appendFileSync(file, JSON.stringify(g) + '\n');
+      archiveGames([g], [specOf(todo[k])], 'playout', run);
       games.push(g);
       if (++n % 20 === 0 || n === todo.length) {
         console.log(`  ${n}/${todo.length} games (${((Date.now() - t0) / 1000).toFixed(0)} s); mean ${(games.reduce((s, x) => s + x.turns.length, 0) / games.length).toFixed(1)} turns, ${(games.reduce((s, x) => s + x.ms, 0) / games.length / 1000).toFixed(1)} s per game in a worker`);

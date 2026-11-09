@@ -1,12 +1,16 @@
 // Fit the win-probability model on a playout run (needs --vectors) and report how well it predicts
 // held-out games, against a baseline that only knows the prize counts.
-//   node dist/fitvalue.js [run=playout-v0] [--with otherRun,...] [--out dir]
+//   node dist/fitvalue.js [run=playout-v0] [--with otherRun,...] [--archive [kinds]] [--out dir]
 // Writes <out>/value-model.json and <out>/value-report.md (out defaults to runs/<run>). Games from
-// the --with runs are added (they must have the same feature names).
+// the --with runs are added (they must have the same feature names). --archive adds the games in the
+// local archive (sim/data/archive/) that use the same feature set and today's card rules, optionally
+// only some kinds (e.g. --archive deck-final,deck-finalist).
 import * as fs from 'fs';
 import * as path from 'path';
 import { REPO_ROOT } from '../cards';
 import { importance, saveModel } from '../model';
+import { createHash } from 'crypto';
+import { readArchive } from '../archive';
 import { WinModel, auc, fitLogistic, logLoss } from '../value';
 
 const run = process.argv[2] ?? 'playout-v0';
@@ -26,6 +30,19 @@ for (const r of runs) {
     throw new Error(`${r}: different feature names`);
   }
   games.push(...fs.readFileSync(path.join(runsDir, r, 'games.jsonl'), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)));
+}
+if (process.argv.includes('--archive')) {
+  const want = createHash('sha1').update(names.join('|')).digest('hex').slice(0, 10);
+  const k = argOf('archive');
+  const kinds = k && !k.startsWith('--') ? k.split(',') : undefined;
+  let added = 0;
+  for (const r of readArchive({ fresh: true, kinds })) {
+    if (r.features === want) {
+      games.push(r.game);
+      added++;
+    }
+  }
+  runs.push(`archive (${added} games)`);
 }
 const rows: { x: number[]; y: number; g: number }[] = [];
 games.forEach((g: any, gi: number) => {

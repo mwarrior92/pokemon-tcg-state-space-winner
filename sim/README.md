@@ -129,6 +129,35 @@ Output in `runs/deck-<name>/`:
 long ability chains are likely under-played, and set-up choices are made at random. Compare a new
 deck with meta decks tested the same way.
 
+## Game archive, refits and play audits
+
+Every game the deck builder and the playout runner play is appended to a local archive,
+`sim/data/archive/games-<date>.jsonl.gz`. The folder is gitignored and is never committed. Each
+record holds:
+- the game, with the mover's cheap feature vector at every turn, the category, the prizes and the
+  moves;
+- the spec to replay it;
+- the git commit, and a fingerprint of every card in both decks, so games played with a card that
+  was fixed later are left out.
+
+It takes about 4–5 KB per game compressed, about 3.5 MB per deck builder run. `NO_ARCHIVE=1` turns
+it off.
+
+```
+node dist/archive.js stats                                  # games, positions, kinds, pilots, commits
+node dist/fitvalue.js playout-win2-vs-v2 --archive --out value-v3   # refit the win model with archived games
+node dist/archive.js audit --pilot plan:runs/value-v3 --n 6  # replay games that pilot won, boards on
+```
+
+**Refit procedure** (win model, category rates, or any learned weight the pilot or generator uses):
+1. Refit from the archive. Use only games played with today's card rules; `fitvalue --archive` does
+   this.
+2. Play the new model against the current one, both seats, same games. Adopt it only if it wins.
+3. **Audit before adopting.** Run `archive.js audit` on games the new model won, especially
+   comebacks. Have them reviewed (an AI review is fine) for sensible play: sequencing, targets,
+   resource use, not leaving itself open, and wins that only came from the opponent's mistakes.
+   Save the review in `sim/reviews/` and fix what it finds before adopting.
+
 ## Training rounds and review
 
 `node dist/train.js offense --states 1000 --eval 100 --run name` writes `runs/<run>/` containing

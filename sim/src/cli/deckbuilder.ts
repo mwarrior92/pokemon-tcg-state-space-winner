@@ -26,6 +26,7 @@ import { isKnownSmoke, isKnownStatic, loadKnownIssues, smokeTest, standardPool, 
 import { checkLegal, deckFromText, engineCard, formatDeckList } from '../decklist';
 import { candidatePool, mutate, mutateN, seedDeck } from '../deckgen';
 import { unusableCards } from '../usability';
+import { archiveGames } from '../archive';
 import { DeckStats, deckScore, deckStats, renderReport } from '../deckreport';
 import { GameRec, GameSpec, playGame } from '../playgame';
 import { autoWorkers, isMainThread, runPool, serveJobs } from '../pool';
@@ -138,11 +139,15 @@ async function main(): Promise<void> {
     decks: s.seat === 0 ? [deck, s.opp.cards] : [s.opp.cards, deck],
     names: s.seat === 0 ? [tested, s.opp.name] : [s.opp.name, tested],
     start: 'full', offense, defense, budget: 100, maxTurns: 120, seats: [pilotSpec, pilotSpec], log: 'lines',
+    vectors: true,                   // for the local game archive (training data), see archive.ts
   });
+  // every game goes to the local archive (sim/data/archive/, not committed)
+  const kindOf = (label: string) => (/^generation/.test(label) ? 'deck-search' : /^finalists/.test(label) ? 'deck-finalist' : 'deck-final');
   const play = async (deck: string[], sched: ReturnType<typeof schedule>, label: string) => {
     const t0 = Date.now();
     let n = 0;
-    const res = await runPool<GameSpec, GameRec>(__filename, sched.map(s => specFor(deck, s)), {
+    const specs = sched.map(s => specFor(deck, s));
+    const res = await runPool<GameSpec, GameRec>(__filename, specs, {
       workers,
       onResult: () => {
         if (++n % 20 === 0 || n === sched.length) {
@@ -150,6 +155,7 @@ async function main(): Promise<void> {
         }
       },
     });
+    archiveGames(res, specs, kindOf(label), name);
     return res.filter(Boolean) as GameRec[];
   };
   /** play several decks on the same games (same opponents, seats and seeds), in one pool run */
@@ -165,6 +171,7 @@ async function main(): Promise<void> {
         }
       },
     });
+    archiveGames(recs, jobs.map(j => j.spec), kindOf(label), name);
     return decks.map((_, di) => recs.filter((r, k) => r && jobs[k].di === di) as GameRec[]);
   };
   const startCards = cards.slice();
