@@ -4,23 +4,27 @@
 //   Optimise a list:   node dist/deckbuilder.js --list my-deck.txt --optimize
 //   Build from a card: node dist/deckbuilder.js --seed "Dragapult ex"
 //
-// Options: --games 120 (final test)  --screen 24 (games per candidate while optimising)
-//          --iterations 4  --mutants 3  --field 12 (meta decks used while optimising)
+// Options: --population 10 (decks searched at once)  --screen 10 (games per deck per generation)
+//          --generations 4  --finalists 3  --games 120 (final test; the finalists play half of it)
+//          --field 12 (meta decks used while searching)
 //          --pilot race|race2|v0|plan:<model>|plan2:<model>  --name <name>  --workers auto
-//          --stuck-weight 0.25 (how much time spent stuck counts against a candidate)
+//          --stuck-weight 0.25 (how much time spent stuck counts against a deck)
 //
 // The test: full games from turn 1 against the meta decks, chosen by their share of the decklists,
 // both sides piloted by the same policy, the tested deck as player 1 in half the games.
-// Optimising: each round tries a few small changes (deckgen.ts mutate) and keeps the best if it
-// beats the current list on the same games (same opponents and seeds; a fresh set every round) by
-// at least 2 points of score = win rate - stuck weight x (share of turns stuck).
+// Searching (--seed, or --list with --optimize): a population of decks (the start, other meta lists
+// that play the seed, and bigger variations of the start). Each generation every deck plays the same
+// few games; the top half survives with its games, the rest are replaced by small changes to the
+// survivors. Decks are ranked by score = win rate (pulled towards 50% when a deck has few games)
+// - stuck weight x (share of turns stuck). The best few, plus the starting list, then play the same
+// half of the final test; the best of those plays the other half, as does the starting list.
 // Output in runs/deck-<name>/: report.md, deck.txt, stats.json, games.jsonl.
 import * as fs from 'fs';
 import * as path from 'path';
 import { REPO_ROOT, loadCards, metaDecks, metaShares } from '../cards';
 import { isKnownSmoke, isKnownStatic, loadKnownIssues, smokeTest, standardPool, staticCheck } from '../cardcheck';
 import { checkLegal, deckFromText, engineCard, formatDeckList } from '../decklist';
-import { candidatePool, mutate, seedDeck } from '../deckgen';
+import { candidatePool, mutate, mutateN, seedDeck } from '../deckgen';
 import { DeckStats, deckScore, deckStats, renderReport } from '../deckreport';
 import { GameRec, GameSpec, playGame } from '../playgame';
 import { autoWorkers, isMainThread, runPool, serveJobs } from '../pool';
@@ -76,6 +80,7 @@ async function main(): Promise<void> {
   let cards: string[];
   let core = new Map<string, number>();
   let pool: string[];
+  let alternatives: { cards: string[]; what: string }[] = [];
   const how: string[] = [];
   let name: string;
   const listFile = arg('list', '');
@@ -112,6 +117,7 @@ async function main(): Promise<void> {
     cards = sd.cards;
     core = sd.core;
     pool = sd.pool;
+    alternatives = sd.alternatives;
     name = arg('name', seedName);
     how.push(`Seed card: ${seedName}. ${sd.how}.`);
   } else {
@@ -164,69 +170,145 @@ async function main(): Promise<void> {
   console.log(`# ${name}: ${how.join(' ')}`);
   console.log(`  pilot ${pilot}, ${workers} workers, output ${dir}`);
 
-  // optimise
+  const games = Number(arg('games', '120'));
+  const finalSched = schedule(field, games, base + 7);
+  const key = (c: string[]) => c.slice().sort().join('|');
+  const pctS = (x: number) => `${(100 * x).toFixed(0)}%`;
+  /** net difference between two lists, by card name: "-2 Judge, +1 Briar, +1 Dawn" */
+  const diffText = (from: string[], to: string[]) => {
+    const cnt = new Map<string, number>();
+    from.forEach(n => cnt.set(n, (cnt.get(n) ?? 0) - 1));
+    to.forEach(n => cnt.set(n, (cnt.get(n) ?? 0) + 1));
+    const nm = (n: string) => engineCard(n)?.name ?? n;
+    const out = [...cnt].filter(([, k]) => k < 0).map(([n, k]) => `${k} ${nm(n)}`)
+      .concat([...cnt].filter(([, k]) => k > 0).map(([n, k]) => `+${k} ${nm(n)}`));
+    return out.length ? out.join(', ') : 'no change';
+  };
+
+  // search
   const changes: string[] = [];
+  let changesTitle: string | undefined;
+  let preFinal: Map<string, GameRec[]> | undefined;     // list -> its games on the first half of the final test
   if (seedName || flag('optimize')) {
-    const iterations = Number(arg('iterations', '4'));
-    const mutants = Number(arg('mutants', '3'));
-    const screen = Number(arg('screen', '24'));
+    changesTitle = 'How the list was found';
+    const popSize = Number(arg('population', '10'));
+    const perGen = Number(arg('screen', '10'));
+    const generations = Number(arg('generations', '4'));
+    const nFinal = Number(arg('finalists', '3'));
     const top = field.slice().sort((a, b) => b.share - a.share).slice(0, Number(arg('field', '12')));
     const rng = new Rng(base + 17);
-    for (let it = 0; it < iterations; it++) {
-      const sched = schedule(top, screen, base + 101 * (it + 1));
-      const cands = [{ cards, what: '(current list)' }];
-      for (let m = 0; m < mutants; m++) {
-        const c = mutate(cards, pool, core, rng);
-        if (c) {
-          cands.push(c);
-        }
+    interface Cand { id: number; cards: string[]; parent?: number; change: string; games: GameRec[] }
+    const all = new Map<string, Cand>();
+    const byId = new Map<number, Cand>();
+    const add = (cards: string[], change: string, parent?: number): Cand | undefined => {
+      const k = key(cards);
+      if (all.has(k)) {
+        return undefined;
       }
-      // all candidates on the same games, in one pool run
-      const recsBy = await playMany(cands.map(c => c.cards), sched, `round ${it + 1}`);
-      const results: { c: typeof cands[number]; s: DeckStats; score: number; games: GameRec[] }[] = cands.map((c, ci) => {
-        const s = deckStats(tested, c.cards, recsBy[ci]);
-        return { c, s, score: deckScore(s, stuckWeight), games: recsBy[ci] };
-      });
-      const cur = results[0];
-      const best = results.slice(1).sort((a, b) => b.score - a.score)[0];
-      const line = results.map(r => `${r.c.what === '(current list)' ? 'current' : r.c.what}: ${(100 * r.s.winRate).toFixed(0)}% won, stuck ${(100 * r.s.stuck.nonIdealShare * r.s.stuck.stuckRate).toFixed(0)}%, score ${r.score.toFixed(3)}`);
-      console.log(`  round ${it + 1}:\n    ${line.join('\n    ')}`);
-      let confirmed = false;
-      if (best && best.score >= cur.score + 0.02) {
-        // confirm on a second, fresh set of games before keeping it: one set of `screen` games is
-        // noisy (about +-10 points)
-        const sched2 = schedule(top, screen, base + 7919 * (it + 1));
-        const [g1, g2] = await playMany([cards, best.c.cards], sched2, `round ${it + 1} confirm`);
-        const both = (a: GameRec[], b: GameRec[], cc: string[]) => {
-          const st = deckStats(tested, cc, [...a, ...b]);
-          return { st, score: deckScore(st, stuckWeight) };
-        };
-        const curAll = both(cur.games, g1, cards), bestAll = both(best.games, g2, best.c.cards);
-        console.log(`    confirm over ${2 * screen} games: current ${(100 * curAll.st.winRate).toFixed(0)}% (score ${curAll.score.toFixed(3)}), change ${(100 * bestAll.st.winRate).toFixed(0)}% (score ${bestAll.score.toFixed(3)})`);
-        if (bestAll.score >= curAll.score + 0.02) {
-          confirmed = true;
-          cards = best.c.cards;
-          changes.push(`Round ${it + 1}: ${best.c.what} (on the same ${2 * screen} games: win rate ${(100 * curAll.st.winRate).toFixed(0)}% -> ${(100 * bestAll.st.winRate).toFixed(0)}%, score ${curAll.score.toFixed(2)} -> ${bestAll.score.toFixed(2)})`);
-          console.log(`  kept: ${best.c.what}`);
-        } else {
-          changes.push(`Round ${it + 1}: ${best.c.what} looked better on ${screen} games but not on the second set (score ${curAll.score.toFixed(2)} vs ${bestAll.score.toFixed(2)} over ${2 * screen}); not kept`);
-        }
+      const c: Cand = { id: all.size + 1, cards: cards.slice().sort(), parent, change, games: [] };
+      all.set(k, c);
+      byId.set(c.id, c);
+      return c;
+    };
+    const rank = (c: Cand) => {
+      const st = deckStats(tested, c.cards, c.games);
+      // pulled towards 50% by 4 imaginary games, so 8 of 10 does not outrank 30 of 45
+      return { st, score: deckScore(st, stuckWeight) - st.winRate + (st.wins + 2) / (st.games + 4) };
+    };
+    const label = (c: Cand) => (c.parent ? `#${c.id} (#${c.parent}: ${c.change})` : `#${c.id} (${c.change})`);
+    const startC = add(startCards, 'starting list')!;
+    let pop: Cand[] = [startC];
+    for (const a of alternatives.slice(0, Math.floor(popSize / 2))) {
+      const c = add(a.cards, a.what);
+      if (c) {
+        pop.push(c);
       }
-      if (confirmed) {
-        // nothing more this round
-      } else if (!best || best.score < cur.score + 0.02) {
-        changes.push(`Round ${it + 1}: no change beat the current list (best tried: ${best ? `${best.c.what}, score ${best.score.toFixed(2)} vs ${cur.score.toFixed(2)}` : 'none'})`);
-      }
-      pool = candidatePool(cards).concat(pool.filter(p => !cards.includes(p)));
     }
+    for (let guard = 0; pop.length < popSize && guard < popSize * 20; guard++) {
+      // bigger jumps for a seed build (a rough first guess) than for a hand-made list
+      const m = mutateN(startCards, pool, core, rng, seedName ? rng.int(3, 8) : rng.int(2, 4));
+      const c = m && add(m.cards, `variant: ${diffText(startCards, m.cards)}`, startC.id);
+      if (c) {
+        pop.push(c);
+      }
+    }
+    console.log(`  search: ${pop.length} decks, ${generations} generations of ${perGen} games each`);
+    const pools = new Map<number, string[]>();
+    let played = 0;
+    let ranked: { c: Cand; st: DeckStats; score: number }[] = [];
+    for (let g = 0; g < generations; g++) {
+      const sched = schedule(top, perGen, base + 101 * (g + 1));
+      const recsBy = await playMany(pop.map(c => c.cards), sched, `generation ${g + 1}`);
+      pop.forEach((c, i) => c.games.push(...recsBy[i]));
+      played += pop.length * sched.length;
+      ranked = pop.map(c => ({ c, ...rank(c) })).sort((a, b) => b.score - a.score);
+      console.log(`  generation ${g + 1}:`);
+      ranked.forEach(r => console.log(`    ${r.score.toFixed(3)}  ${pctS(r.st.winRate)} of ${r.st.games}  ${label(r.c)}`));
+      const best = ranked[0];
+      changes.push(`Generation ${g + 1}: ${pop.length} decks, ${perGen} games each; leader ${label(best.c)}, ${pctS(best.st.winRate)} won over its ${best.st.games} games`);
+      if (g === generations - 1) {
+        break;
+      }
+      // the top half survives; the rest are replaced by changes to survivors (better ones more often)
+      const keep = ranked.slice(0, Math.ceil(pop.length / 2)).map(r => r.c);
+      const next = keep.slice();
+      for (let guard = 0; next.length < popSize && guard < popSize * 20; guard++) {
+        const parent = keep[Math.floor(keep.length * rng.next() ** 1.5)];
+        if (!pools.has(parent.id)) {
+          pools.set(parent.id, [...new Set(candidatePool(parent.cards).concat(pool))]);
+        }
+        const m = mutate(parent.cards, pools.get(parent.id)!, core, rng);
+        const c = m && add(m.cards, m.what, parent.id);
+        if (c) {
+          next.push(c);
+        }
+      }
+      pop = next;
+    }
+
+    // finalists (and the starting list) on the same half of the final test
+    const fin = ranked.slice(0, nFinal).map(r => r.c);
+    if (!fin.includes(startC)) {
+      fin.push(startC);
+    }
+    const half1 = finalSched.filter((_, i) => i % 2 === 0);
+    console.log(`  finalists: ${fin.map(c => `#${c.id}`).join(', ')} on the same ${half1.length} games against the whole field`);
+    const fr = await playMany(fin.map(c => c.cards), half1, 'finalists');
+    played += fin.length * half1.length;
+    preFinal = new Map(fin.map((c, i) => [key(c.cards), fr[i]]));
+    const finRanked = fin.map((c, i) => {
+      const st = deckStats(tested, c.cards, fr[i]);
+      return { c, st, score: deckScore(st, stuckWeight) };
+    }).sort((a, b) => b.score - a.score);
+    const champ = finRanked[0].c;
+    changes.push(`Finalists on the same ${half1.length} games against the whole field: ${finRanked.map(f => `#${f.c.id}${f.c === startC ? ' (starting list)' : ''} ${pctS(f.st.winRate)} (score ${f.score.toFixed(2)})`).join('; ')}`);
+    // the champion's family line
+    const lineage: Cand[] = [];
+    for (let c: Cand | undefined = champ; c; c = c.parent ? byId.get(c.parent) : undefined) {
+      lineage.unshift(c);
+    }
+    if (champ !== startC) {
+      changes.push(`Winner #${champ.id}, found by: ${lineage.map(c => label(c)).join(' -> ')}`);
+      changes.push(`Net change from the starting list: ${diffText(startCards, champ.cards)}`);
+    } else {
+      changes.push('No variant beat the starting list in the finalist games; the list is unchanged.');
+    }
+    finRanked.slice(1).filter(f => f.c !== startC).forEach((f, i) => {
+      fs.writeFileSync(path.join(dir, `finalist-${i + 2}.txt`), formatDeckList(f.c.cards));
+      changes.push(`Runner-up #${f.c.id} (finalist-${i + 2}.txt), compared with the winner: ${diffText(champ.cards, f.c.cards)}`);
+    });
+    changes.push(`${all.size} different lists tried in ${played} games before the final test.`);
+    cards = champ.cards;
   }
 
-  // the final test against the whole field
-  const games = Number(arg('games', '120'));
-  const sched = schedule(field, games, base + 7);
-  const changed = startCards.slice().sort().join('|') !== cards.slice().sort().join('|');
-  console.log(`  final test: ${games} games against ${new Set(sched.map(s => s.opp.name)).size} meta decks${changed ? ' (and the starting list on the same games)' : ''}`);
-  const finals = await playMany(changed ? [cards, startCards] : [cards], sched, 'final');
+  // the final test against the whole field: the deck and, if it changed, the starting list on the
+  // same games (the finalists already played the first half)
+  const changed = key(startCards) !== key(cards);
+  const decks = changed ? [cards, startCards] : [cards];
+  const left = preFinal ? finalSched.filter((_, i) => i % 2 === 1) : finalSched;
+  console.log(`  final test: ${games} games against ${new Set(finalSched.map(s => s.opp.name)).size} meta decks${changed ? ' (and the starting list on the same games)' : ''}${preFinal ? `, ${left.length} still to play` : ''}`);
+  const more = await playMany(decks, left, 'final');
+  const finals = decks.map((d, i) => [...(preFinal?.get(key(d)) ?? []), ...more[i]]);
   const recs = finals[0];
   let beforeAfter: string | undefined;
   if (changed) {
@@ -239,7 +321,7 @@ async function main(): Promise<void> {
     const md = diffs.reduce((x, y) => x + y, 0) / Math.max(1, diffs.length);
     const sd = Math.sqrt(diffs.reduce((x, y) => x + (y - md) ** 2, 0) / Math.max(1, diffs.length - 1));
     const se = sd / Math.sqrt(Math.max(1, diffs.length));
-    beforeAfter = `**Starting list vs optimised list, on the same ${diffs.length} games:** ${(100 * st0.winRate).toFixed(0)}% -> ${(100 * st1.winRate).toFixed(0)}% (difference ${md >= 0 ? '+' : ''}${(100 * md).toFixed(0)} points, 95% range ${(100 * (md - 1.96 * se)).toFixed(0)} to ${(100 * (md + 1.96 * se)).toFixed(0)}); time stuck ${(100 * st0.stuck.nonIdealShare * st0.stuck.stuckRate).toFixed(0)}% -> ${(100 * st1.stuck.nonIdealShare * st1.stuck.stuckRate).toFixed(0)}% of turns.`;
+    beforeAfter = `**Starting list vs final list, on the same ${diffs.length} games:** ${(100 * st0.winRate).toFixed(0)}% -> ${(100 * st1.winRate).toFixed(0)}% (difference ${md >= 0 ? '+' : ''}${(100 * md).toFixed(0)} points, 95% range ${(100 * (md - 1.96 * se)).toFixed(0)} to ${(100 * (md + 1.96 * se)).toFixed(0)}); time stuck ${(100 * st0.stuck.nonIdealShare * st0.stuck.stuckRate).toFixed(0)}% -> ${(100 * st1.stuck.nonIdealShare * st1.stuck.stuckRate).toFixed(0)}% of turns.${preFinal ? ' (Half of these games also picked the winner among the finalists, which flatters it a little.)' : ''}`;
     console.log(`  ${beforeAfter.replace(/\*\*/g, '')}`);
   }
   fs.writeFileSync(path.join(dir, 'games.jsonl'), recs.map(r => JSON.stringify(r)).join('\n') + '\n');
@@ -259,7 +341,7 @@ async function main(): Promise<void> {
   }
   how.push(`Tested in ${stats.games} full games from turn 1 against the meta field (by share of decklists), pilot: ${pilot}.`);
   const report = renderReport(stats, cards, {
-    title: `Deck report: ${name}`, how, changes: changes.length ? (beforeAfter ? [...changes, beforeAfter] : changes) : undefined,
+    title: `Deck report: ${name}`, how, changes: changes.length ? (beforeAfter ? [...changes, beforeAfter] : changes) : undefined, changesTitle,
     cardIssues: issues.length ? issues : ['All cards in the list match their printed text and work in play (engine card checks).'],
   });
   fs.writeFileSync(path.join(dir, 'report.md'), report);

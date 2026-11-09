@@ -86,7 +86,7 @@ node dist/deckbuilder.js --export "Dragapult" --out dragapult.txt   # a meta dec
 ```
 
 Output in `runs/deck-<name>/`:
-- `report.md`: the deck list, the optimiser's changes, win rate against the meta field with a 95%
+- `report.md`: the deck list, how it was found (generations, finalists, the winner's family line), win rate against the meta field with a 95%
   range, the matchup table, stuck statistics, how the deck takes prizes, a recommended play style
   and the engine card checks;
 - `deck.txt`, `stats.json` and `games.jsonl`.
@@ -99,11 +99,22 @@ Output in `runs/deck-<name>/`:
   - if the card is played in the meta lists, start from the best-placed list that plays it;
   - otherwise, its evolution line in the usual counts for its stage, basic Energy for its attack
     costs, and the most common staples (Trainers, plus support Basics that stand alone).
-- **Optimising:** each round tries a few legal one- or two-card changes. All candidates play the
-  same fresh set of games, and a change is kept if its score (win rate minus `--stuck-weight` ×
-  share of turns stuck) is at least 2 points better.
-- **Options:** `--iterations 4`, `--mutants 3`, `--screen 24` games per candidate, `--games 120` for
-  the final test. A default run takes roughly 15 minutes on 8 workers.
+- **Searching** (`--seed`, or `--list ... --optimize`): a population of `--population 10` decks:
+  the start, other meta lists that play the seed, and bigger variations of the start. Each of
+  `--generations 4` generations, every deck plays the same `--screen 10` games; the top half
+  survives with its games and the rest are replaced by small changes to the survivors. Ranking uses
+  the win rate pulled towards 50% (four imaginary games), minus `--stuck-weight` × share of turns
+  stuck. The best `--finalists 3`, plus the starting list, then play the same half of the
+  `--games 120` final test; the best of them plays the other half, as does the starting list, for
+  a paired before/after. Runners-up are saved as `finalist-2.txt`, `finalist-3.txt`.
+- **Which changes are tried** (`synergy.ts`): any legal one- or two-card swap, but the card added is
+  weighted by how well it fits the deck and the card cut by how badly it fits the rest of it:
+  co-occurrence in the meta lists, whether the deck's Energy pays its attacks (soft; abilities
+  count as support), evolution links (line pieces up, orphan evolutions down) and, for basic Energy,
+  whether the deck's attacks use the type. Nothing is ruled out, so multi-type decks stay possible.
+  `node dist/fitshow.js --list my-deck.txt` (or `--seed "<card>"`) prints the likeliest additions
+  and cuts.
+- A default run plays about 760 games, roughly 30 minutes on 8 workers.
 
 **Limits:** the result measures how well the simulator pilots the deck. Decks whose plan needs
 long ability chains are likely under-played, and set-up choices are made at random. Compare a new

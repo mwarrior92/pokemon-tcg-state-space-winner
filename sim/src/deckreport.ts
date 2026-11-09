@@ -248,7 +248,7 @@ function advice(s: DeckStats): string[] {
   return out;
 }
 
-export function renderReport(s: DeckStats, cards: string[], extra: { title: string; how: string[]; changes?: string[]; cardIssues?: string[] }): string {
+export function renderReport(s: DeckStats, cards: string[], extra: { title: string; how: string[]; changes?: string[]; changesTitle?: string; cardIssues?: string[] }): string {
   const L: string[] = [];
   L.push(`# ${extra.title}`);
   L.push('');
@@ -261,7 +261,7 @@ export function renderReport(s: DeckStats, cards: string[], extra: { title: stri
   L.push('```');
   if (extra.changes?.length) {
     L.push('');
-    L.push('## Changes made by the optimiser');
+    L.push(`## ${extra.changesTitle ?? 'Changes made by the optimiser'}`);
     L.push('');
     extra.changes.forEach(c => L.push(`- ${c}`));
   }

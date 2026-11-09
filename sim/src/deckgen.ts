@@ -15,6 +15,7 @@ import { Card, CardTag, CardType, EnergyCard, PokemonCard, Stage, SuperType } fr
 import { Deck, allCards, buildDeck, cardsNamed, loadCards, loadMetaLists, normName } from './cards';
 import { checkLegal, engineCard, isBasicEnergy, standardNames } from './decklist';
 import { Rng } from './rng';
+import { cutWeight, fit, profile } from './synergy';
 
 interface CardStat {
   lists: number;          // lists that include it
@@ -167,6 +168,8 @@ export interface SeedDeck {
   core: Map<string, number>;     // card -> minimum copies the optimiser keeps
   how: string;
   pool: string[];
+  /** other meta lists that play the seed (other archetypes first), as extra starting points */
+  alternatives: { cards: string[]; what: string }[];
 }
 
 /** Find the seed card by name (case-insensitive; a set code and number may follow). */
@@ -228,10 +231,16 @@ export function seedDeck(seedQuery: string): SeedDeck {
     withSeed.forEach(l => arche.set(l.deck, (arche.get(l.deck) ?? 0) + 1));
     const top = [...arche].sort((a, b) => b[1] - a[1])[0][0];
     const best = withSeed.filter(l => l.deck === top).sort((a, b) => a.rank - b.rank)[0];
+    // other starting points: the best list of each other archetype, then the next lists of any
+    const others = withSeed.filter(l => l !== best).sort((a, b) => a.rank - b.rank);
+    const seenDeck = new Set([top]);
+    const alt = [...others.filter(l => !seenDeck.has(l.deck) && seenDeck.add(l.deck)), ...others]
+      .filter((l, i, a) => a.indexOf(l) === i);
     return {
       cards: best.cards.slice(), core,
       how: `${seed.name} is played in ${withSeed.length} meta lists; starting from the best-placed ${top} list (#${best.id}, placed ${best.rank}) that plays it`,
       pool: candidatePool(best.cards),
+      alternatives: alt.map(l => ({ cards: l.cards.slice(), what: `meta list #${l.id} (${l.deck}, placed ${l.rank})` })),
     };
   }
   // 2. build it
@@ -273,7 +282,13 @@ export function seedDeck(seedQuery: string): SeedDeck {
   // staples until 60, leaving room for the Energy
   const roomForEnergy = energies.reduce((x, [, k]) => x + k, 0);
   let ace = 0;
-  for (const st of staples(3)) {
+  // staples by how often the meta plays them, Pokémon also by how well they fit the line and its Energy
+  const lineProfile = profile([...line.map(c => c.fullName), ...energies.filter(([c]) => c).map(([c]) => c!.fullName)]);
+  const ranked = staples(3).map(st => {
+    const c = engineCard(st.card);
+    return { st, w: st.rate * (c instanceof PokemonCard ? Math.min(1, fit(st.card, lineProfile)) : 1) };
+  }).sort((a, b) => b.w - a.w).map(x => x.st);
+  for (const st of ranked) {
     if (cards.length >= 60 - roomForEnergy) {
       break;
     }
@@ -304,6 +319,7 @@ export function seedDeck(seedQuery: string): SeedDeck {
     cards: cards.slice(0, 60), core,
     how: `${seed.name} is not played in the meta lists; built from its line (${line.map(c => c.name).join(' -> ')}) in the usual counts for its stage, ${energyCount} basic Energy for its attack costs, and the most common staples`,
     pool: candidatePool(cards),
+    alternatives: [],
   };
 }
 
@@ -312,8 +328,29 @@ export interface Change {
   what: string;
 }
 
-/** A random legal change of 1-2 steps; undefined if none was found. */
+/** weighted random pick (weights >= 0) */
+function pickWeighted<T>(rng: Rng, xs: T[], w: (x: T) => number): T | undefined {
+  const ws = xs.map(w);
+  const tot = ws.reduce((a, b) => a + b, 0);
+  if (!xs.length || !(tot > 0)) {
+    return xs.length ? rng.pick(xs) : undefined;
+  }
+  let r = rng.next() * tot;
+  for (let i = 0; i < xs.length; i++) {
+    r -= ws[i];
+    if (r <= 0) {
+      return xs[i];
+    }
+  }
+  return xs[xs.length - 1];
+}
+
+/** A random legal change of 1-2 steps; undefined if none was found. The card cut is more likely
+ *  one that fits the rest of the deck badly, the card added one that fits it well (synergy.ts). */
 export function mutate(cards: string[], pool: string[], core: Map<string, number>, rng: Rng): Change | undefined {
+  const nameOf = (n: string) => engineCard(n)?.name ?? n;
+  const printings = new Map<string, number>();
+  new Set(pool).forEach(n => printings.set(nameOf(n), (printings.get(nameOf(n)) ?? 0) + 1));
   for (let tries = 0; tries < 50; tries++) {
     let next = cards.slice();
     const steps: string[] = [];
@@ -326,18 +363,23 @@ export function mutate(cards: string[], pool: string[], core: Map<string, number
       if (!removable.length) {
         break;
       }
-      const out = rng.pick(removable);
+      const out = pickWeighted(rng, removable, n => cutWeight(n, next))!;
       const kind = rng.int(0, 2);
+      const after = next.slice();
+      after.splice(after.indexOf(out), 1);
+      const prof = profile(after);
+      // a name's weight is shared by its printings, so a card with three printings is not tripled
+      const byFit = (n: string) => fit(n, prof) / (printings.get(nameOf(n)) ?? 1);
       let inn: string | undefined;
       if (kind === 0) {
-        inn = rng.pick(pool);                                // a card from the pool
+        inn = pickWeighted(rng, pool, byFit);                // a card from the pool
       } else if (kind === 1) {
-        inn = rng.pick([...new Set(next)].filter(n => n !== out));   // one more of a card already in
+        inn = pickWeighted(rng, [...new Set(next)].filter(n => n !== out), byFit);   // one more of a card already in
       } else {
         // Energy <-> Trainer
         const outCard = engineCard(out);
-        inn = isBasicEnergy(outCard) ? rng.pick(pool.filter(n => engineCard(n)?.superType === SuperType.TRAINER))
-          : rng.pick(pool.filter(n => isBasicEnergy(engineCard(n))));
+        inn = isBasicEnergy(outCard) ? pickWeighted(rng, pool.filter(n => engineCard(n)?.superType === SuperType.TRAINER), byFit)
+          : pickWeighted(rng, pool.filter(n => isBasicEnergy(engineCard(n))), byFit);
       }
       if (!inn || inn === out) {
         continue;
@@ -356,6 +398,18 @@ export function mutate(cards: string[], pool: string[], core: Map<string, number
     }
   }
   return undefined;
+}
+
+/** k changes in a row (a bigger jump, for spreading out a starting population) */
+export function mutateN(cards: string[], pool: string[], core: Map<string, number>, rng: Rng, k: number): Change | undefined {
+  let cur: Change | undefined;
+  for (let i = 0; i < k; i++) {
+    const next = mutate(cur?.cards ?? cards, pool, core, rng);
+    if (next) {
+      cur = { cards: next.cards, what: cur ? `${cur.what}; ${next.what}` : next.what };
+    }
+  }
+  return cur;
 }
 
 void normName;
