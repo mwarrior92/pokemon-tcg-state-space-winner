@@ -1,0 +1,29 @@
+Pokémon: 9
+4 Archen WHT 50
+2 Archeops WHT 51
+1 Fezandipiti ex ASC 142
+1 Latias ex SSP 76
+1 Lillie's Clefairy ex JTG 56
+
+Trainer: 36
+4 Antique Plume Fossil WHT 79
+4 Boss's Orders MEG 114
+4 Buddy-Buddy Poffin TEF 144
+4 Crushing Hammer POR 71
+4 Lillie's Determination MEG 119
+4 Poké Pad POR 81
+3 Ultra Ball MEG 131
+2 Crispin SCR 133
+2 Risky Ruins MEG 127
+1 Handheld Fan TWM 150
+1 Night Stretcher ASC 196
+1 Rare Candy MEG 125
+1 Rosa's Encouragement POR 84
+1 Unfair Stamp TWM 165
+
+Energy: 15
+9 Fighting Energy MEE 14
+4 Telepathic Psychic Energy POR 88
+2 Psychic Energy MEE 13
+
+Total Cards: 60
