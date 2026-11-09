@@ -1,0 +1,379 @@
+{
+ "name": "Mega Gardevoir ex (tested)",
+ "games": 119,
+ "wins": 70,
+ "winRate": 0.5882352941176471,
+ "ci": [
+  0.49839930177423464,
+  0.6725525581820018
+ ],
+ "byMatchup": [
+  {
+   "opponent": "Dragapult",
+   "games": 34,
+   "wins": 25,
+   "rate": 0.7352941176470589
+  },
+  {
+   "opponent": "Basic Box",
+   "games": 10,
+   "wins": 3,
+   "rate": 0.3
+  },
+  {
+   "opponent": "N's Zoroark",
+   "games": 10,
+   "wins": 5,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Slowking",
+   "games": 8,
+   "wins": 3,
+   "rate": 0.375
+  },
+  {
+   "opponent": "Hydrapple",
+   "games": 6,
+   "wins": 4,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Festival Lead",
+   "games": 6,
+   "wins": 5,
+   "rate": 0.8333333333333334
+  },
+  {
+   "opponent": "Alakazam Dudunsparce",
+   "games": 5,
+   "wins": 2,
+   "rate": 0.4
+  },
+  {
+   "opponent": "Dragapult Dusknoir",
+   "games": 4,
+   "wins": 3,
+   "rate": 0.75
+  },
+  {
+   "opponent": "Alakazam Dusknoir",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Dragapult Blaziken",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Dhelmise",
+   "games": 4,
+   "wins": 3,
+   "rate": 0.75
+  },
+  {
+   "opponent": "Crustle",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Mega Excadrill",
+   "games": 3,
+   "wins": 1,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Lopunny Dusknoir",
+   "games": 3,
+   "wins": 3,
+   "rate": 1
+  },
+  {
+   "opponent": "Dragapult Dudunsparce",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Rocket's Honchkrow",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Seaking Festival Lead",
+   "games": 2,
+   "wins": 2,
+   "rate": 1
+  },
+  {
+   "opponent": "Lucario Hariyama",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Sharpedo Toxtricity",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Clefairy Ogerpon",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Cynthia's Garchomp",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Rocket's Mewtwo",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Lopunny Dudunsparce",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Greninja",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Mega Lucario",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  }
+ ],
+ "endings": {
+  "won: prizes": 52,
+  "lost: prizes": 39,
+  "won: no Pokémon in play": 15,
+  "won: deck out": 3,
+  "lost: no Pokémon in play": 9,
+  "lost: deck out": 1
+ },
+ "turnsPerGame": 18.33613445378151,
+ "firstPrizeTurn": 5,
+ "prizesPerTurn": 0.3663636363636364,
+ "stuck": {
+  "idealShare": 0.23272727272727273,
+  "idealWin": 0.81640625,
+  "nonIdealShare": 0.23,
+  "stuckRate": 0.37209302325581395,
+  "entered": 70,
+  "enteredShare": 0.5882352941176471,
+  "recovered": 0.35714285714285715,
+  "expected": 0.3205542857142859,
+  "topStuck": [
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:no exposed:none",
+    "turns": 32,
+    "stuckRate": 0.4782608695652174
+   },
+   {
+    "cat": "race:behind ready:1-1 ko:no threat:no exposed:no",
+    "turns": 27,
+    "stuckRate": 0.4166666666666667
+   },
+   {
+    "cat": "race:even ready:0-2 ko:no threat:no exposed:none",
+    "turns": 22,
+    "stuckRate": 0.42857142857142855
+   },
+   {
+    "cat": "race:behind ready:2-1 ko:no threat:yes exposed:no",
+    "turns": 19,
+    "stuckRate": 0.4
+   }
+  ]
+ },
+ "attackers": [
+  {
+   "what": "attack Mega Symphonia",
+   "who": "Mega Gardevoir ex",
+   "prizes": 292,
+   "share": 0.7245657568238213,
+   "uses": 242
+  },
+  {
+   "what": "attack Full Moon Rondo",
+   "who": "Lillie's Clefairy ex",
+   "prizes": 41,
+   "share": 0.10173697270471464,
+   "uses": 40
+  },
+  {
+   "what": "attack Eon Blade",
+   "who": "Latias ex",
+   "prizes": 35,
+   "share": 0.08684863523573201,
+   "uses": 31
+  },
+  {
+   "what": "attack Psyshot",
+   "who": "Kirlia",
+   "prizes": 16,
+   "share": 0.03970223325062035,
+   "uses": 16
+  },
+  {
+   "what": "attack Cruel Arrow",
+   "who": "Fezandipiti ex",
+   "prizes": 11,
+   "share": 0.02729528535980149,
+   "uses": 15
+  },
+  {
+   "what": "attack Itchy Pollen",
+   "who": "Budew",
+   "prizes": 4,
+   "share": 0.009925558312655087,
+   "uses": 59
+  },
+  {
+   "what": "attack Mind Bend",
+   "who": "Munkidori",
+   "prizes": 4,
+   "share": 0.009925558312655087,
+   "uses": 17
+  },
+  {
+   "what": "attack Call Sign",
+   "who": "Kirlia",
+   "prizes": 0,
+   "share": 0,
+   "uses": 89
+  },
+  {
+   "what": "attack Overflowing Wishes",
+   "who": "Mega Gardevoir ex",
+   "prizes": 0,
+   "share": 0,
+   "uses": 81
+  },
+  {
+   "what": "attack Collect",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 18
+  },
+  {
+   "what": "attack Headbutt",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 4
+  },
+  {
+   "what": "attack Tuck Tail",
+   "who": "Meowth ex",
+   "prizes": 0,
+   "share": 0,
+   "uses": 3
+  }
+ ],
+ "opening": [
+  {
+   "action": "other end turn",
+   "share": 0.5966386554621849
+  },
+  {
+   "action": "retreat retreat",
+   "share": 0.5630252100840336
+  },
+  {
+   "action": "play Buddy-Buddy Poffin",
+   "share": 0.5630252100840336
+  },
+  {
+   "action": "play Poké Pad",
+   "share": 0.5378151260504201
+  },
+  {
+   "action": "attach Psychic Energy to Ralts",
+   "share": 0.453781512605042
+  },
+  {
+   "action": "bench Munkidori",
+   "share": 0.3865546218487395
+  },
+  {
+   "action": "play Ultra Ball",
+   "share": 0.3445378151260504
+  },
+  {
+   "action": "play Lillie's Determination",
+   "share": 0.33613445378151263
+  }
+ ],
+ "winCards": [
+  {
+   "card": "Psychic Energy",
+   "wins": 4.314285714285714,
+   "losses": 3.4693877551020407
+  },
+  {
+   "card": "Poké Pad",
+   "wins": 2.0428571428571427,
+   "losses": 1.530612244897959
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "wins": 0.8,
+   "losses": 0.32653061224489793
+  },
+  {
+   "card": "Lillie's Determination",
+   "wins": 1.6571428571428573,
+   "losses": 1.3265306122448979
+  },
+  {
+   "card": "Crispin",
+   "wins": 1.2428571428571429,
+   "losses": 0.9387755102040817
+  },
+  {
+   "card": "Ultra Ball",
+   "wins": 0.9857142857142858,
+   "losses": 0.8367346938775511
+  }
+ ],
+ "lossCards": [
+  {
+   "card": "Crushing Hammer",
+   "wins": 1.0857142857142856,
+   "losses": 1.489795918367347
+  },
+  {
+   "card": "Unfair Stamp",
+   "wins": 0.11428571428571428,
+   "losses": 0.30612244897959184
+  },
+  {
+   "card": "Budew",
+   "wins": 0.42857142857142855,
+   "losses": 0.6122448979591837
+  },
+  {
+   "card": "Latias ex",
+   "wins": 0.4714285714285714,
+   "losses": 0.6326530612244898
+  }
+ ]
+}

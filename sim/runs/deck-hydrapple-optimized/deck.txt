@@ -1,0 +1,32 @@
+Pokémon: 20
+4 Teal Mask Ogerpon ex TWM 25
+2 Applin TWM 17
+2 Bayleef MEG 9
+2 Chikorita ASC 8
+2 Hydrapple ex SCR 14
+2 Meganium MEG 10
+1 Celebi MEG 12
+1 Dipplin TWM 18
+1 Fezandipiti ex ASC 142
+1 Mega Kangaskhan ex MEG 104
+1 Meowth ex POR 62
+1 Tapu Bulu SFA 6
+
+Trainer: 26
+4 Forest of Vitality MEG 117
+4 Lillie's Determination MEG 119
+4 Ultra Ball MEG 131
+3 Bug Catching Set TWM 143
+3 Night Stretcher ASC 196
+2 Boss's Orders MEG 114
+1 Black Belt's Training ASC 255
+1 Briar SCR 132
+1 Crushing Hammer POR 71
+1 Judge POR 76
+1 Lana's Aid TWM 155
+1 Poké Pad POR 81
+
+Energy: 14
+14 Grass Energy MEE 9
+
+Total Cards: 60

@@ -165,7 +165,7 @@ export function deckStats(name: string, cards: string[], games: GameRec[]): Deck
         }
       }
       if (i < 2) {
-        for (const l of new Set(line.map(x => { const a = actionOf(x); return `${a.kind} ${a.what}`; }))) {
+        for (const l of new Set(line.map(x => { const a = actionOf(x); return a.kind === a.what ? a.kind : `${a.kind} ${a.what}`; }))) {
           opening.set(l, (opening.get(l) ?? 0) + 1);
         }
       }

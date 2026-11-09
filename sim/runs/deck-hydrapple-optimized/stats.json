@@ -1,0 +1,393 @@
+{
+ "name": "Hydrapple optimized (tested)",
+ "games": 120,
+ "wins": 66,
+ "winRate": 0.55,
+ "ci": [
+  0.46081381811060756,
+  0.6360841547837995
+ ],
+ "byMatchup": [
+  {
+   "opponent": "Dragapult",
+   "games": 34,
+   "wins": 20,
+   "rate": 0.5882352941176471
+  },
+  {
+   "opponent": "Basic Box",
+   "games": 10,
+   "wins": 4,
+   "rate": 0.4
+  },
+  {
+   "opponent": "N's Zoroark",
+   "games": 10,
+   "wins": 9,
+   "rate": 0.9
+  },
+  {
+   "opponent": "Slowking",
+   "games": 9,
+   "wins": 6,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Hydrapple",
+   "games": 6,
+   "wins": 3,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Festival Lead",
+   "games": 6,
+   "wins": 3,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Alakazam Dudunsparce",
+   "games": 5,
+   "wins": 3,
+   "rate": 0.6
+  },
+  {
+   "opponent": "Dragapult Dusknoir",
+   "games": 4,
+   "wins": 3,
+   "rate": 0.75
+  },
+  {
+   "opponent": "Alakazam Dusknoir",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Dragapult Blaziken",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Dhelmise",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Crustle",
+   "games": 4,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Excadrill",
+   "games": 3,
+   "wins": 2,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Lopunny Dusknoir",
+   "games": 3,
+   "wins": 2,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Dragapult Dudunsparce",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Rocket's Honchkrow",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Seaking Festival Lead",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Lucario Hariyama",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Sharpedo Toxtricity",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Clefairy Ogerpon",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Cynthia's Garchomp",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Mewtwo",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Lopunny Dudunsparce",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Greninja",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Lucario",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  }
+ ],
+ "endings": {
+  "won: prizes": 49,
+  "lost: prizes": 23,
+  "lost: no Pokémon in play": 29,
+  "won: no Pokémon in play": 14,
+  "won: deck out": 3,
+  "lost: deck out": 2
+ },
+ "turnsPerGame": 16.008333333333333,
+ "firstPrizeTurn": 4,
+ "prizesPerTurn": 0.3964620187304891,
+ "stuck": {
+  "idealShare": 0.2247658688865765,
+  "idealWin": 0.8703703703703703,
+  "nonIdealShare": 0.2684703433922997,
+  "stuckRate": 0.38636363636363635,
+  "entered": 71,
+  "enteredShare": 0.5916666666666667,
+  "recovered": 0.4225352112676056,
+  "expected": 0.30944929577464786,
+  "topStuck": [
+   {
+    "cat": "race:even ready:0-2 ko:no threat:no exposed:none",
+    "turns": 57,
+    "stuckRate": 0.5263157894736842
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:no exposed:none",
+    "turns": 46,
+    "stuckRate": 0.5121951219512195
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:yes exposed:none",
+    "turns": 39,
+    "stuckRate": 0.6
+   },
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:no exposed:none",
+    "turns": 26,
+    "stuckRate": 0.2916666666666667
+   }
+  ]
+ },
+ "attackers": [
+  {
+   "what": "attack Myriad Leaf Shower",
+   "who": "Teal Mask Ogerpon ex",
+   "prizes": 184,
+   "share": 0.48293963254593175,
+   "uses": 167
+  },
+  {
+   "what": "attack Rapid-Fire Combo",
+   "who": "Mega Kangaskhan ex",
+   "prizes": 53,
+   "share": 0.13910761154855644,
+   "uses": 46
+  },
+  {
+   "what": "attack Syrup Storm",
+   "who": "Hydrapple ex",
+   "prizes": 47,
+   "share": 0.12335958005249344,
+   "uses": 46
+  },
+  {
+   "what": "attack Wood Hammer",
+   "who": "Tapu Bulu",
+   "prizes": 41,
+   "share": 0.10761154855643044,
+   "uses": 34
+  },
+  {
+   "what": "attack Solar Beam",
+   "who": "Meganium",
+   "prizes": 31,
+   "share": 0.08136482939632546,
+   "uses": 39
+  },
+  {
+   "what": "attack Do the Wave",
+   "who": "Dipplin",
+   "prizes": 13,
+   "share": 0.03412073490813648,
+   "uses": 17
+  },
+  {
+   "what": "attack Solar Cutter",
+   "who": "Celebi",
+   "prizes": 5,
+   "share": 0.013123359580052493,
+   "uses": 5
+  },
+  {
+   "what": "attack Tumbling Attack",
+   "who": "Applin",
+   "prizes": 2,
+   "share": 0.005249343832020997,
+   "uses": 29
+  },
+  {
+   "what": "attack Tuck Tail",
+   "who": "Meowth ex",
+   "prizes": 2,
+   "share": 0.005249343832020997,
+   "uses": 5
+  },
+  {
+   "what": "attack Push Down",
+   "who": "Bayleef",
+   "prizes": 1,
+   "share": 0.0026246719160104987,
+   "uses": 11
+  },
+  {
+   "what": "attack Seed Bomb",
+   "who": "Chikorita",
+   "prizes": 1,
+   "share": 0.0026246719160104987,
+   "uses": 2
+  },
+  {
+   "what": "attack Cruel Arrow",
+   "who": "Fezandipiti ex",
+   "prizes": 1,
+   "share": 0.0026246719160104987,
+   "uses": 1
+  },
+  {
+   "what": "attack Traverse Time",
+   "who": "Celebi",
+   "prizes": 0,
+   "share": 0,
+   "uses": 36
+  },
+  {
+   "what": "attack Growl",
+   "who": "Chikorita",
+   "prizes": 0,
+   "share": 0,
+   "uses": 14
+  }
+ ],
+ "opening": [
+  {
+   "action": "other end turn",
+   "share": 0.6666666666666666
+  },
+  {
+   "action": "play Lillie's Determination",
+   "share": 0.525
+  },
+  {
+   "action": "play Ultra Ball",
+   "share": 0.5166666666666667
+  },
+  {
+   "action": "ability Teal Dance (Teal Mask Ogerpon ex)",
+   "share": 0.5166666666666667
+  },
+  {
+   "action": "play Bug Catching Set",
+   "share": 0.43333333333333335
+  },
+  {
+   "action": "attach Grass Energy to Teal Mask Ogerpon ex",
+   "share": 0.39166666666666666
+  },
+  {
+   "action": "play Forest of Vitality",
+   "share": 0.2916666666666667
+  },
+  {
+   "action": "retreat retreat",
+   "share": 0.24166666666666667
+  }
+ ],
+ "winCards": [
+  {
+   "card": "Grass Energy",
+   "wins": 5.075757575757576,
+   "losses": 3.8333333333333335
+  },
+  {
+   "card": "Teal Mask Ogerpon ex",
+   "wins": 0.8939393939393939,
+   "losses": 0.48148148148148145
+  },
+  {
+   "card": "Lillie's Determination",
+   "wins": 1.5303030303030303,
+   "losses": 1.1481481481481481
+  },
+  {
+   "card": "Bug Catching Set",
+   "wins": 1.4090909090909092,
+   "losses": 1.0555555555555556
+  },
+  {
+   "card": "Forest of Vitality",
+   "wins": 0.7272727272727273,
+   "losses": 0.5185185185185185
+  },
+  {
+   "card": "Ultra Ball",
+   "wins": 1.7121212121212122,
+   "losses": 1.537037037037037
+  }
+ ],
+ "lossCards": [
+  {
+   "card": "Prism Tower",
+   "wins": 0.015151515151515152,
+   "losses": 0.14814814814814814
+  },
+  {
+   "card": "Tapu Bulu",
+   "wins": 0.36363636363636365,
+   "losses": 0.46296296296296297
+  },
+  {
+   "card": "Crushing Hammer",
+   "wins": 0.30303030303030304,
+   "losses": 0.37037037037037035
+  },
+  {
+   "card": "Applin",
+   "wins": 0.5454545454545454,
+   "losses": 0.6111111111111112
+  }
+ ]
+}
