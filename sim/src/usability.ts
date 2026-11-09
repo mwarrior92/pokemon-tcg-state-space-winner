@@ -12,7 +12,10 @@
 // Pokémon" a Pokémon of that type, "Stage 2" a Stage 2 Pokémon, and a deck search needs something in
 // the deck it can find ("search your deck for up to 2 Basic Pokémon with 70 HP or less" needs such a
 // Basic; likewise Evolution / Stage 1 / typed / ex / no-Rule-Box Pokémon, Supporter, Item, Tool and
-// Basic Energy cards); mentions about the opponent's side are ignored. A text whose requirements are all unmet makes that effect unusable; meeting any one
+// Basic Energy cards), and a card for a group needs a member of it ("Tera Pokémon" for Area Zero
+// Underdepths; Ancient, Future, Single / Rapid / Fusion Strike, Mega Evolution Pokémon ex, "your
+// Pokémon ex / V"); mentions about the opponent's side are ignored. Group mentions in attacks are
+// not counted (they are mostly damage bonuses; the attack still works). A text whose requirements are all unmet makes that effect unusable; meeting any one
 // is enough (texts often offer alternatives).
 import { Card, CardTag, CardType, EnergyCard, PokemonCard, Stage, SuperType, TrainerCard, TrainerType } from './engine';
 import { engineCard, isBasicEnergy } from './decklist';
@@ -42,7 +45,17 @@ interface Search {
   noRuleBox?: boolean;
   text: string;                    // as written, for the reason
 }
-interface Req { kind: 'energy' | 'pokemon' | 'stage2' | 'search'; types: CardType[]; search?: Search }
+interface Req { kind: 'energy' | 'pokemon' | 'stage2' | 'search' | 'tag'; types: CardType[]; search?: Search; tag?: { tag: string; pokemon: boolean; text: string } }
+
+// group mentions: "Tera Pokémon", "Ancient cards", "Rapid Strike Supporter", "Mega Evolution Pokémon ex", "your Benched Pokémon ex"
+const TAG_WORD = /\b(Tera|Ancient|Future|Single Strike|Rapid Strike|Fusion Strike)\s+(Pok[eé]mon|cards?|Supporter|Item)\b/g;
+const TAG_MEGA = /\bMega (?:Evolution )?Pok[eé]mon ex\b/g;
+const TAG_RULE = /\byour\s+(?:(?:other|Active|Benched|Basic)\s+){0,2}Pok[eé]mon (ex|V)\b/g;
+const TAG_OF: Record<string, string> = {
+  Tera: CardTag.POKEMON_TERA, Ancient: CardTag.ANCIENT, Future: CardTag.FUTURE, 'Single Strike': CardTag.SINGLE_STRIKE,
+  'Rapid Strike': CardTag.RAPID_STRIKE, 'Fusion Strike': CardTag.FUSION_STRIKE, ex: CardTag.POKEMON_ex, V: CardTag.POKEMON_V,
+};
+const NEGATED = /\b(?:isn't|is not|aren't|not|doesn't|don't|except|other than|non-)\s*(?:a |an |any )?$/i;
 
 const SEARCH_POKEMON = /search your deck for (?:up to \w+ |an? |any number of )?((?:(Basic|Stage 1|Stage 2|Evolution) )?(?:(\[[GRWLPFDMC]\]|Grass|Fire|Water|Lightning|Psychic|Fighting|Darkness|Metal|Colorless) )?Pok[eé]mon( ex)?( that doesn't have a Rule Box)?(?: with (\d+) HP or less)?)/gi;
 const SEARCH_OTHER = /search your deck for (?:up to \w+ |an? |any number of )?(Supporter|Item|Pokémon Tool|Basic Energy) cards?/gi;
@@ -68,6 +81,27 @@ export function textNeeds(text: string): Req[] {
   }
   if (/\bStage 2\b/.test(text) && !/\bStage 1\b/.test(text) && !/opponent/i.test(text)) {   // Rare Candy, not Dawn
     out.push({ kind: 'stage2', types: [] });
+  }
+  // group mentions: something in the deck must belong to the group
+  const tagAt = (i: number, tag: string, pokemon: boolean, said: string) => {
+    const before = text.slice(Math.max(0, i - 40), i);
+    if (/opponent'?s?\s+(?:\w+\s+){0,3}$/i.test(before) || /your opponent\b[^.]*$/i.test(before) || NEGATED.test(before)) {
+      return;
+    }
+    // "each Tera Pokémon in play (both yours and your opponent's)": aimed at either side, no need
+    if (/both yours and your opponent's/i.test(text.slice(i).split('.')[0])) {
+      return;
+    }
+    out.push({ kind: 'tag', types: [], tag: { tag, pokemon, text: said } });
+  };
+  for (const tm of text.matchAll(TAG_WORD)) {
+    tagAt(tm.index!, TAG_OF[tm[1]], /^Pok/.test(tm[2]), `${tm[1]} ${/^Pok/.test(tm[2]) ? 'Pokémon' : 'card'}`);
+  }
+  for (const tm of text.matchAll(TAG_MEGA)) {
+    tagAt(tm.index!, CardTag.POKEMON_SV_MEGA, true, 'Mega Evolution Pokémon ex');
+  }
+  for (const tm of text.matchAll(TAG_RULE)) {
+    tagAt(tm.index!, TAG_OF[tm[1]], true, `Pokémon ${tm[1]}`);
   }
   // deck searches: something in the deck must match
   for (const sm of text.matchAll(SEARCH_POKEMON)) {
@@ -158,13 +192,14 @@ function unmet(reqs: Req[], f: DeckFacts, self?: Card): string | undefined {
     return undefined;
   }
   const ok = (r: Req) => r.kind === 'search' ? f.cards.some(c => c !== self && found(r.search!, c))
+    : r.kind === 'tag' ? f.cards.some(c => c !== self && (!r.tag!.pokemon || c instanceof PokemonCard) && c.tags.some(t => String(t) === r.tag!.tag))
     : r.kind === 'stage2' ? f.stage2
     : r.kind === 'energy' ? f.anyEnergy || r.types.some(t => f.energy.has(t))
       : r.types.some(t => f.pokeTypes.has(t));
   if (reqs.some(ok)) {
     return undefined;
   }
-  const say = (r: Req) => r.kind === 'search' ? `a ${r.search!.text} to search for` : r.kind === 'stage2' ? 'a Stage 2 Pokémon' : `${r.types.map(t => TYPE_NAME[t]).join(' or ')} ${r.kind === 'energy' ? 'Energy' : 'Pokémon'}`;
+  const say = (r: Req) => r.kind === 'tag' ? `${/^[AEIOU]/.test(r.tag!.text) ? 'an' : 'a'} ${r.tag!.text}` : r.kind === 'search' ? `a ${r.search!.text} to search for` : r.kind === 'stage2' ? 'a Stage 2 Pokémon' : `${r.types.map(t => TYPE_NAME[t]).join(' or ')} ${r.kind === 'energy' ? 'Energy' : 'Pokémon'}`;
   return [...new Set(reqs.map(say))].join(' / ');
 }
 
@@ -204,7 +239,7 @@ export function whyUnusable(n: string, f: DeckFacts): string | undefined {
       return undefined;
     }
     const payable = (cost: CardType[]) => cost.every(t => t === CardType.COLORLESS || !TYPES.includes(t) || f.anyEnergy || f.energy.has(t));
-    const attackOk = c.attacks.some(a => payable(a.cost) && !unmet(textNeeds(a.text ?? ''), f));
+    const attackOk = c.attacks.some(a => payable(a.cost) && !unmet(textNeeds(a.text ?? '').filter(r => r.kind !== 'tag'), f));
     const abilityOk = c.powers.some(p => !unmet(textNeeds(p.text ?? ''), f));
     if (attackOk || abilityOk) {
       return undefined;
