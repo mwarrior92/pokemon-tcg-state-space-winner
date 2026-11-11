@@ -87,8 +87,7 @@ def clean(json3):
             continue
         t0 = ev.get('tStartMs', 0)
         for s in segs:
-            w = s.get('utf8', '').replace('
-', ' ')     # caption line breaks separate words too
+            w = s.get('utf8', '').replace(chr(10), ' ')     # caption line breaks separate words too
             if w:
                 words.append((t0 + s.get('tOffsetMs', 0), w))
         words.append((t0, ' '))
@@ -124,8 +123,7 @@ def main():
                 path = os.path.join(OUT, e['file'])
                 head = ''.join(open(path, encoding='utf-8').readlines()[:4])
                 text = clean(json.load(open(raw, encoding='utf-8')))
-                open(path, 'w', encoding='utf-8').write(head + text + '
-')
+                open(path, 'w', encoding='utf-8').write(head + text + chr(10))
         print('recleaned')
         return
     ids = a.id or [e['id'] for e in search(a.query or DEFAULT_QUERIES, a.days)]
