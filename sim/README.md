@@ -197,6 +197,43 @@ longer discard the Basic they just searched for or stall for 20 turns), but the 
 stayed within noise: the remaining gap is in long plans (Festival Lead's Thwackey engine, Dragapult
 ex's Phantom Dive set-up), not single blunders.
 
+## Alignment with real play (states from tournament games)
+
+```
+node dist/align.js --check                                  # replay the match logs: does every action apply?
+node dist/align.js --pilot race --name align-race           # the pilot's choice at every real state
+node dist/align.js --pilot plan2:runs/value-v2/value-model.json --name align-plan2
+```
+
+**Match logs** (`sim/data/matches/*.json`, local like the transcripts they come from) record real
+games from the commentated finals and top cut videos (`scripts/fetch_transcripts.py`): the two
+decklists (meta list ids; finalists are rank 1 and 2 of the event), who went first, the opening
+Pokémon, prize cards the commentators saw, and each turn as a list of actions - `bench`, `evolve`,
+`attach`, `tool`, `play`, `ability`, `retreat`, `attack`, `end`, plus `promote` after a Knock Out and
+`concede`. An action names its card and target, the answers to its prompts in order (`choices`, by
+card names, `"*"` when not known), the other hand cards it spends (`uses`: Ultra Ball's discards, the
+Energy Teal Dance attaches), and whether it was stated by the commentators or only implied by what
+came after (`inferred`). The format is in `src/matchlog.ts`; logs are written by reading a
+transcript (an AI does it; the captions misspell card names, so names are checked against the lists).
+
+**States** (`replayLog`): the log is replayed in the engine from set-up, giving a state before every
+real action. Hidden information is filled in so that the real play is possible: the opening Pokémon
+go in the opening hand, known prizes in the prizes, and before each action every card the player
+plays from hand up to the next action that draws or searches is swapped into the hand (cards played
+after a draw may have come from it). The rest of both hands, the prizes and the deck order are
+random. The opponent's promotions come from the log.
+
+**Scores** (`runs/<name>/report.md`, every state in `steps.jsonl`, boards in `replay-<game>.md`): at
+each state the pilot plans from there and its first action is compared with the real one:
+- the same action (card and target), and also with the same prompt answers;
+- the same or interchangeable: a later real action of that turn also counts when it does not depend
+  on the ones before it - played first, then those, it reaches the same board (checked in the
+  engine; only up to the next draw or search);
+- in the pilot's planned turn: the real action is anywhere in the line it planned (order aside).
+
+Implied actions are replayed but not scored. The hand filler is random, so the pilot sometimes holds
+cards the real player did not; scores are for comparing pilots on the same logs.
+
 ## Game archive, refits and play audits
 
 Every game the deck builder and the playout runner play is appended to a local archive,

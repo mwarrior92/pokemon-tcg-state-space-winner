@@ -26,6 +26,7 @@ import { generateState } from '../src/stategen';
 import { checkLegal, deckFromText, engineCard, formatDeckList, isBasicEnergy } from '../src/decklist';
 import { mutate, seedDeck } from '../src/deckgen';
 import { newGameStart, starterScore } from '../src/playgame';
+import { MatchLog, replayLog } from '../src/matchlog';
 
 loadCards();
 const known = loadKnownIssues();
@@ -490,6 +491,32 @@ test('set-up puts every Basic down and starts the best starter', () => {
       benched.forEach(b => assert.ok(starterScore(active) >= starterScore(b) - 1e-9, `game ${k}, P${i + 1}: ${active.name} started over ${b.name}`));
     });
   }
+});
+
+test('match logs: real actions replay, and independent actions count as interchangeable', () => {
+  const log: MatchLog = {
+    source: 'test', game: 1, first: 0,
+    decks: [{ archetype: 'Hydrapple', list: '29002' }, { archetype: 'Basic Box', list: '29001' }],
+    setup: [{ active: 'Fezandipiti ex' }, { active: 'Raging Bolt ex' }],
+    prizes: [['Meganium'], []],
+    turns: [{ player: 0, actions: [
+      { do: 'bench', card: 'Tapu Bulu' },
+      { do: 'bench', card: 'Chikorita' },
+      { do: 'attach', card: 'Grass Energy', to: 'Fezandipiti ex' },
+      { do: 'play', card: 'Ultra Ball', uses: ['Dipplin', 'Grass Energy'], choices: [['Dipplin', 'Grass Energy'], 'Teal Mask Ogerpon ex'] },
+      { do: 'bench', card: 'Teal Mask Ogerpon ex' },
+      { do: 'end' },
+    ] }],
+  };
+  const r = replayLog(log, 'test', () => ['bench Chikorita'], 3);
+  assert.equal(r.failed.length, 0, JSON.stringify(r.failed));
+  assert.equal(r.applied, 6);
+  const [s0, , , ub] = r.steps;
+  // the second bench and the attach could have come first; Ultra Ball found the Ogerpon benched after it
+  assert.ok(s0.admissible.includes('bench Chikorita') && s0.admissible.some(x => x.startsWith('attach Grass Energy')), s0.admissible.join('; '));
+  assert.ok(s0.aligned && !s0.exact);
+  assert.ok(!ub.admissible.includes('bench Teal Mask Ogerpon ex'), 'a card found by Ultra Ball cannot be benched before it');
+  assert.match(ub.realFull, /Teal Mask Ogerpon ex/);
 });
 
 // ---------------------------------------------------------------- full games

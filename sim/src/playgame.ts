@@ -177,6 +177,14 @@ function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: Linear
   return { next: d.end, line: d.line, policy: 'defense' };
 }
 
+/** The line `seat` would play from this position (the rest of its turn), without playing it. For
+ *  scoring single decisions against real games (align.ts). */
+export function pilotLine(sim: Sim, seat: string, o: { seed: number; offense: string; defense?: string; budget?: number }): { line: string[]; plan?: Plan } {
+  const spec = { seed: o.seed, budget: o.budget ?? 100, offense: o.offense, defense: o.defense, seats: [seat, seat] } as unknown as GameSpec;
+  const r = playTurn(sim, seat, spec, 0, model(o.offense), o.defense ? model(o.defense) : undefined);
+  return { line: r.line, plan: r.plan };
+}
+
 export function playGame(spec: GameSpec): GameRec {
   const t0 = Date.now();
   let sim: Sim;
