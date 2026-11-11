@@ -27,13 +27,16 @@ import { Rng } from './rng';
 import { MainOption, PromptChooser, Sim, mainCandidates, runStep } from './sim';
 
 export interface LogAction {
-  do: 'bench' | 'evolve' | 'attach' | 'tool' | 'play' | 'ability' | 'retreat' | 'attack' | 'end' | 'promote' | 'concede';
+  do: 'bench' | 'evolve' | 'attach' | 'tool' | 'play' | 'ability' | 'stadium' | 'retreat' | 'attack' | 'end' | 'promote' | 'concede';
   /** the card played from hand (bench, evolve, attach, tool, play); the Pokémon (ability, promote) */
   card?: string;
-  /** attach / tool target, the Pokémon evolved (evolve), the Pokémon retreated into (retreat) */
+  /** attach / tool target, the Pokémon evolved (evolve), the Pokémon retreated into (retreat); may
+   *  name the slot ("bench1 Slowpoke", "active") when two Pokémon share a name */
   to?: string;
   /** ability or attack name */
   name?: string;
+  /** coin flip results during the action, in order ("heads" / "tails"), when the commentators say */
+  flips?: ('heads' | 'tails')[];
   /** other hand cards the action spends (Ultra Ball's discards, the Energy Teal Dance attaches) */
   uses?: string[];
   /** prompt answers in order, by card names ("yes" / "no" for confirmations, "*" for not known) */
@@ -154,19 +157,19 @@ function ensureHand(sim: Sim, pi: number, names: string[], locked: Set<Card>, rn
   const keep = new Set<Card>();
   const missing: string[] = [];
   for (const n of names) {
-    const inHand = p.hand.cards.find(c => !keep.has(c) && norm(c.name) === norm(n));
+    const inHand = p.hand.cards.find(c => !keep.has(c) && sameCard(c, n));
     if (inHand) {
       keep.add(inHand);
       continue;
     }
     let card: Card | undefined;
-    const di = p.deck.cards.findIndex(c => norm(c.name) === norm(n));
+    const di = p.deck.cards.findIndex(c => sameCard(c, n));
     if (di >= 0) {
       card = p.deck.cards.splice(di, 1)[0];
     } else {
       // from a prize card not known to hold it: it was really in the deck; a random deck card takes its place
       for (const pr of p.prizes) {
-        const k = pr.cards.findIndex(c => norm(c.name) === norm(n) && !locked.has(c));
+        const k = pr.cards.findIndex(c => sameCard(c, n) && !locked.has(c));
         if (k >= 0 && p.deck.cards.length) {
           card = pr.cards.splice(k, 1)[0];
           pr.cards.push(p.deck.cards.splice(rng.int(0, p.deck.cards.length - 1), 1)[0]);
@@ -190,6 +193,38 @@ function ensureHand(sim: Sim, pi: number, names: string[], locked: Set<Card>, rn
   return missing;
 }
 
+/** Put cards with these names into player `pi`'s deck when it has none left there: from prizes not
+ *  known to hold them, else from the hand when the hand does not need them; a random deck card takes
+ *  their place. Names that are not the player's cards (an opponent's target) are ignored. */
+function ensureDeck(sim: Sim, pi: number, names: string[], need: string[], locked: Set<Card>, rng: Rng): void {
+  const p = sim.state.players[pi];
+  for (const n of names) {
+    if (!p.deck.cards.length || p.deck.cards.some(c => norm(c.name) === norm(n))) {
+      continue;
+    }
+    for (const pr of p.prizes) {
+      const k = pr.cards.findIndex(c => norm(c.name) === norm(n) && !locked.has(c));
+      if (k >= 0) {
+        const r = rng.int(0, p.deck.cards.length - 1);
+        const c = pr.cards[k];
+        pr.cards[k] = p.deck.cards[r];
+        p.deck.cards[r] = c;
+        break;
+      }
+    }
+    if (p.deck.cards.some(c => norm(c.name) === norm(n))) {
+      continue;
+    }
+    const spare = p.hand.cards.filter(c => norm(c.name) === norm(n));
+    if (spare.length > need.filter(x => norm(x) === norm(n)).length) {
+      const c = spare[spare.length - 1];
+      const r = rng.int(0, p.deck.cards.length - 1);
+      p.hand.cards[p.hand.cards.indexOf(c)] = p.deck.cards[r];
+      p.deck.cards[r] = c;
+    }
+  }
+}
+
 /** Board signature for "same position": slots (bench as a multiset), hands, discards, counts. */
 export function boardSig(st: State): string {
   const slot = (l: any) => l.cards.length
@@ -202,7 +237,7 @@ export function boardSig(st: State): string {
 }
 
 /** Strip "own"/"opp" and a slot prefix from a target label. */
-const bare = (s: string) => norm(s).replace(/^(own|opp) /, '').replace(/^(active|bench\d) /, '');
+const bare = (s: string) => norm(s).replace(/^\d+ on /, '').replace(/^(own|opp) /, '').replace(/^(active|bench\d) /, '');
 const optNames = (label: string) => label.split(/ \+ |, | -> /).map(bare).filter(Boolean);
 
 /** The option whose names best match `want` (a name or names), or -1. */
@@ -237,24 +272,48 @@ function bestOption(opts: { label: string }[], want: string | string[]): number 
   return best;
 }
 
+/** A card given by its engine full name ("Applin TWM2", to tell printings with one name apart). */
+function printing(n: string | undefined): Card | undefined {
+  if (!n) {
+    return undefined;
+  }
+  const c = CardManager.getInstance().getCardByName(n.trim());
+  return c && norm(c.fullName) === norm(n) && norm(c.name) !== norm(n) ? c : undefined;
+}
+const sameCard = (c: Card, n: string) => norm(c.name) === norm(n) || norm(c.fullName) === norm(n);
+
 /** Main options that carry out a logged action. */
 export function optionsFor(sim: Sim, a: LogAction): MainOption[] {
   const all = mainCandidates(sim.state);
-  const card = norm(a.card), to = norm(a.to), name = norm(a.name);
-  const target = (label: string) => bare(label.slice(label.lastIndexOf(' -> ') + 4));
-  return all.filter(o => {
+  const pr = printing(a.card);
+  const card = pr ? norm(pr.name) : norm(a.card), name = norm(a.name);
+  const hand = sim.state.players[sim.state.activePlayer].hand.cards;
+  const rightPrinting = (o: MainOption) => !pr || !['bench', 'evolve', 'attach', 'tool', 'play', 'stadium'].includes(o.kind)
+    || hand[(o.action as any).handIndex]?.fullName === pr.fullName;
+  // a target may name its slot ("bench1 Slowpoke", "active Slowpoke") when two Pokémon share a name
+  const to = norm(a.to);
+  const slotted = /^(active|bench\d) /.test(to);
+  const target = (label: string) => (slotted ? norm(label.slice(label.lastIndexOf(' -> ') + 4)) : bare(label.slice(label.lastIndexOf(' -> ') + 4)));
+  return all.filter(rightPrinting).filter(o => {
     const l = norm(o.label);
     switch (a.do) {
       case 'bench': return o.kind === 'bench' && l === `bench ${card}`;
-      case 'evolve': return o.kind === 'evolve' && l.endsWith(`-> ${card}`) && (!to || bare(l.slice(7, l.lastIndexOf(' -> '))) === to);
+      case 'evolve': {
+        const on = l.slice(7, l.lastIndexOf(' -> '));
+        return o.kind === 'evolve' && l.endsWith(`-> ${card}`) && (!to || (slotted ? on === to : bare(on) === to));
+      }
       case 'attach': return o.kind === 'attach' && l.startsWith(`attach ${card} -> `) && (!to || target(o.label) === to || (to === 'active' && / -> active /.test(l)));
       case 'tool': return o.kind === 'tool' && l.startsWith(`tool ${card} -> `) && (!to || target(o.label) === to || (to === 'active' && / -> active /.test(l)));
       case 'play': return (o.kind === 'play' || o.kind === 'stadium') && l === `play ${card}`;
+      case 'stadium': return o.kind === 'stadium' && l.startsWith('use stadium') && (!card || l === `use stadium ${card}`);
       case 'ability': {
         const m = /^ability (.*) \((.*)\)$/.exec(l);
         return o.kind === 'ability' && !!m && (!name || m[1] === name) && (!card || bare(m[2]) === card);
       }
-      case 'retreat': return o.kind === 'retreat' && (!to || bare(l.replace(/^retreat to /, '')) === to);
+      case 'retreat': {
+        const into = l.replace(/^retreat to /, '');
+        return o.kind === 'retreat' && (!to || (slotted ? into === to : bare(into) === to));
+      }
       case 'attack': return o.kind === 'attack' && (!name || l === `attack ${name}`);
       case 'end': return o.kind === 'pass';
       default: return false;
@@ -469,6 +528,19 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
         }
       }
       ensureHand(sim, mover, need, locked, rng);
+      if (draws[k] && a.choices) {
+        // the cards a search names are in the deck (not dealt into the hand or prizes at random)
+        const spent = (a.uses ?? []).map(norm);
+        const named = a.choices.flat().map(String).filter(n => !['*', 'yes', 'no', 'nothing'].includes(n)).filter(n => {
+          const i = spent.indexOf(norm(n));
+          if (i >= 0) {
+            spent.splice(i, 1);
+            return false;
+          }
+          return true;
+        });
+        ensureDeck(sim, mover, named, need, locked, rng);
+      }
       const opts = optionsFor(sim, a);
       const s0 = sim.copy(rng.fork());
       before[k] = s0;
@@ -479,7 +551,12 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
         // a few tries: answers the log leaves open are random, and a card may reject one (Crispin
         // with two Energy of one type)
         const rec: string[] = [];
+        sim.forcedFlips = a.flips?.map(f => f === 'heads');
         const r = runStep(sim, o, chooserFor(a, mover, rec), rng, 2);
+        sim.forcedFlips = undefined;
+        if (r.sim) {
+          r.sim.forcedFlips = undefined;
+        }
         if (r.sim) {
           next = r.sim;
           answers[k] = rec;
@@ -529,7 +606,9 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
         for (let q = 0; q < order.length && t; q++) {
           let nx: Sim | undefined;
           for (const op of optionsFor(t, acts[order[q]])) {
+            t.forcedFlips = acts[order[q]].flips?.map(f => f === 'heads');
             nx = runStep(t, op, chooserFor(acts[order[q]], mover, [], true, answers[order[q]]), rng, 2).sim;
+            t.forcedFlips = undefined;
             if (nx) {
               break;
             }

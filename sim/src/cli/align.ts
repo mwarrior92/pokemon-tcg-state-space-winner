@@ -65,12 +65,15 @@ function main(): void {
       seen.add(fn);
       const c = CardManager.getInstance().getCardByName(fn)!;
       const n = d.cards.filter(x => x === fn).length;
+      // two printings with one name: show the engine full name, which a log can use to pick one
+      const dup = d.cards.some(x => x !== fn && CardManager.getInstance().getCardByName(x)?.name === c.name);
+      const shown = dup ? `${c.name} [${c.fullName}]` : c.name;
       if (c instanceof PokemonCard) {
         const st = c.stage === Stage.BASIC ? 'Basic' : c.stage === Stage.STAGE_1 ? 'Stage 1' : c.stage === Stage.STAGE_2 ? 'Stage 2' : String(c.stage);
-        console.log(`${n} ${c.name} - ${st}${c.evolvesFrom ? ` from ${c.evolvesFrom}` : ''}, ${c.hp} HP, retreat ${c.retreat.length}`
+        console.log(`${n} ${shown} - ${st}${c.evolvesFrom ? ` from ${c.evolvesFrom}` : ''}, ${c.hp} HP, retreat ${c.retreat.length}`
           + `${c.powers.length ? `; ability: ${c.powers.map(p => p.name).join(', ')}` : ''}; attacks: ${c.attacks.map(a => `${a.name} [${a.cost.length}]`).join(', ') || '-'}`);
       } else if (c instanceof TrainerCard) {
-        console.log(`${n} ${c.name} - ${TrainerType[c.trainerType]}`);
+        console.log(`${n} ${shown} - ${TrainerType[c.trainerType]}`);
       } else {
         console.log(`${n} ${c.name} - Energy`);
       }

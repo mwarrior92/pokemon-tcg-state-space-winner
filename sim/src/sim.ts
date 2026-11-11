@@ -1,6 +1,7 @@
 // Headless game wrapper around the Twinleaf Store: seeded chance (shuffles, coin flips), automatic
 // handling of no-choice prompts, legal-action enumeration and cheap copies at settled points.
 import {
+  CoinFlipPrompt,
   Action, AddPlayerAction, AttackAction, Card, CardTarget, EnergyCard, GameError, GamePhase, GameSettings, PassTurnAction,
   PlayCardAction, Player, PlayerType, PokemonCard, PokemonCardList, Prompt, ResolvePromptAction, RetreatAction,
   SlotType, State, Store, StoreHandler, TrainerCard, TrainerType, UseAbilityAction, UseStadiumAction, StateUtils,
@@ -33,6 +34,8 @@ export class Sim implements StoreHandler {
    *  lines, and orderings of the same plays merge into one position. A new turn gives new ranks.
    *  Set by determinize(); copies keep it. */
   chanceSeed?: number;
+  /** results of the next coin flips (true = heads), used before chance (replays of real games) */
+  forcedFlips?: boolean[];
 
   constructor(state: State | undefined, rng: Rng) {
     this.rng = rng;
@@ -68,6 +71,7 @@ export class Sim implements StoreHandler {
     s.trace = this.trace.slice();
     s.keepEngineLog = this.keepEngineLog;
     s.chanceSeed = this.chanceSeed;
+    s.forcedFlips = this.forcedFlips?.slice();
     if (this.keepEngineLog) {
       s.engineLog = this.engineLog.slice();
     }
@@ -117,7 +121,8 @@ export class Sim implements StoreHandler {
         this.drainLogs();
         return;
       }
-      const raw = chanceResult(p, this.state, this.rng, this.rank());
+      // coin flips a replayed real game says the result of (matchlog.ts), in order
+      const raw = this.forcedFlips?.length && p instanceof CoinFlipPrompt ? this.forcedFlips.shift()! : chanceResult(p, this.state, this.rng, this.rank());
       const v = decodeValid(p, this.state, raw);
       this.store.dispatch(new ResolvePromptAction(p.id, v ? v.decoded : raw));
     }

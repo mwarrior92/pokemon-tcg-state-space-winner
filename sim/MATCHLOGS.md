@@ -58,8 +58,12 @@ third-party broadcasts). The format is defined in `src/matchlog.ts` (`MatchLog`,
   - `bench` (card), `evolve` (card, `to` = the Pokémon evolved), `attach` (card, `to` = Pokémon or
     `"active"`), `tool` (card, `to`), `play` (Item, Supporter or Stadium card), `ability` (card = the
     Pokémon using it, `name`), `retreat` (`to` = the Pokémon coming in), `attack` (`name`), `end`
-    (the turn ended without an attack), `promote` (after a Knock Out: put as the **first action of
+    (the turn ended without an attack), `stadium` (use the Stadium in play's ability, e.g. Academy at
+    Night, Team Rocket's Factory; `card` = the Stadium, `choices` as usual), `promote` (after a Knock Out: put as the **first action of
     that player's next turn**, card = the new Active), `concede` (the turn a player conceded).
+  - Two Pokémon with the same name: name the slot in `to`, as the replay boards print it
+    (`"bench1 Slowpoke"`, `"active Slowpoke"`). Slots are filled left to right in the order the
+    Pokémon were put down.
   - `choices`: answers to the action's prompts **in the order the card asks them**, by card names:
     `["Dipplin", "Grass Energy"]` for one prompt choosing two cards; a single name for one card or
     target; `"yes"`/`"no"` for "you may"; `"*"` for an answer not known. Examples: Ultra Ball
@@ -79,7 +83,21 @@ third-party broadcasts). The format is defined in `src/matchlog.ts` (`MatchLog`,
 - Abilities that trigger when a card is played (Meowth ex Last-Ditch Catch, Iron Leaves ex Rapid
   Vernier, Alakazam Psychic Draw): put their answers in that `bench`/`evolve` action's `choices`;
   without choices a "you may" is answered no.
-- Coin flips (Crushing Hammer, Tumbling Attack) are left to chance; the replay may differ.
+- Cards a search names in `choices` (Ultra Ball's target, Buddy-Buddy Poffin's Basics, Poké Pad,
+  Cyrano, Meowth ex's Supporter) are moved into the deck before the search if the random deal put
+  them in the prizes or hand.
+- "Up to" prompts with no `choices` take some cards at random; give `["nothing"]` when nothing was
+  taken or discarded (e.g. Eri).
+- Coin flips: give the results the commentators say as `"flips": ["heads", "tails"]` on the action
+  (Crushing Hammer, Tumbling Attack, Mimikyu); otherwise they are left to chance and the replay may
+  differ from the real game.
+- Two different printings with one name (`--cards` shows them as `Applin [Applin TWM2]`): give the
+  bracketed engine full name as the card (`"card": "Applin TWM2"`) when it matters which one.
+- Damage-counter prompts (Phantom Dive, Cursed Blast) are labelled like `60 on opp bench1 Slowpoke`;
+  a choice naming the Pokémon (`["Slowpoke"]`) or the slot (`["bench1 Slowpoke"]`) picks it.
+- Rare Candy: `"uses": ["<Stage 2>"]`, choices with the Stage 2 first, then the Basic it goes on.
+- Captions translated from another language (Spanish streams) are usually too loose to log; skip
+  them unless the openings and turns are clear.
 
 ## What makes a good log
 
