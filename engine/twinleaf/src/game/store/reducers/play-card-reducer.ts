@@ -36,7 +36,7 @@ function findPokemonTarget(state: State, player: Player, target: CardTarget): Po
 function rejectable(player: Player, prepare: () => void, play: () => State): State {
   const zones = [player.hand, player.supporter, player.discard, player.deck, player.lostzone, player.stadium];
   const saved = zones.map(z => z.cards.slice());
-  const flags = { energyPlayedTurn: player.energyPlayedTurn, stadiumPlayedTurn: player.stadiumPlayedTurn, supporterTurn: player.supporterTurn };
+  const flags = { energyPlayedTurn: player.energyPlayedTurn, stadiumPlayedTurn: player.stadiumPlayedTurn, supporterTurn: player.supporterTurn, rocketSupporter: player.rocketSupporter };
   try {
     prepare();
     return play();
@@ -46,6 +46,7 @@ function rejectable(player: Player, prepare: () => void, play: () => State): Sta
       player.energyPlayedTurn = flags.energyPlayedTurn;
       player.stadiumPlayedTurn = flags.stadiumPlayedTurn;
       player.supporterTurn = flags.supporterTurn;
+      player.rocketSupporter = flags.rocketSupporter;
     }
     throw e;
   }

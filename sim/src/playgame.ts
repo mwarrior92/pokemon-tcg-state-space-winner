@@ -15,13 +15,13 @@
 import { categorize } from './categories';
 import { describeState } from './describe';
 import { CHEAP_GROUPS, features } from './features';
-import { GamePhase, GameWinner, PassTurnAction } from './engine';
+import { ChooseCardsPrompt, GameMessage, GamePhase, GameWinner, PassTurnAction, PokemonCard } from './engine';
 import { LinearModel, loadModel } from './model';
 import { playDefense, playOffenseSearch } from './policy';
-import { planTurn, planTurn2, raceEvaluator } from './planner';
-import { prizesLeft } from './rules';
+import { Evaluator, Plan, benchGuard, planTurn, planTurn2, raceEvaluator, winEvaluator } from './planner';
+import { prizeValue, prizesLeft } from './rules';
 import { Rng } from './rng';
-import { Sim, randomChooser, resolvePrompts } from './sim';
+import { PromptChooser, Sim, randomChooser, resolvePrompts } from './sim';
 import { generateState } from './stategen';
 import { WinModel } from './value';
 
@@ -50,6 +50,8 @@ export interface TurnRec {
   x?: number[];
   board?: string;
   line?: string[];
+  /** with log 'board': the planner's finalists (line, score) and positions searched */
+  plan?: { positions: number; candidates?: Plan['candidates'] };
 }
 
 export interface GameRec {
@@ -97,11 +99,41 @@ function passInPlace(sim: Sim, rng: Rng): boolean {
   }
 }
 
-/** A real game start: set-up resolved, the first player to move at turn 1. */
+/** How good a Basic is to start in the Active Spot, by rule of thumb: few prizes to give up, cheap
+ *  to retreat, hard to Knock Out, and able to attack early. */
+export function starterScore(c: PokemonCard): number {
+  const cheapAttack = c.attacks.some(a => a.cost.length <= 1);
+  return -1.5 * (prizeValue(c) - 1) - 0.5 * c.retreat.length + c.hp / 100 + (cheapAttack ? 0.5 : 0);
+}
+
+/** Set-up as players make it: every Basic down (the most Pokémon), the best starter Active
+ *  (starterScore); other prompts (mulligan draws) at random. */
+export const setupChooser = (rng: Rng): PromptChooser => {
+  const rand = randomChooser(rng);
+  return (sim, p, opts) => {
+    if (!(p instanceof ChooseCardsPrompt) || p.message !== GameMessage.CHOOSE_STARTING_POKEMONS) {
+      return rand(sim, p, opts);
+    }
+    const cards = p.cards.cards;
+    let best = 0, bestV = -Infinity;
+    opts.forEach((o, i) => {
+      const sel: number[] = Array.isArray(o.raw) ? o.raw : [];
+      const v = sel.length * 100 + (sel.length ? starterScore(cards[sel[0]] as PokemonCard) : 0) + rng.next() * 1e-3;
+      if (v > bestV) {
+        bestV = v;
+        best = i;
+      }
+    });
+    return best;
+  };
+};
+
+/** A real game start: set-up resolved, the first player to move at turn 1. SIM_RANDOM_SETUP=1
+ *  keeps the old random set-up (for comparisons). */
 export function newGameStart(deckA: string[], deckB: string[], seed: number): Sim {
   const rng = new Rng(seed);
   const sim = Sim.newGame(deckA, deckB, rng);
-  resolvePrompts(sim, randomChooser(rng), rng);
+  resolvePrompts(sim, process.env.SIM_RANDOM_SETUP ? randomChooser(rng) : setupChooser(rng), rng);
   // fixed hidden information within each turn, as in generated states (shuffles follow card
   // ranks that change every turn); the deck's current order is kept
   sim.chanceSeed = (seed * 2654435761) >>> 0;
@@ -110,28 +142,32 @@ export function newGameStart(deckA: string[], deckB: string[], seed: number): Si
 
 /** Play the turn with the seat's policy; returns the position after the turn's line (not yet
  *  passed unless the line ended the turn) and the line. */
-function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: LinearModel, def: LinearModel | undefined): { next: Sim; line: string[]; policy: TurnRec['policy'] } {
+function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: LinearModel, def: LinearModel | undefined): { next: Sim; line: string[]; policy: TurnRec['policy']; plan?: Plan } {
   const mover = sim.state.activePlayer;
   const seed = spec.seed + t;
+  // every planner's evaluator gets the bench-out guard (SIM_NO_GUARD=1 turns it off, for comparisons)
+  const guard = (ev: Evaluator, lose: number) => (def && !process.env.SIM_NO_GUARD ? benchGuard(ev, def, lose) : ev);
+  const win = (f: string) => guard(winEvaluator(winModel(f)), 0);
+  const race = () => guard(raceEvaluator(off, def!, 0.8, seed), -10);
   const tactical = () => {
     const o = playOffenseSearch(sim, off, { budget: spec.budget, maxMs: 3000 });
     return { o, extra: [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }] };
   };
   if (seat.startsWith('plan:')) {
-    const pl = planTurn(sim, winModel(seat.slice(5)), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra });
-    return { next: pl.end, line: pl.line, policy: 'plan' };
+    const pl = planTurn(sim, win(seat.slice(5)), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra });
+    return { next: pl.end, line: pl.line, policy: 'plan', plan: pl };
   }
   if (seat === 'race' && def) {
-    const pl = planTurn(sim, raceEvaluator(off, def, 0.8, seed), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra });
-    return { next: pl.end, line: pl.line, policy: 'plan' };
+    const pl = planTurn(sim, race(), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra });
+    return { next: pl.end, line: pl.line, policy: 'plan', plan: pl };
   }
   if (seat === 'race2' && def) {
-    const pl = planTurn2(sim, raceEvaluator(off, def, 0.8, seed), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra, candidates: 5, replies: 6, replyBudget: 40, risk: 0.25 });
-    return { next: pl.end, line: pl.line, policy: 'plan' };
+    const pl = planTurn2(sim, race(), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra, candidates: 5, replies: 6, replyBudget: 40, risk: 0.25 });
+    return { next: pl.end, line: pl.line, policy: 'plan', plan: pl };
   }
   if (seat.startsWith('plan2:')) {
-    const pl = planTurn2(sim, winModel(seat.slice(6)), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra, candidates: 5, replies: 6, replyBudget: 40, risk: 0.25 });
-    return { next: pl.end, line: pl.line, policy: 'plan' };
+    const pl = planTurn2(sim, win(seat.slice(6)), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra, candidates: 5, replies: 6, replyBudget: 40, risk: 0.25 });
+    return { next: pl.end, line: pl.line, policy: 'plan', plan: pl };
   }
   const { o } = tactical();
   if (o.prizes > 0 || !def) {
@@ -168,7 +204,7 @@ export function playGame(spec: GameSpec): GameRec {
     const before = prizesLeft(sim.state.players[mover]);
     const prizes: [number, number] = [prizesLeft(sim.state.players[0]), prizesLeft(sim.state.players[1])];
     const board = spec.log === 'board' ? describeState(sim.state) : undefined;
-    let r: { next: Sim; line: string[]; policy: TurnRec['policy'] };
+    let r: { next: Sim; line: string[]; policy: TurnRec['policy']; plan?: Plan };
     try {
       r = playTurn(sim, spec.seats[mover], spec, t, off, def);
     } catch {
@@ -183,6 +219,7 @@ export function playGame(spec: GameSpec): GameRec {
     turns.push({
       turn: sim.state.turn, mover, cat, prizes, took: before - prizesLeft(sim.state.players[mover]), policy: r.policy, ms: Date.now() - ts,
       x, board, line: spec.log ? r.line : undefined,
+      plan: board && r.plan ? { positions: r.plan.positions, candidates: r.plan.candidates } : undefined,
     });
   }
   let winner = -1;

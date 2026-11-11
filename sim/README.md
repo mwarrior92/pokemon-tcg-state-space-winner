@@ -154,8 +154,48 @@ Output in `runs/deck-<name>/`:
 - A default run plays about 760 games, roughly 30 minutes on 8 workers.
 
 **Limits:** the result measures how well the simulator pilots the deck. Decks whose plan needs
-long ability chains are likely under-played, and set-up choices are made at random. Compare a new
-deck with meta decks tested the same way.
+long ability chains are likely under-played (see Pilot fidelity below for how far the simulator's
+matchups are from real ones). Compare a new deck with meta decks tested the same way.
+
+## Pilot fidelity
+
+```
+node dist/fidelity.js --pilot race --name fidelity-race                  # 10 meta decks round-robin, 12 games a pairing
+node dist/fidelity.js --pilot race --name fidelity-race-b --seeds 1      # the same on other games
+node dist/fidelity.js --compare fidelity-race+fidelity-race-b,fidelity-plan2   # scores side by side ("+" pools runs)
+node dist/fidelity.js --pilot race --name fidelity-race --replay "Dragapult|Festival Lead|2"  # one game, board every turn
+```
+
+The top 10 meta archetypes play every other one, both sides piloted by `--pilot`, and the win
+rates are compared with real matchups (Limitless, `meta/matchups_*.json`). `runs/<name>/report.md`
+gives the matchup correlation and error (with the error sampling noise alone would give), the
+lopsidedness (a weak pilot exaggerates matchups), each deck's win rate against the field, the
+worst-matching matchups and how games end. A replay shows the board before each turn, the moves
+and the planner's finalists with their scores. A run of `race` takes about 25 minutes.
+
+**Noise:** with 12 games a pairing a deck's win rate moves about 5 points between runs on different
+games, and the scores move with it. A pilot change is only measured by pooling runs of several
+`--seeds`.
+
+**Pilot rules that came out of the replays** (all pilots):
+- **Bench-out guard** (`benchGuard` in `planner.ts`): ending a turn with an empty Bench loses the
+  game to one Knock Out. Such an ending is valued toward a loss by the chance the Active is Knocked
+  Out next turn (the defense model's expected prizes over what the Active is worth, at least 35%),
+  also after `plan2`'s sampled replies, which often miss the Knock Out. When the turn search runs
+  out of budget, a position with an empty Bench also tries benching each Basic in hand.
+  `SIM_NO_GUARD=1` turns the guard off.
+- **Set-up** (`setupChooser` in `playgame.ts`): every Basic down, the Active chosen by a rule of
+  thumb (few prizes, cheap retreat, high HP, an attack for one Energy). `SIM_RANDOM_SETUP=1` restores
+  random set-up.
+- **Material** (`race` only, `material` in `planner.ts`): Energy attached, Pokémon in play (more
+  when evolved) and cards in hand count for a little (a full board is about one prize), so resources
+  are no longer thrown away when the next two turns' prizes do not change. `SIM_MATERIAL=both`
+  counts the mover's material minus the opponent's; `off` turns it off.
+
+These removed clear blunders (games lost with no Pokémon in play fell from 31% to 8%; the pilots no
+longer discard the Basic they just searched for or stall for 20 turns), but the fidelity scores
+stayed within noise: the remaining gap is in long plans (Festival Lead's Thwackey engine, Dragapult
+ex's Phantom Dive set-up), not single blunders.
 
 ## Game archive, refits and play audits
 

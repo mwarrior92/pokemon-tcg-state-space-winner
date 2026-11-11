@@ -2,6 +2,8 @@
 //
 //   node dist/fidelity.js --pilot race --decks 10 --games 12 --name fidelity-race
 //   node dist/fidelity.js --pilot plan2:runs/value-v2/value-model.json --name fidelity-plan2
+//   node dist/fidelity.js --pilot race --name fidelity-race-b --seeds 1      (same pilot, other games)
+//   node dist/fidelity.js --pilot race --name x --replay "Deck A|Deck B|k"  (one game, board every turn)
 //
 // The top `--decks` archetypes of the meta decklists (best-placed complete list each) play every
 // other one `--games` times (seats alternate), both sides piloted by `--pilot`. Each matchup's sim
@@ -72,6 +74,8 @@ async function main(): Promise<void> {
   const real: Record<string, Record<string, [number, number, number]>> = JSON.parse(fs.readFileSync(realFile, 'utf8')).total;
 
   const decks = metaDecks().filter(d => real[d.archetype]).slice(0, nDecks);
+  // --seeds k: a different set of games (k = 0 is the standard set), to measure run-to-run noise
+  const seedBase = 500000 + 1000000 * Number(arg('seeds', '0'));
   const dir = path.join(REPO_ROOT, 'sim', 'runs', name);
   fs.mkdirSync(dir, { recursive: true });
   const gamesFile = path.join(dir, 'games.jsonl');
@@ -86,7 +90,7 @@ async function main(): Promise<void> {
           continue;
         }
         const seat = k % 2;                  // deck a moves as player 1 in even games
-        const seed = 500000 + a * 10000 + b * 100 + k;
+        const seed = seedBase + a * 10000 + b * 100 + k;
         const pair: [string[], string[]] = seat === 0 ? [decks[a].cards, decks[b].cards] : [decks[b].cards, decks[a].cards];
         const names: [string, string] = seat === 0 ? [decks[a].archetype, decks[b].archetype] : [decks[b].archetype, decks[a].archetype];
         jobs.push({
@@ -98,6 +102,68 @@ async function main(): Promise<void> {
       }
     }
   }
+  // --compare "run1,run2,...": the scores of several runs side by side, and how much the runs agree
+  // with each other (two runs of one pilot on different games show the run-to-run noise)
+  const cmp = arg('compare', '');
+  if (cmp) {
+    // "run1+run2" pools the games of runs made with different --seeds (more games, less noise)
+    const load = (r: string) => fs.readFileSync(path.join(REPO_ROOT, 'sim', 'runs', r, 'games.jsonl'), 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l) as Done);
+    const runs = cmp.split(',').map(r => ({ r, done: r.split('+').flatMap(load) }));
+    const names = decks.map(d => d.archetype);
+    const sc = runs.map(x => ({ ...x, s: scores(names, x.done, real) }));
+    const L = [`| score | ${sc.map(x => x.r).join(' | ')} |`, `|---|${sc.map(() => '---|').join('')}`];
+    const row = (label: string, f: (s: ReturnType<typeof scores>, d: Done[]) => string) => L.push(`| ${label} | ${sc.map(x => f(x.s, x.done)).join(' | ')} |`);
+    row('matchup correlation with real', s => s.corr.toFixed(2));
+    row('matchup error (noise)', s => `${pct(s.mae)} (${pct(s.noise)})`);
+    row('lopsidedness (real 9%)', s => pct(s.lopSim));
+    row('deck rank correlation', s => s.rankCorr.toFixed(2));
+    row('deck win rate error (noise)', s => `${pct(s.deckMae)} (${pct(s.deckNoise)})`);
+    row('no Pokémon in play endings', (_s, d) => pct(d.filter(x => x.reason === 'no Pokémon in play').length / d.length));
+    row('mean turns', (_s, d) => mean(d.map(x => x.turns)).toFixed(1));
+    names.forEach(nm => row(nm, s => { const d = s.deckRows.find(x => x.nm === nm)!; return `${pct(d.sim)} (${d.sim >= d.real ? '+' : ''}${(100 * (d.sim - d.real)).toFixed(0)})`; }));
+    L.push('', 'Agreement between runs (matchup win rates; deck win rates):', '');
+    for (let i = 0; i < sc.length; i++) {
+      for (let j = i + 1; j < sc.length; j++) {
+        const key = (r: { a: string; b: string }) => `${r.a}|${r.b}`;
+        const mj = new Map(sc[j].s.rows.map(r => [key(r), r.sim]));
+        const both = sc[i].s.rows.filter(r => mj.has(key(r)));
+        L.push(`- ${sc[i].r} vs ${sc[j].r}: ${pearson(both.map(r => r.sim), both.map(r => mj.get(key(r))!)).toFixed(2)}; ${pearson(sc[i].s.deckRows.map(d => d.sim), sc[j].s.deckRows.map(d => d.sim)).toFixed(2)}`);
+      }
+    }
+    console.log(L.join('\n'));
+    return;
+  }
+
+  // --replay "deck a|deck b|k": replay one game of the run with the board before every turn
+  const rp = arg('replay', '');
+  if (rp) {
+    const [ra, rb, rk] = rp.split('|');
+    const a = decks.findIndex(d => d.archetype === ra), b = decks.findIndex(d => d.archetype === rb), k = Number(rk);
+    const seat = k % 2;
+    const spec: GameSpec = {
+      seed: seedBase + a * 10000 + b * 100 + k,
+      decks: seat === 0 ? [decks[a].cards, decks[b].cards] : [decks[b].cards, decks[a].cards],
+      names: seat === 0 ? [decks[a].archetype, decks[b].archetype] : [decks[b].archetype, decks[a].archetype],
+      start: 'full', offense, defense, budget: 100, maxTurns: 120, seats: [pilotSpec, pilotSpec], log: 'board',
+    };
+    const g = playGame(spec);
+    const L = [`# Replay: ${spec.names[0]} (P1) vs ${spec.names[1]} (P2), seed ${spec.seed}, pilot ${pilot}`, '',
+      `Result: ${g.winner === 0 || g.winner === 1 ? `${g.decks[g.winner]} won` : 'undecided'} by ${g.reason} in ${g.turns.length} turns; P${(g.first ?? 0) + 1} went first.`, ''];
+    g.turns.forEach(t => {
+      L.push(`### Turn ${t.turn}: P${t.mover + 1} ${g.decks[t.mover]} (prizes left P1 ${t.prizes[0]}, P2 ${t.prizes[1]})`, '', '```', (t.board ?? '').trimEnd(), '```',
+        `Moves (${t.policy}): ${(t.line ?? []).join(' -> ') || '(none)'}${t.took ? ` - took ${t.took}` : ''}`, '');
+      if (t.plan) {
+        L.push(`<details><summary>planner: ${t.plan.positions} positions${t.plan.candidates ? `, ${t.plan.candidates.length} finalists` : ''}</summary>`, '');
+        (t.plan.candidates ?? []).forEach(c => L.push(`- ${c.score.toFixed(3)} (mean ${c.mean.toFixed(3)}, low ${c.low.toFixed(3)}): ${c.line.join(' -> ') || '(end turn)'}`));
+        L.push('', '</details>', '');
+      }
+    });
+    const out = path.join(dir, `replay-${[ra, rb, rk].join('-').replace(/[^a-z0-9-]+/gi, '_')}.md`);
+    fs.writeFileSync(out, L.join('\n') + '\n');
+    console.log(`${g.decks[g.winner] ?? 'nobody'} won by ${g.reason} in ${g.turns.length} turns: ${out}`);
+    return;
+  }
+
   const pairs = decks.length * (decks.length - 1) / 2;
   console.log(`# ${name}: pilot ${pilot}, ${decks.length} decks (${pairs} matchups x ${perPair} games), ${done.length} done, ${jobs.length} to play, ${workers} workers`);
   console.log(`  decks: ${decks.map(d => d.archetype).join(', ')}`);
@@ -142,8 +208,10 @@ async function main(): Promise<void> {
   console.log(`report: ${path.join(dir, 'report.md')}`);
 }
 
-function report(name: string, pilot: string, names: string[], done: Done[], real: Record<string, Record<string, [number, number, number]>>, realFile: string): string {
-  const L: string[] = [];
+type Real = Record<string, Record<string, [number, number, number]>>;
+
+/** Matchup rows (sim vs real) and the fidelity scores of a set of games. */
+function scores(names: string[], done: Done[], real: Real) {
   const realWr = (a: string, b: string) => {
     const r = real[a]?.[b];
     if (!r) {
@@ -184,7 +252,12 @@ function report(name: string, pilot: string, names: string[], done: Done[], real
   const deckMae = mean(deckRows.map(d => Math.abs(d.sim - d.real)));
   const deckNoise = mean(deckRows.map(d => Math.sqrt(d.real * (1 - d.real) / Math.max(1, d.n)) * Math.sqrt(2 / Math.PI)));
   const rankCorr = spearman(deckRows.map(d => d.sim), deckRows.map(d => d.real));
+  return { rows, corr, mae, noise, lopSim, lopReal, deckRows, deckMae, deckNoise, rankCorr, decided };
+}
 
+function report(name: string, pilot: string, names: string[], done: Done[], real: Real, realFile: string): string {
+  const L: string[] = [];
+  const { rows, corr, mae, noise, lopSim, lopReal, deckRows, deckMae, deckNoise, rankCorr, decided } = scores(names, done, real);
   L.push(`# Pilot fidelity: ${name}`);
   L.push('');
   L.push(`Pilot \`${pilot}\`. ${names.length} meta decks (best-placed complete list of each archetype), every pairing played ${Math.round(mean(rows.map(r => r.n)))} times with seats alternating: ${done.length} games. Real matchups: ${path.basename(realFile)} (Limitless, all rounds).`);

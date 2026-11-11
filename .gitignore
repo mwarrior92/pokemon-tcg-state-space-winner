@@ -34,7 +34,7 @@ matches/choice_data_endturn.npz
 sim/node_modules/
 sim/dist/
 sim/dist-tools/
-sim/dist-fid/
+sim/dist-fid*/
 sim/prof/
 sim/prof.js
 sim/reports/*.txt

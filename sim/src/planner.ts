@@ -17,9 +17,9 @@
 import { CHEAP_GROUPS, features } from './features';
 import { LinearModel, Predictor } from './model';
 import { groupsFor } from './policy';
-import { GameWinner } from './engine';
+import { GameWinner, Stage, SuperType } from './engine';
 import { passTurn } from './policy';
-import { prizesLeft } from './rules';
+import { prizeValue, prizesLeft } from './rules';
 import { Rng } from './rng';
 import { Spare, Step, children, expandAction, replayStep, stateHash } from './search';
 import { energyGap } from './features';
@@ -81,6 +81,9 @@ export interface Evaluator {
   /** value for `me` at the start of its next turn (after the opponent's reply), with the prizes
    *  both had left when `me`'s previous turn began */
   atMyTurn(s: Sim, me: number, startPrizes: [number, number]): number;
+  /** a correction for risks the evaluator knows the reply search can miss: given the position after
+   *  `me`'s turn and a value for it, the corrected value (planTurn2 applies it to reply scores) */
+  adjust?(after: Sim, me: number, v: number): number;
 }
 
 export function winEvaluator(win: WinModel): Evaluator {
@@ -95,6 +98,33 @@ export function winEvaluator(win: WinModel): Evaluator {
  *  The last term rewards building towards the next turn (benching, Energy, evolving), which
  *  neither single-turn objective does: v0 playouts were passive and ended by deck-out. A won or
  *  lost game counts as +-10 prizes. */
+/** Material: what `me` has to work with, in fractions of a prize - Energy attached, Pokémon in
+ *  play (more for evolved ones), cards in hand (Energy cards a little more). The prize race alone
+ *  counts none of this, so every use of resources that does not change the next two turns' prizes
+ *  looked free: pilots discarded the Basic they had just searched for, retreated Energy away and
+ *  played Pokémon Catcher with no attacker, then ran out of cards and stalled. A tie-break: a
+ *  whole board of it is worth about one prize. */
+export function material(s: Sim, me: number): number {
+  const p = s.state.players[me];
+  let m = 0;
+  for (const l of [p.active, ...p.bench]) {
+    const pc = l.getPokemonCard();
+    if (!pc) {
+      continue;
+    }
+    m += 0.08 + (pc.stage === Stage.STAGE_1 ? 0.08 : pc.stage === Stage.STAGE_2 ? 0.16 : 0) + 0.12 * l.energies.cards.length;
+  }
+  for (const c of p.hand.cards) {
+    m += c.superType === SuperType.ENERGY ? 0.06 : 0.03;
+  }
+  return m;
+}
+// SIM_MATERIAL: 'self' (default) counts only the mover's material; 'both' counts the mover's minus the
+// opponent's (so shrinking the opponent's hand or removing its Energy counts too); 'off' none
+const MATERIAL_MODE = process.env.SIM_NO_MATERIAL ? 'off' : (process.env.SIM_MATERIAL ?? 'self');
+const materialTerm = (s: Sim, me: number): number =>
+  MATERIAL_MODE === 'off' ? 0 : material(s, me) - (MATERIAL_MODE === 'both' ? material(s, 1 - me) : 0);
+
 export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, seed = 1): Evaluator {
   const po = new Predictor(off), pd = new Predictor(def);
   const go = groupsFor(off), gd = groupsFor(def);
@@ -107,7 +137,7 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
     const taken = start[0] - prizesLeft(s.state.players[me]);
     const lost = start[1] - prizesLeft(s.state.players[1 - me]);
     const fd = features(s, me, gd, { only: od });
-    return taken - lost - Math.max(0, pd.predict(fd.names, fd.values));
+    return taken - lost - Math.max(0, pd.predict(fd.names, fd.values)) + materialTerm(s, me);
   };
   return {
     quick,
@@ -126,7 +156,7 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
         const fo = features(mine, me, go, { only: oo });
         next = Math.max(0, po.predict(fo.names, fo.values));
       }
-      return taken - lost - theirs + gamma * next;
+      return taken - lost - theirs + gamma * next + materialTerm(s, me);
     },
     atMyTurn: (s, me, start) => {
       if (s.finished) {
@@ -140,6 +170,31 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
       return taken - lost + Math.max(0, po.predict(fo.names, fo.values));
     },
   };
+}
+
+/** Bench-out guard. Ending a turn with nothing on the Bench means a Knock Out of the Active
+ *  Pokémon loses the game, not just a prize or two - a difference neither the prize race nor the
+ *  win model sees (benching a Basic looked worthless, so pilots ended turns with Basics or
+ *  Buddy-Buddy Poffin in hand and lost on the next attack). For such an ending the value moves
+ *  toward a loss by the chance the opponent Knocks Out the Active next turn: the defense model's
+ *  expected prizes over what that Knock Out is worth, never below `floor` (the model is fitted
+ *  to ordinary boards and has no notion of sudden death). planTurn2 applies the same correction
+ *  to its reply-based scores: a few short sampled replies often miss the Knock Out. */
+export function benchGuard(ev: Evaluator, def: LinearModel, lose: number, floor = 0.35): Evaluator {
+  const pd = new Predictor(def);
+  const gd = groupsFor(def), od = new Set(def.names);
+  const adjust = (s: Sim, me: number, v: number): number => {
+    const p = s.state.players[me];
+    if (s.finished || s.state.activePlayer === me || p.bench.some(b => b.cards.length)) {
+      return v;
+    }
+    const fd = features(s, me, gd, { only: od });
+    const theirs = Math.max(0, pd.predict(fd.names, fd.values));
+    const ko = Math.min(1, Math.max(floor, theirs / prizeValue(p.active.getPokemonCard())));
+    return (1 - ko) * v + ko * lose;
+  };
+  const guard = (f: Evaluator['afterTurn']): Evaluator['afterTurn'] => (s, me, start) => adjust(s, me, f(s, me, start));
+  return { ...ev, afterTurn: guard(ev.afterTurn), quick: ev.quick ? guard(ev.quick) : undefined, adjust };
 }
 
 interface TurnSearch {
@@ -208,6 +263,29 @@ function searchTurn(root: Sim, full: Evaluator, budget: number, maxMs: number, s
     }
     if (n !== rootNode) {
       n.sim = undefined;     // memory: positions are rebuilt by replaying the line
+    }
+  }
+  // bench quiescence: a position left unexpanded with nothing on the Bench also tries benching each
+  // Basic in hand (an Ultra Ball line that ran out of budget right after finding the Basic would
+  // otherwise only offer endings that lose to one Knock Out); the attack pass below then covers
+  // "bench, then attack" too
+  for (const n of nodes.slice()) {
+    if (n.expanded || !n.sim || n.sim.state.players[mover].bench.some(b => b.cards.length)) {
+      continue;
+    }
+    const spare: Spare = {};
+    for (const o of mainCandidates(n.sim.state)) {
+      if (o.kind !== 'bench') {
+        continue;
+      }
+      for (const c of expandAction(n.sim, o, mover, start, { branchCap: 4 }, spare)) {
+        if (!c.terminal) {
+          const m = mk(c.sim, n.depth + 1, n, c.step, c.label);
+          if (m !== n) {
+            n.kids.push({ node: m, label: c.label, step: c.step });
+          }
+        }
+      }
     }
   }
   // quiescence: positions left unexpanded also try their payable attacks as ways to end the turn,
@@ -417,7 +495,8 @@ export function planTurn2(root: Sim, ev: WinModel | Evaluator, opts: Plan2Option
     vals.sort((a, b) => a - b);
     const mean = vals.reduce((s, v) => s + v, 0) / vals.length;
     const low = vals[Math.floor((vals.length - 1) / 4)];
-    return { p, mean, low, score: (1 - risk) * mean + risk * low };
+    const score = (1 - risk) * mean + risk * low;
+    return { p, mean, low, score: e.adjust && !p.after.finished ? e.adjust(p.after, mover, score) : score };
   });
   scored.sort((a, b) => b.score - a.score);
   const best = scored[0];

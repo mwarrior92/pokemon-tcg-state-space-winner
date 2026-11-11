@@ -25,7 +25,7 @@ import { Sim, bugLog, bugStats, legalMainOptions, mainCandidates, randomChooser,
 import { generateState } from '../src/stategen';
 import { checkLegal, deckFromText, engineCard, formatDeckList, isBasicEnergy } from '../src/decklist';
 import { mutate, seedDeck } from '../src/deckgen';
-import { newGameStart } from '../src/playgame';
+import { newGameStart, starterScore } from '../src/playgame';
 
 loadCards();
 const known = loadKnownIssues();
@@ -472,6 +472,23 @@ test('full games from turn 1 finish with a winner and keep every card', () => {
     const sim = newGameStart(d[k].cards, d[k + 3].cards, 500 + k);
     assert.equal(sim.state.turn, 1);
     assert.deepEqual(checkInvariants(sim.state, { settled: true }), []);
+  }
+});
+
+test('set-up puts every Basic down and starts the best starter', () => {
+  const d = metaDecks();
+  for (let k = 0; k < 12; k++) {
+    const sim = newGameStart(d[k % d.length].cards, d[(k + 4) % d.length].cards, 900 + k);
+    sim.state.players.forEach((p, i) => {
+      const benched = p.bench.filter(b => b.cards.length).map(b => b.getPokemonCard()!);
+      const basicsInHand = p.hand.cards.filter(c => c instanceof PokemonCard && c.stage === Stage.BASIC).length;
+      // the player to move has drawn for the turn: that card may be a Basic
+      if (benched.length < 5) {
+        assert.ok(basicsInHand <= (i === sim.state.activePlayer ? 1 : 0), `game ${k}, P${i + 1} left ${basicsInHand} Basics in hand`);
+      }
+      const active = p.active.getPokemonCard()!;
+      benched.forEach(b => assert.ok(starterScore(active) >= starterScore(b) - 1e-9, `game ${k}, P${i + 1}: ${active.name} started over ${b.name}`));
+    });
   }
 });
 

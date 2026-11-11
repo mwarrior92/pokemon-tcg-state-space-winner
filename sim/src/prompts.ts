@@ -6,7 +6,7 @@
 // instead of index subsets (choosing 2 of 4 identical Ultra Balls is one option, not six).
 import {
   AlertPrompt, AttachEnergyPrompt, Card, CardTarget, ChooseAttackPrompt, ChooseCardsPrompt, ChooseEnergyPrompt,
-  ChoosePokemonPrompt, ChoosePrizePrompt, CoinFlipPrompt, ConfirmCardsPrompt, ConfirmPrompt, DiscardEnergyPrompt,
+  ChoosePokemonPrompt, ChoosePrizePrompt, CoinFlipPrompt, GameMessage, ConfirmCardsPrompt, ConfirmPrompt, DiscardEnergyPrompt,
   InvitePlayerPrompt, MoveDamagePrompt, MoveEnergyPrompt, OrderCardsPrompt, Player, PlayerType, PokemonCardList,
   Prompt, PutDamagePrompt, RemoveDamagePrompt, SelectOptionPrompt, SelectPrompt, ShowCardsPrompt, ShowMulliganPrompt,
   ShuffleDeckPrompt, ShuffleHandPrompt, ShufflePrizesPrompt, SlotType, State, SuperType, WaitPrompt, matchesPromptFilter,
@@ -169,6 +169,14 @@ export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64):
     const hi = Math.min(p.options.max, ok.length);
     const lo = Math.min(p.options.min, hi);
     const groups = rng.shuffle(groupByName(cards, ok));
+    // set-up: every Basic down, once with each distinct Basic as the Active (the first card chosen),
+    // so a chooser can pick the starter instead of taking whichever name the shuffle put first
+    if (p.message === GameMessage.CHOOSE_STARTING_POKEMONS && hi > 0) {
+      for (const g of groups) {
+        const sel = [g[0], ...ok.filter(i => i !== g[0])].slice(0, hi);
+        add(sel, `${cards[sel[0]].name} active` + (sel.length > 1 ? `, bench ${sel.slice(1).map(i => cards[i].name).join(' + ')}` : ''));
+      }
+    }
     // largest selections first: "take everything allowed" is the natural default of a search card
     for (const sel of multisets(groups, lo, hi, cap * 4)) {
       add(sel, sel.length ? sel.map(i => cards[i].name).join(' + ') : 'nothing');
