@@ -16,7 +16,7 @@ import { Worker, isMainThread, parentPort, workerData } from 'worker_threads';
 import { prizesLeft } from './rules';
 import { Sim } from './sim';
 import { DagNode, ExpandOptions, SearchOptions, Step, backUpValues, bestLine, children, replayStep, stateHash } from './search';
-import { autoWorkers } from './pool';
+import { autoWorkers, fullSpeed } from './pool';
 
 /** Builds the root position from a small, serializable description (e.g. generator seed + decks).
  *  Must be deterministic: coordinator and workers build the same root from the same spec. */
@@ -120,6 +120,7 @@ export class ParallelSearch {
 
   constructor(script: string, private factory: RootFactory, n = autoWorkers()) {
     for (let i = 0; i < n; i++) {
+      fullSpeed();
       const w = new Worker(script, { workerData: { psearch: true }, resourceLimits: { maxOldGenerationSizeMb: 800 } });
       w.on('message', (m: KidsMsg) => {
         const h = this.handlers.get(m.id);

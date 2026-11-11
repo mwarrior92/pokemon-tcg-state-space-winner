@@ -27,6 +27,20 @@ npm test             # build + all tests (~15 s)
 | Fast turn players (offense, defense) | `src/policy.ts` | |
 | Training round: label → fit → reduce → evaluate → log → review packet | `src/cli/train.ts` | `node dist/train.js offense`, `node dist/train.js defense` |
 
+## Speed: cores and memory
+
+- **Windows power throttling.** A windowless background process runs in efficiency mode, on the
+  efficiency cores only. On the i7-13650HX the 8 E-cores sat at 100% while the 6 P-cores idled, so
+  7 and 14 workers ran equally slowly. Every worker pool turns this off for its own process
+  (`scripts/fullspeed.ps1`, no admin rights; `SIM_THROTTLE=1` skips it): 42 games went from 797 s to
+  165 s on 7 workers. Run it by hand on an older process:
+  `powershell -ExecutionPolicy Bypass -File sim/scripts/fullspeed.ps1 -ProcessId <pid>`.
+- **Memory per worker.** A game holds about 45 MB of live data, but V8 lets garbage grow to the heap
+  cap before collecting. A 320 MB cap (`POOL_HEAP_MB`) plays at full speed with peaks of 380 MB
+  (`race` and `plan2`); the old 900 MB cap peaked at 500–600 MB. The worker count is one per logical
+  CPU less two, limited by free memory (`POOL_WORKERS_MAX`, `--workers N`). Closing other programs
+  is what lets more workers run.
+
 ## Card tests
 
 `npm test` checks:
