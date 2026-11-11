@@ -1,6 +1,6 @@
 """Fetch commentated tournament match transcripts from YouTube (English captions) for play analysis.
 
-    python sim/scripts/fetch_transcripts.py                    # default searches: this season's finals / top 4 / top 8
+    python sim/scripts/fetch_transcripts.py                    # finals / semifinals / top 4 / top 8, all divisions, seasons 2025-2027
     python sim/scripts/fetch_transcripts.py --query "..." ...  # other searches
     python sim/scripts/fetch_transcripts.py --id VIDEO_ID ...  # specific videos
     python sim/scripts/fetch_transcripts.py --days             # also the full-day streams (8-10 h each)
@@ -24,32 +24,36 @@ import yt_dlp
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUT = os.path.join(ROOT, 'sim', 'data', 'transcripts')
 OFFICIAL = ('Play Pokémon', 'The Official Pokémon YouTube channel')
-SEASON = '2027'      # the season of the meta data (Sept 2026 on)
-DEFAULT_QUERIES = [
-    f'Pokemon TCG Masters Finals {SEASON} Regional Championships',
-    f'Pokemon TCG Top 4 {SEASON} Regional Championships',
-    f'Pokemon TCG Top 8 {SEASON} Regional Championships',
-    f'Pokemon TCG Masters Finals {SEASON} International Championships',
-    f'Pokemon TCG Masters Finals {SEASON} Special Championships',
-    f'Play Pokemon TCG {SEASON} Regional Championships Top 4',
-]
+# seasons: the 2025 season ends with Worlds 2025 (Aug 2025); "2027" events run from Sept 2026
+SEASONS = ('2025', '2026', '2027')
+KINDS = ('Masters Finals', 'Senior Finals', 'Junior Finals', 'Semifinals', 'Top 4', 'Top 8')
+EVENTS = ('Regional Championships', 'International Championships', 'World Championships', 'Special Championships')
 
 
-def search(queries, days):
+def default_queries(seasons):
+    return [f'Pokemon TCG {k} {s} {e}' for s in seasons for e in EVENTS for k in KINDS]
+
+
+def search(queries, days, seasons, per_query=30):
     found = {}
     with yt_dlp.YoutubeDL({'quiet': True, 'extract_flat': True, 'skip_download': True}) as ydl:
         for q in queries:
-            info = ydl.extract_info(f'ytsearch25:{q}', download=False)
+            try:
+                info = ydl.extract_info(f'ytsearch{per_query}:{q}', download=False)
+            except Exception as e:
+                print(f'  search failed ({q}): {str(e)[:120]}')
+                continue
             for e in info.get('entries') or []:
                 title, channel = e.get('title') or '', e.get('channel') or ''
-                if channel not in OFFICIAL or 'TCG' not in title or SEASON not in title:
+                if channel not in OFFICIAL or 'TCG' not in title or not any(s in title for s in seasons):
                     continue
                 is_day = re.search(r'TCG Day \d|Championship Sunday', title)
                 if is_day and not days:
                     continue
-                if not is_day and not re.search(r'Finals?|Top \d', title):
+                if not is_day and not re.search(r'Finals?|Semi-?finals?|Top \d', title, re.I):
                     continue
                 found[e['id']] = e
+            time.sleep(2)
     return list(found.values())
 
 
@@ -111,6 +115,7 @@ def main():
     ap.add_argument('--query', nargs='*')
     ap.add_argument('--id', nargs='*')
     ap.add_argument('--days', action='store_true')
+    ap.add_argument('--seasons', nargs='*', default=list(SEASONS), help='season years in the video titles (default 2025 2026 2027)')
     ap.add_argument('--reclean', action='store_true', help='rewrite the text files from the saved raw captions')
     a = ap.parse_args()
     os.makedirs(OUT, exist_ok=True)
@@ -126,7 +131,7 @@ def main():
                 open(path, 'w', encoding='utf-8').write(head + text + chr(10))
         print('recleaned')
         return
-    ids = a.id or [e['id'] for e in search(a.query or DEFAULT_QUERIES, a.days)]
+    ids = a.id or [e['id'] for e in search(a.query or default_queries(a.seasons), a.days, a.seasons)]
     print(f'{len(ids)} videos; {sum(1 for i in ids if i in index)} already fetched')
     if True:
         for vid in ids:

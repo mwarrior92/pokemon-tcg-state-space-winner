@@ -20,6 +20,7 @@ import { LinearModel, loadModel } from './model';
 import { playDefense, playOffenseSearch } from './policy';
 import { Evaluator, Plan, benchGuard, planTurn, planTurn2, raceEvaluator, winEvaluator } from './planner';
 import { prizeValue, prizesLeft } from './rules';
+import { imitationLine } from './imitate';
 import { Rng } from './rng';
 import { PromptChooser, Sim, randomChooser, resolvePrompts } from './sim';
 import { generateState } from './stategen';
@@ -153,6 +154,11 @@ function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: Linear
     const o = playOffenseSearch(sim, off, { budget: spec.budget, maxMs: 3000 });
     return { o, extra: [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }] };
   };
+  if (seat.startsWith('imit:')) {
+    // the imitation policy (imitate.ts): the top-scoring step until the turn ends
+    const r = imitationLine(sim, model(seat.slice(5)), seed);
+    return { next: r.end, line: r.line, policy: 'plan' };
+  }
   if (seat.startsWith('plan:')) {
     const pl = planTurn(sim, win(seat.slice(5)), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra });
     return { next: pl.end, line: pl.line, policy: 'plan', plan: pl };

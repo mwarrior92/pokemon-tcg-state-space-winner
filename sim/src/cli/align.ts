@@ -15,7 +15,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 import { REPO_ROOT, loadCards } from '../cards';
-import { MatchLog, ReplayResult, Step, loadLogs, replayLog } from '../matchlog';
+import { MatchLog, ReplayResult, Step, knownLists, loadLogs, replayLog } from '../matchlog';
+import { buildDeck } from '../cards';
+import { CardManager, PokemonCard, TrainerCard, EnergyCard, Stage, TrainerType } from '../engine';
 import { pilotLine } from '../playgame';
 
 function arg(name: string, dflt: string): string {
@@ -34,7 +36,51 @@ function main(): void {
   const offense = path.join(REPO_ROOT, 'sim', arg('offense', 'runs/offense-r3b/model.json'));
   const defense = path.join(REPO_ROOT, 'sim', arg('defense', 'runs/defense-r1/model.json'));
   const seat = pilot.startsWith('plan') ? pilot.replace(/^(plan2?):(.*)$/, (_m, k, f) => `${k}:${path.join(REPO_ROOT, 'sim', f)}`) : pilot;
-  const logs = loadLogs(logsDir).filter(l => !only || l.id === only);
+  // --lists "<event text>": the saved top-cut lists of matching events (for writing match logs)
+  const lq = arg('lists', '');
+  if (lq) {
+    const q = lq.toLowerCase();
+    for (const l of knownLists().filter(x => `${x.event} ${(x as any).date ?? ''} ${x.tournament}`.toLowerCase().includes(q)).sort((a, b) => a.event.localeCompare(b.event) || a.rank - b.rank)) {
+      const d = buildDeck(l.list, l.deck, l.cards);
+      console.log(`${l.event} ${(l as any).date ?? ''} | rank ${l.rank} | ${(l as any).player ?? ''} | ${l.deck} | list ${l.list}${d.missing.length ? ` | engine lacks ${d.missing.map(m => `${m.count} ${m.name}`).join(', ')}` : ''}`);
+    }
+    return;
+  }
+  // --cards <list id>: the list in engine names, with what log writers need (stage, HP, retreat,
+  // abilities, attacks and costs, Trainer kind)
+  const cq = arg('cards', '');
+  if (cq) {
+    const l = knownLists().find(x => x.list === cq && (!arg('deck', '') || x.deck === arg('deck', '')));
+    if (!l) {
+      console.error(`no list ${cq}`);
+      process.exit(1);
+    }
+    console.log(`${l.deck} (list ${l.list}, ${l.event} rank ${l.rank})`);
+    const d = buildDeck(l.list, l.deck, l.cards);
+    const seen = new Set<string>();
+    for (const fn of d.cards) {
+      if (seen.has(fn)) {
+        continue;
+      }
+      seen.add(fn);
+      const c = CardManager.getInstance().getCardByName(fn)!;
+      const n = d.cards.filter(x => x === fn).length;
+      if (c instanceof PokemonCard) {
+        const st = c.stage === Stage.BASIC ? 'Basic' : c.stage === Stage.STAGE_1 ? 'Stage 1' : c.stage === Stage.STAGE_2 ? 'Stage 2' : String(c.stage);
+        console.log(`${n} ${c.name} - ${st}${c.evolvesFrom ? ` from ${c.evolvesFrom}` : ''}, ${c.hp} HP, retreat ${c.retreat.length}`
+          + `${c.powers.length ? `; ability: ${c.powers.map(p => p.name).join(', ')}` : ''}; attacks: ${c.attacks.map(a => `${a.name} [${a.cost.length}]`).join(', ') || '-'}`);
+      } else if (c instanceof TrainerCard) {
+        console.log(`${n} ${c.name} - ${TrainerType[c.trainerType]}`);
+      } else {
+        console.log(`${n} ${c.name} - Energy`);
+      }
+    }
+    for (const m of d.missing) {
+      console.log(`${m.count} ${m.name} (${m.set} ${m.num}) - NOT IN THE ENGINE`);
+    }
+    return;
+  }
+  const logs = loadLogs(logsDir, only || undefined);
   if (!logs.length) {
     console.error(`no match logs in ${logsDir}`);
     process.exit(1);

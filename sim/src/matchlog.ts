@@ -18,7 +18,8 @@
 // free choice.
 import * as fs from 'fs';
 import * as path from 'path';
-import { buildDeck, loadMetaLists } from './cards';
+import * as fsx from 'fs';
+import { REPO_ROOT, buildDeck, cardsNamed, loadMetaLists } from './cards';
 import { describeState } from './describe';
 import { Card, CardManager, ChooseCardsPrompt, ChoosePokemonPrompt, GameMessage, GamePhase, PokemonCard, Prompt, Stage, State, TrainerCard } from './engine';
 import { decodeValid, promptOptions } from './prompts';
@@ -51,11 +52,21 @@ export interface LogTurn {
   t?: string;
 }
 
+/** A player's deck: a Limitless list id (meta/decklists_*.json, meta/decklists_topcut.json). Junior and
+ *  Senior players' lists are not published there: `approx` marks a stand-in (the same event's Masters
+ *  list of the archetype), and `swap` replaces cards ([out, in] by name) with ones seen played. */
+export interface LogDeck {
+  archetype: string;
+  list: string;
+  approx?: boolean;
+  swap?: [string, string][];
+}
+
 export interface MatchLog {
   source: string;
   event?: string;
   game: number;
-  decks: [{ archetype: string; list: string }, { archetype: string; list: string }];
+  decks: [LogDeck, LogDeck];
   first: 0 | 1;
   setup: [{ active: string; bench?: string[] }, { active: string; bench?: string[] }];
   prizes?: [string[], string[]];
@@ -79,18 +90,34 @@ function cardDefs(decks: string[][]): Map<string, Card> {
   return m;
 }
 
+let allLists: ReturnType<typeof loadMetaLists> | undefined;
+
 export function logDecks(log: MatchLog): [string[], string[]] {
-  const lists = loadMetaLists();
+  logDecksInit();
   return log.decks.map(d => {
-    const l = lists.find(x => x.list === d.list && x.deck === d.archetype) ?? lists.find(x => x.list === d.list);
+    const l = allLists!.find(x => x.list === d.list && x.deck === d.archetype) ?? allLists!.find(x => x.list === d.list);
     if (!l) {
       throw new Error(`decklist ${d.list} (${d.archetype}) not in the meta decklists`);
     }
     const deck = buildDeck(d.list, d.archetype, l.cards);
-    if (deck.missing.length || deck.cards.length !== 60) {
-      throw new Error(`decklist ${d.list} is incomplete in the engine`);
+    const cards = deck.cards.slice();
+    // cards the engine does not have: the list's most common basic Energy stands in
+    if (deck.missing.length) {
+      const energy = l.cards.filter(c => / Energy$/.test(c.name) && !/Special|Telepathic|Growing|Boomerang|Mist|Enriching/.test(c.name)).sort((a, b) => b.count - a.count)[0];
+      const stand = energy ? cardsNamed(energy.name)[0]?.fullName : undefined;
+      deck.missing.forEach(m => { for (let i = 0; i < m.count && stand; i++) { cards.push(stand); } });
     }
-    return deck.cards;
+    for (const [out, inn] of d.swap ?? []) {
+      const i = cards.findIndex(fn => norm(CardManager.getInstance().getCardByName(fn)?.name) === norm(out));
+      const c = cardsNamed(inn)[0];
+      if (i >= 0 && c) {
+        cards[i] = c.fullName;
+      }
+    }
+    if (cards.length !== 60) {
+      throw new Error(`decklist ${d.list} has ${cards.length} cards in the engine`);
+    }
+    return cards;
   }) as [string[], string[]];
 }
 
@@ -324,8 +351,13 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
           }
         }
       }
+      if (i < 0 && owner === mover && a?.uses?.length && p instanceof ChooseCardsPrompt) {
+        i = bestOption(opts, a.uses);                      // the cards the action spends (Teal Dance's Energy)
+      }
       if (i < 0) {
-        i = rng.int(0, opts.length - 1);
+        // not in the log: at random, but a real selection rather than "nothing" when there is one
+        const some = opts.map((o, k) => k).filter(k => !/^(nothing|move nothing|none|discard nothing|attach nothing)$/.test(opts[k].label));
+        i = some.length ? some[rng.int(0, some.length - 1)] : rng.int(0, opts.length - 1);
       }
       record.push(opts[i].label);
       return i;
@@ -443,7 +475,9 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
       let next: Sim | undefined;
       let real = '', realFull = '';
       const why: string[] = [];
-      for (const o of opts) {
+      for (const o of opts.flatMap(x => Array(5).fill(x) as MainOption[])) {
+        // a few tries: answers the log leaves open are random, and a card may reject one (Crispin
+        // with two Energy of one type)
         const rec: string[] = [];
         const r = runStep(sim, o, chooserFor(a, mover, rec), rng, 2);
         if (r.sim) {
@@ -529,10 +563,33 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
   return { steps, applied, failed, stopped: sim.finished ? 'game over' : undefined };
 }
 
-export function loadLogs(dir: string): { id: string; log: MatchLog }[] {
+export function loadLogs(dir: string, only?: string): { id: string; log: MatchLog }[] {
   if (!fs.existsSync(dir)) {
     return [];
   }
-  return fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort()
-    .map(f => ({ id: f.replace(/\.json$/, ''), log: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) as MatchLog }));
+  const out: { id: string; log: MatchLog }[] = [];
+  for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.json')).sort()) {
+    const id = f.replace(/\.json$/, '');
+    if (only && id !== only) {
+      continue;
+    }
+    try {
+      out.push({ id, log: JSON.parse(fs.readFileSync(path.join(dir, f), 'utf8')) as MatchLog });
+    } catch (e) {
+      console.error(`${id}: not valid JSON (${(e as Error).message.slice(0, 120)}), skipped`);
+    }
+  }
+  return out;
+}
+
+/** Every saved decklist (meta decklists + top cuts), for log writers. */
+export function knownLists(): ReturnType<typeof loadMetaLists> {
+  logDecksInit();
+  return allLists!;
+}
+function logDecksInit(): void {
+  if (!allLists) {
+    const topcut = path.join(REPO_ROOT, 'meta', 'decklists_topcut.json');
+    allLists = [...loadMetaLists(), ...(fsx.existsSync(topcut) ? loadMetaLists(topcut) : [])];
+  }
 }
