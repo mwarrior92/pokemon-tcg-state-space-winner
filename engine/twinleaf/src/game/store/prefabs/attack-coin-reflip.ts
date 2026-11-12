@@ -94,8 +94,14 @@ export function CLEAR_COIN_REFLIP_AGAIN_AT_END_OF_TURN(effect: Effect): void {
 // =============================================================================
 
 /** Default coin flip resolution used by gameReducer when no card intercepts. */
+/** [winner patch 022] Where coin flips come from. Upstream used Math.random(), so every coin flip
+ *  (about 2,200 cards) ignored the simulator's seed: games and searches could not be reproduced and
+ *  a replayed real game could not give a flip its known result. The simulator sets `next` before
+ *  each action (seeded, or the logged result); the default stays Math.random. */
+export const coinFlipSource = { next: (): boolean => Math.random() < 0.5 };
+
 export function RESOLVE_COIN_FLIP_EFFECT(store: StoreLike, state: State, effect: CoinFlipEffect): State {
-  const result = effect.forcedResult !== undefined ? effect.forcedResult : Math.random() < 0.5;
+  const result = effect.forcedResult !== undefined ? effect.forcedResult : coinFlipSource.next();
   effect.result = result;
   const player = effect.player;
 
@@ -173,7 +179,7 @@ function resolveAttackCoinFlipWithReflipOption(
   config: AttackCoinReflipConfig,
 ): State {
   effect.preventDefault = true;
-  const result = effect.forcedResult !== undefined ? effect.forcedResult : Math.random() < 0.5;
+  const result = effect.forcedResult !== undefined ? effect.forcedResult : coinFlipSource.next();
   effect.result = result;
   const player = effect.player;
 

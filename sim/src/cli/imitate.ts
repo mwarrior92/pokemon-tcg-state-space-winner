@@ -100,13 +100,16 @@ function main(): void {
     return mains.filter(m => r.step.admissible.includes(m)).length / mains.length;
   };
   const sources = [...new Set(usable.map(r => r.source))];
+  // cross-validation folds: whole matches (videos), dealt into --folds groups
+  const nFolds = Math.min(Number(arg('folds', '5')), sources.length);
+  const foldOf = new Map(sources.slice().sort().map((s, i) => [s, i % nFolds]));
   const lambdas = arg('lambdas', '0.001,0.01,0.1').split(',').map(Number);
   const cv: { lambda: number; main: number; full: number }[] = [];
   for (const lambda of lambdas) {
     let m = 0, f = 0;
-    for (const s of sources) {
-      const model = fitPolicy(names, usable.filter(r => r.source !== s), { lambda });
-      for (const r of usable.filter(r => r.source === s)) {
+    for (let f = 0; f < nFolds; f++) {
+      const model = fitPolicy(names, usable.filter(r => foldOf.get(r.source) !== f), { lambda });
+      for (const r of usable.filter(r => foldOf.get(r.source) === f)) {
         const h = hit(model, r);
         m += h.main ? 1 : 0;
         f += h.full ? 1 : 0;
@@ -136,7 +139,7 @@ function main(): void {
   const L = [`# Imitation policy: ${name}`, '',
     `${usable.length} real states (stated actions) from ${sources.length} matches (${logs.length} game logs). Each state's candidates are the turn search's steps (action + prompt answers); the policy scores them by the change in the mover's features, the kind of action and Trainer, and prizes taken.`, '',
     '| | states | top choice is the real action (or interchangeable) |', '|---|---|---|',
-    `| policy, held out by match (λ ${best.lambda}) | ${usable.length} | **${pct(Math.round(best.main * usable.length), usable.length)}** (same prompt answers too: ${pct(Math.round(best.full * usable.length), usable.length)}) |`,
+    `| policy, held out by match (${nFolds} folds, λ ${best.lambda}) | ${usable.length} | **${pct(Math.round(best.main * usable.length), usable.length)}** (same prompt answers too: ${pct(Math.round(best.full * usable.length), usable.length)}) |`,
     `| chance (a random main action) | ${usable.length} | ${pct(Math.round(usable.reduce((s, r) => s + chance(r), 0)), usable.length)} |`];
   if (raceLine) {
     L.push(raceLine);

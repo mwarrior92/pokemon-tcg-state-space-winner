@@ -21,7 +21,7 @@ import * as path from 'path';
 import * as fsx from 'fs';
 import { REPO_ROOT, buildDeck, cardsNamed, loadMetaLists } from './cards';
 import { describeState } from './describe';
-import { Card, CardManager, ChooseCardsPrompt, ChoosePokemonPrompt, GameMessage, GamePhase, PokemonCard, Prompt, Stage, State, TrainerCard } from './engine';
+import { AttachEnergyPrompt, Card, CardManager, CardTarget, ChooseCardsPrompt, ChoosePokemonPrompt, GameMessage, GamePhase, PlayerType, PokemonCard, Prompt, SlotType, Stage, State, TrainerCard } from './engine';
 import { decodeValid, promptOptions } from './prompts';
 import { Rng } from './rng';
 import { MainOption, PromptChooser, Sim, mainCandidates, runStep } from './sim';
@@ -225,6 +225,28 @@ function ensureDeck(sim: Sim, pi: number, names: string[], need: string[], locke
   }
 }
 
+/** An Energy spread given as [Energy, Pokémon, Energy, Pokémon, ...] (Pokémon by name or slot, the
+ *  prompt owner's own), as the prompt's raw answer; undefined if a piece is missing. */
+function attachSpread(sim: Sim, p: AttachEnergyPrompt, want: string[]): { to: CardTarget; index: number }[] | undefined {
+  const me = sim.state.players[sim.playerIndex(p.playerId)];
+  const cards = p.cardList.cards, used = new Set<number>();
+  const blocked = new Set((p as any).options?.blocked ?? []);
+  const out: { to: CardTarget; index: number }[] = [];
+  for (let k = 0; k < want.length; k += 2) {
+    const e = cards.findIndex((c, j) => !used.has(j) && !blocked.has(j) && sameCard(c, want[k]));
+    const t = norm(want[k + 1]);
+    const slots = [{ l: me.active, t: { player: PlayerType.BOTTOM_PLAYER, slot: SlotType.ACTIVE, index: 0 }, n: 'active' },
+      ...me.bench.map((l, i) => ({ l, t: { player: PlayerType.BOTTOM_PLAYER, slot: SlotType.BENCH, index: i }, n: `bench${i}` }))];
+    const hit = slots.find(x => x.l.cards.length && (SLOT.test(t) ? `${x.n} ${norm(x.l.getPokemonCard()?.name)}` === t : norm(x.l.getPokemonCard()?.name) === t));
+    if (e < 0 || !hit) {
+      return undefined;
+    }
+    used.add(e);
+    out.push({ to: hit.t as CardTarget, index: e });
+  }
+  return out;
+}
+
 /** Board signature for "same position": slots (bench as a multiset), hands, discards, counts. */
 export function boardSig(st: State): string {
   const slot = (l: any) => l.cards.length
@@ -239,6 +261,9 @@ export function boardSig(st: State): string {
 /** Strip "own"/"opp" and a slot prefix from a target label. */
 const bare = (s: string) => norm(s).replace(/^\d+ on /, '').replace(/^(own|opp) /, '').replace(/^(active|bench\d) /, '');
 const optNames = (label: string) => label.split(/ \+ |, | -> /).map(bare).filter(Boolean);
+/** Option names keeping the slot ("bench1 slowpoke"), for choices that name a slot. */
+const optSlotted = (label: string) => label.split(/ \+ |, | -> /).map(x => norm(x).replace(/^\d+ on /, '').replace(/^(own|opp) /, '')).filter(Boolean);
+const SLOT = /^(active|bench\d) /;
 
 /** The option whose names best match `want` (a name or names), or -1. */
 function bestOption(opts: { label: string }[], want: string | string[]): number {
@@ -255,8 +280,18 @@ function bestOption(opts: { label: string }[], want: string | string[]): number 
       return;
     }
     const left = have.slice();
+    const leftSlotted = optSlotted(o.label);
     let hit = 0;
     for (const x of w) {
+      if (SLOT.test(x)) {
+        const k = leftSlotted.indexOf(x);
+        if (k >= 0) {
+          leftSlotted.splice(k, 1);
+          left.splice(left.indexOf(bare(x)), 1);
+          hit++;
+        }
+        continue;
+      }
       const k = left.indexOf(x);
       if (k >= 0) {
         left.splice(k, 1);
@@ -300,7 +335,7 @@ export function optionsFor(sim: Sim, a: LogAction): MainOption[] {
       case 'bench': return o.kind === 'bench' && l === `bench ${card}`;
       case 'evolve': {
         const on = l.slice(7, l.lastIndexOf(' -> '));
-        return o.kind === 'evolve' && l.endsWith(`-> ${card}`) && (!to || (slotted ? on === to : bare(on) === to));
+        return o.kind === 'evolve' && l.endsWith(`-> ${card}`) && (!to || (to === 'active' ? on.startsWith('active ') : slotted ? on === to : bare(on) === to));
       }
       case 'attach': return o.kind === 'attach' && l.startsWith(`attach ${card} -> `) && (!to || target(o.label) === to || (to === 'active' && / -> active /.test(l)));
       case 'tool': return o.kind === 'tool' && l.startsWith(`tool ${card} -> `) && (!to || target(o.label) === to || (to === 'active' && / -> active /.test(l)));
@@ -308,7 +343,7 @@ export function optionsFor(sim: Sim, a: LogAction): MainOption[] {
       case 'stadium': return o.kind === 'stadium' && l.startsWith('use stadium') && (!card || l === `use stadium ${card}`);
       case 'ability': {
         const m = /^ability (.*) \((.*)\)$/.exec(l);
-        return o.kind === 'ability' && !!m && (!name || m[1] === name) && (!card || bare(m[2]) === card);
+        return o.kind === 'ability' && !!m && (!name || m[1] === name) && (!card || (/^(active|bench\d) /.test(card) ? m[2] === card : bare(m[2]) === card));
       }
       case 'retreat': {
         const into = l.replace(/^retreat to /, '');
@@ -400,6 +435,23 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
       } else if (owner === mover && a?.choices && ci < a.choices.length) {
         const c = a.choices[ci++];
         i = c === '*' ? -1 : bestOption(opts, c);         // "*": not known, answered at random
+        const cs = typeof c === 'string' && c !== '*' && c !== 'yes' && c !== 'no' && c !== 'nothing' ? [c] : c;
+        if (Array.isArray(cs) && p instanceof ChooseCardsPrompt && (i < 0 || optNames(opts[i].label).length !== cs.length || !cs.every(n => optNames(opts[i].label).includes(norm(n)))
+          || cs.some(n => printing(n)))) {
+          // the options are a capped sample: a large pick (Precious Trolley's five Basics) may be
+          // missing - build it from the cards on offer
+          const cards = p.cards.cards, blocked = new Set(p.options.blocked ?? []), used = new Set<number>();
+          const raw = cs.map(n => {
+            const k = cards.findIndex((x, j) => !used.has(j) && !blocked.has(j) && (printing(n) ? norm(x.fullName) === norm(n) : sameCard(x, n)));
+            used.add(k);
+            return k;
+          });
+          const v = raw.every(k => k >= 0) ? decodeValid(p, s.state, raw) : undefined;
+          if (v) {
+            opts.push({ raw, label: raw.map(k => cards[k].name).join(' + '), decoded: v.decoded } as any);
+            i = opts.length - 1;
+          }
+        }
       } else if (owner !== mover && p instanceof ChoosePokemonPrompt) {
         const lp = owner === 0 ? log.first : 1 - log.first;
         const pr = nextPromote(lp);
@@ -407,6 +459,18 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
           i = bestOption(opts, pr.card);
           if (!dryRun) {
             consumed.add(pr);
+          }
+        }
+      }
+      if (owner === mover && p instanceof AttachEnergyPrompt && a?.choices && ci > 0) {
+        const c = a.choices[ci - 1];
+        const want = Array.isArray(c) && c.length >= 2 && c.length % 2 === 0 ? c : undefined;
+        if (want && (i < 0 || norm(opts[i].label).split(', ').length !== want.length / 2)) {
+          const raw = attachSpread(s, p, want);
+          const v = raw ? decodeValid(p, s.state, raw) : undefined;
+          if (v) {
+            opts.push({ raw, label: want.join(' '), decoded: v.decoded } as any);
+            i = opts.length - 1;
           }
         }
       }
@@ -450,7 +514,7 @@ export function replayLog(log: MatchLog, gameId: string, decide: (s: Sim, seed: 
           p.options.blocked = pl.hand.cards.map((c, i) => (c instanceof PokemonCard && c.stage === Stage.BASIC ? -1 : i)).filter(i => i >= 0);
           const used = new Set<number>();
           const raw = want.map(n => {
-            const i = pl.hand.cards.findIndex((c, k) => !used.has(k) && norm(c.name) === norm(n));
+            const i = pl.hand.cards.findIndex((c, k) => !used.has(k) && (printing(n) ? norm(c.fullName) === norm(n) : sameCard(c, n)));
             used.add(i);
             return i;
           });

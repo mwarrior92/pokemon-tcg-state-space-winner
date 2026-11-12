@@ -7,6 +7,7 @@ import {
   SlotType, State, Store, StoreHandler, TrainerCard, TrainerType, UseAbilityAction, UseStadiumAction, StateUtils,
 } from './engine';
 import { deepCopy } from './clone';
+import { coinFlipSource } from '../../engine/twinleaf/src/game/store/prefabs/attack-coin-reflip';
 import { chanceResult, decodeValid, isChancePrompt, promptOptions } from './prompts';
 import { Rng } from './rng';
 
@@ -79,7 +80,13 @@ export class Sim implements StoreHandler {
   }
 
   /** Apply an action, then answer chance / no-choice prompts until a decision is needed. */
+  /** Coin flips inside the engine draw from this sim: a forced result first, else its seeded rng. */
+  private flipSource(): void {
+    coinFlipSource.next = () => (this.forcedFlips?.length ? this.forcedFlips.shift()! : this.rng.chance(0.5));
+  }
+
   apply(action: Action, label?: string): void {
+    this.flipSource();
     this.store.dispatch(action);
     if (label) {
       this.trace.push(label);
@@ -124,6 +131,7 @@ export class Sim implements StoreHandler {
       // coin flips a replayed real game says the result of (matchlog.ts), in order
       const raw = this.forcedFlips?.length && p instanceof CoinFlipPrompt ? this.forcedFlips.shift()! : chanceResult(p, this.state, this.rng, this.rank());
       const v = decodeValid(p, this.state, raw);
+      this.flipSource();
       this.store.dispatch(new ResolvePromptAction(p.id, v ? v.decoded : raw));
     }
     throw new Error('settle(): too many chance prompts');
@@ -134,6 +142,7 @@ export class Sim implements StoreHandler {
   }
 
   answer(p: Prompt<any>, decoded: any, label?: string): void {
+    this.flipSource();
     this.store.dispatch(new ResolvePromptAction(p.id, decoded));
     if (label) {
       this.trace.push(label);
@@ -258,6 +267,13 @@ export function mainCandidates(state: State): MainOption[] {
   // attacks granted by tools / other cards are listed by the engine on the card list
   for (const a of (me.active as any).getAttacks?.() ?? []) {
     attacks.add(a.name);
+  }
+  // attacks a Tool gives the Active (Technical Machines: the engine adds them through
+  // CheckPokemonAttacksEffect when the attack is played, and rejects them if they do not apply)
+  for (const t of me.active.tools) {
+    for (const a of ((t as any).attacks ?? []) as { name: string }[]) {
+      attacks.add(a.name);
+    }
   }
   for (const a of attacks) {
     out.push({ action: new AttackAction(id, a), label: `attack ${a}`, kind: 'attack' });

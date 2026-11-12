@@ -77,7 +77,8 @@ third-party broadcasts). The format is defined in `src/matchlog.ts` (`MatchLog`,
     Ultra Ball found was promoted later, so it was benched). Inferred actions are replayed but not
     scored. Keep them to what is needed.
   - `t`: the caption timestamp; `note`: anything worth knowing.
-- Cards put onto the Bench by the card itself (Buddy-Buddy Poffin, Telepathic Psychic Energy) need no
+- Cards put onto the Bench by the card itself (Buddy-Buddy Poffin, Nest Ball, Precious Trolley,
+  Telepathic Psychic Energy) need no
   `bench` action; cards searched into the hand (Ultra Ball, Cyrano, Poké Pad, Dawn, Bug Catching
   Set, Night Stretcher) need one when they are benched.
 - Abilities that trigger when a card is played (Meowth ex Last-Ditch Catch, Iron Leaves ex Rapid
@@ -96,6 +97,14 @@ third-party broadcasts). The format is defined in `src/matchlog.ts` (`MatchLog`,
 - Damage-counter prompts (Phantom Dive, Cursed Blast) are labelled like `60 on opp bench1 Slowpoke`;
   a choice naming the Pokémon (`["Slowpoke"]`) or the slot (`["bench1 Slowpoke"]`) picks it.
 - Rare Candy: `"uses": ["<Stage 2>"]`, choices with the Stage 2 first, then the Basic it goes on.
+- Attacks from Technical Machines (Evolution, Turbo Energize) are ordinary `attack` actions.
+- A choice naming several exact cards (Precious Trolley's five Basics, Secret Box's four cards) is
+  played as given, even when the replay's sampled options lack that selection.
+- Abilities triggered by evolving (Infernal Reign) take their answers on the `evolve` (or Rare
+  Candy) action: `["yes", ["Fire Energy", "Charizard ex", ...]]`.
+- A slot name also works for abilities (`"card": "bench2 Drakloak"`) and evolutions onto the Active
+  need the Pokémon's name (`"to": "active Gimmighoul"` or just `"Gimmighoul"`), not `"active"` alone.
+- Cards a choice discards from hand must also be in `uses` (they are put in the hand first).
 - Captions translated from another language (Spanish streams) are usually too loose to log; skip
   them unless the openings and turns are clear.
 

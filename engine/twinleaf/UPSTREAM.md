@@ -42,6 +42,7 @@ Every local change is marked in the source with a `[winner patch NNN]` comment.
 | 019 | `src/game/store/effect-reducers/game-effect.ts` | a rejected ability restores the Pokémon's board marks | card code adds the "ability used" mark before its own checks reject the ability |
 | 020 | `src/game/store/store.ts` | `propagateEffect` orders cards by one pass into per-rank buckets instead of sorting | same order as the stable sort, without sorting ~120 cards for every effect (one of the largest costs in the simulator) |
 | 021 | `src/sets/11-mega-evolution/set-mega-evolution/ralts.ts`, `kirlia.ts` | Fighting -30 resistance added | missing on the engine cards; printed on MEG 58/59 and the ASC 87/88 reprints (found by the deck builder's card checks) |
+| 022 | `src/game/store/prefabs/attack-coin-reflip.ts` | coin flips draw from `coinFlipSource.next` (default Math.random), which the simulator points at its seeded rng or a logged result | upstream flipped with Math.random(), so the ~2,200 cards using the coin-flip prefabs were not reproducible under the simulator's seed |
 | 012 | 7 card files (Chikorita M1S, Carvanha M2, Toxtricity M2, Metagross M4, Jirachi ex 30C, Jellicent ex SV11W, Combusken DRI) | HP / resistance / attack cost corrected to the printed card | found by `npm run cards` against `pokemon-tcg-data-standard`; Pawmot and Metagross were confirmed on limitlesstcg.com |
 
 New cards or fixes we write go in this folder as ordinary card files (same layout as upstream) and

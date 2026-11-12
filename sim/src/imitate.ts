@@ -103,48 +103,88 @@ export interface TrainRow {
   pos: boolean[];
 }
 
-/** Softmax regression with multiple positives and an L2 penalty, by Adam on standardized features. */
-export function fitPolicy(names: string[], rows: TrainRow[], o: { lambda?: number; epochs?: number; lr?: number } = {}): LinearModel {
+/** Softmax regression with multiple positives and an L2 penalty, by Adam on standardized features.
+ *  Each state keeps all its positives and at most `maxNeg` negatives (a fixed sample), so a few
+ *  states with hundreds of candidates do not dominate the time. */
+export function fitPolicy(names: string[], rows: TrainRow[], o: { lambda?: number; epochs?: number; lr?: number; maxNeg?: number } = {}): LinearModel {
   const d = names.length;
-  const all = rows.flatMap(r => r.x);
-  const mean = Array(d).fill(0), scale = Array(d).fill(0);
+  const lambda = o.lambda ?? 0.01, lr = o.lr ?? 0.05, epochs = o.epochs ?? 150, maxNeg = o.maxNeg ?? 60;
+  // the states used: a positive and a negative each; candidates sampled
+  const sets: { x: number[][]; pos: boolean[] }[] = [];
+  for (const r of rows) {
+    if (!r.pos.some(Boolean) || !r.pos.some(p => !p)) {
+      continue;
+    }
+    const neg = r.pos.map((p, k) => (p ? -1 : k)).filter(k => k >= 0);
+    const keepNeg = new Set(neg.length <= maxNeg ? neg : neg.filter((_, k) => (k * 2654435761) % neg.length < maxNeg));
+    const ks = r.pos.map((p, k) => k).filter(k => r.pos[k] || keepNeg.has(k));
+    sets.push({ x: ks.map(k => r.x[k]), pos: ks.map(k => r.pos[k]) });
+  }
+  const all = sets.flatMap(r => r.x);
+  const mean = new Float64Array(d), scale = new Float64Array(d);
   for (const x of all) {
-    x.forEach((v, j) => (mean[j] += v / all.length));
+    for (let j = 0; j < d; j++) {
+      mean[j] += x[j] / all.length;
+    }
   }
   for (const x of all) {
-    x.forEach((v, j) => (scale[j] += (v - mean[j]) ** 2 / all.length));
+    for (let j = 0; j < d; j++) {
+      scale[j] += (x[j] - mean[j]) ** 2 / all.length;
+    }
   }
   for (let j = 0; j < d; j++) {
     scale[j] = Math.sqrt(scale[j]) || 1;
   }
-  const Z = rows.map(r => r.x.map(x => x.map((v, j) => (v - mean[j]) / scale[j])));
-  const w = Array(d).fill(0);
-  const m1 = Array(d).fill(0), m2 = Array(d).fill(0);
-  const lambda = o.lambda ?? 0.01, lr = o.lr ?? 0.05, epochs = o.epochs ?? 300;
-  const usable = rows.map((r, i) => i).filter(i => rows[i].pos.some(Boolean) && rows[i].pos.some(p => !p));
+  // standardized, flattened per state
+  const Z = sets.map(r => {
+    const z = new Float64Array(r.x.length * d);
+    r.x.forEach((x, k) => {
+      for (let j = 0; j < d; j++) {
+        z[k * d + j] = (x[j] - mean[j]) / scale[j];
+      }
+    });
+    return z;
+  });
+  const w = new Float64Array(d), m1 = new Float64Array(d), m2 = new Float64Array(d), g = new Float64Array(d);
   for (let ep = 1; ep <= epochs; ep++) {
-    const g = w.map(v => lambda * v);
-    for (const i of usable) {
-      const z = Z[i].map(x => x.reduce((s, v, j) => s + v * w[j], 0));
-      const mx = Math.max(...z);
-      const e = z.map(v => Math.exp(v - mx));
-      const sAll = e.reduce((a, b) => a + b, 0);
-      const sPos = e.reduce((a, b, k) => a + (rows[i].pos[k] ? b : 0), 0);
-      // d/dw [log sum_all - log sum_pos] = E_all[x] - E_pos[x]
-      Z[i].forEach((x, k) => {
-        const c = e[k] / sAll - (rows[i].pos[k] ? e[k] / sPos : 0);
-        if (c !== 0) {
-          x.forEach((v, j) => (g[j] += (c * v) / usable.length));
-        }
-      });
+    for (let j = 0; j < d; j++) {
+      g[j] = lambda * w[j];
     }
+    sets.forEach((r, i) => {
+      const z = Z[i], n = r.pos.length;
+      const sc = new Float64Array(n);
+      let mx = -Infinity;
+      for (let k = 0; k < n; k++) {
+        let v = 0;
+        for (let j = 0; j < d; j++) {
+          v += z[k * d + j] * w[j];
+        }
+        sc[k] = v;
+        mx = Math.max(mx, v);
+      }
+      let sAll = 0, sPos = 0;
+      for (let k = 0; k < n; k++) {
+        sc[k] = Math.exp(sc[k] - mx);
+        sAll += sc[k];
+        sPos += r.pos[k] ? sc[k] : 0;
+      }
+      // d/dw [log sum_all - log sum_pos] = E_all[z] - E_pos[z]
+      for (let k = 0; k < n; k++) {
+        const c = (sc[k] / sAll - (r.pos[k] ? sc[k] / sPos : 0)) / sets.length;
+        if (c !== 0) {
+          for (let j = 0; j < d; j++) {
+            g[j] += c * z[k * d + j];
+          }
+        }
+      }
+    });
     for (let j = 0; j < d; j++) {
       m1[j] = 0.9 * m1[j] + 0.1 * g[j];
       m2[j] = 0.999 * m2[j] + 0.001 * g[j] * g[j];
       w[j] -= (lr * (m1[j] / (1 - 0.9 ** ep))) / (Math.sqrt(m2[j] / (1 - 0.999 ** ep)) + 1e-8);
     }
   }
-  return { kind: 'linear', target: 'policy: score of a step (softmax over the steps from a position), fitted to real play', names, mean, scale, weights: w, bias: 0, lambda, trainedOn: usable.length };
+  return { kind: 'linear', target: 'policy: score of a step (softmax over the steps from a position), fitted to real play', names, mean: [...mean], scale: [...scale], weights: [...w], bias: 0, lambda, trainedOn: sets.length };
 }
 
 /** Index of the top-scoring candidate. */
