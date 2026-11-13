@@ -106,7 +106,7 @@ export interface TrainRow {
 /** Softmax regression with multiple positives and an L2 penalty, by Adam on standardized features.
  *  Each state keeps all its positives and at most `maxNeg` negatives (a fixed sample), so a few
  *  states with hundreds of candidates do not dominate the time. */
-export function fitPolicy(names: string[], rows: TrainRow[], o: { lambda?: number; epochs?: number; lr?: number; maxNeg?: number } = {}): LinearModel {
+export function fitPolicy(names: string[], rows: TrainRow[], o: { lambda?: number; epochs?: number; lr?: number; maxNeg?: number; minSupport?: number } = {}): LinearModel {
   const d = names.length;
   const lambda = o.lambda ?? 0.01, lr = o.lr ?? 0.05, epochs = o.epochs ?? 150, maxNeg = o.maxNeg ?? 60;
   // the states used: a positive and a negative each; candidates sampled
@@ -132,8 +132,20 @@ export function fitPolicy(names: string[], rows: TrainRow[], o: { lambda?: numbe
       scale[j] += (x[j] - mean[j]) ** 2 / all.length;
     }
   }
+  // a feature that differs from its usual value in only a few candidates gets a tiny scale, and one
+  // unseen position then swamps the score (held-out accuracy fell below chance): such features are
+  // switched off (weight 0), the rest get a floor on the scale
+  const support = new Float64Array(d);
+  for (const x of all) {
+    for (let j = 0; j < d; j++) {
+      support[j] += x[j] !== 0 ? 1 : 0;
+    }
+  }
+  const minSupport = o.minSupport ?? 20;
+  const off: boolean[] = [];
   for (let j = 0; j < d; j++) {
-    scale[j] = Math.sqrt(scale[j]) || 1;
+    off[j] = Math.min(support[j], all.length - support[j]) < minSupport;
+    scale[j] = off[j] ? 1e12 : Math.max(Math.sqrt(scale[j]), 1e-3) || 1;
   }
   // standardized, flattened per state
   const Z = sets.map(r => {

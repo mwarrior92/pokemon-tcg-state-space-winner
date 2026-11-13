@@ -103,13 +103,13 @@ function main(): void {
   // cross-validation folds: whole matches (videos), dealt into --folds groups
   const nFolds = Math.min(Number(arg('folds', '5')), sources.length);
   const foldOf = new Map(sources.slice().sort().map((s, i) => [s, i % nFolds]));
-  const lambdas = arg('lambdas', '0.001,0.01,0.1').split(',').map(Number);
+  const lambdas = arg('lambdas', '0.1,1,3').split(',').map(Number);
   const cv: { lambda: number; main: number; full: number }[] = [];
   for (const lambda of lambdas) {
     let m = 0, f = 0;
-    for (let f = 0; f < nFolds; f++) {
-      const model = fitPolicy(names, usable.filter(r => foldOf.get(r.source) !== f), { lambda });
-      for (const r of usable.filter(r => foldOf.get(r.source) === f)) {
+    for (let k = 0; k < nFolds; k++) {
+      const model = fitPolicy(names, usable.filter(r => foldOf.get(r.source) !== k), { lambda });
+      for (const r of usable.filter(r => foldOf.get(r.source) === k)) {
         const h = hit(model, r);
         m += h.main ? 1 : 0;
         f += h.full ? 1 : 0;
