@@ -22,7 +22,7 @@ import { passTurn } from './policy';
 import { prizeValue, prizesLeft } from './rules';
 import { Rng } from './rng';
 import { Spare, Step, children, expandAction, replayStep, stateHash } from './search';
-import { energyGap } from './features';
+import { attackDamage, energyGap } from './features';
 import { mainCandidates } from './sim';
 import { Sim, determinize } from './sim';
 import { WinModel } from './value';
@@ -119,11 +119,65 @@ export function material(s: Sim, me: number): number {
   }
   return m;
 }
+/** Attack readiness: how close `me`'s best attackers are to hitting the opposing Active hard. For
+ *  each Pokémon in play, its best attack by (share of the Active's remaining HP it removes) /
+ *  (1 + Energy still missing), a Benched one a little less; the best counts in full and the second
+ *  best for a third. Damage is the engine's for attacks that depend on the board (features.ts), so
+ *  what feeds the attack counts too: a fuller Bench for Do the Wave, Festival Grounds in play.
+ *  Material alone paid the same for an Energy on any Pokémon: pilots powered Pokémon whose attacks
+ *  they could never afford and left their attacker without (runs/fl-investigate2). */
+export function readiness(s: Sim, me: number): number {
+  const p = s.state.players[me], target = s.state.players[1 - me].active;
+  const tpc = target.getPokemonCard();
+  if (!tpc) {
+    return 0;
+  }
+  const hpLeft = Math.max(10, tpc.hp + (target.hpBonus ?? 0) - target.damage);
+  const scores: number[] = [];
+  for (const l of [p.active, ...p.bench]) {
+    const pc = l.getPokemonCard();
+    if (!pc) {
+      continue;
+    }
+    let best = 0;
+    for (const a of pc.attacks) {
+      const dmg = attackDamage(s, me, l, a, target);
+      if (dmg > 0) {
+        best = Math.max(best, Math.min(1, dmg / hpLeft) / (1 + energyGap(a.cost, l)));
+      }
+    }
+    scores.push(best * (l === p.active ? 1 : 0.8));
+  }
+  scores.sort((a, b) => b - a);
+  return (scores[0] ?? 0) + (scores[1] ?? 0) / 3;
+}
+
+/** Damage progress: damage on the opponent's Pokémon as the share of their prizes it has earned
+ *  (a Pokémon ex at half HP = one prize's worth of damage done). The prize race counted a hit only
+ *  when it Knocked Out. */
+export function progress(s: Sim, me: number): number {
+  let v = 0;
+  const op = s.state.players[1 - me];
+  for (const l of [op.active, ...op.bench]) {
+    const pc = l.getPokemonCard();
+    if (pc && l.damage > 0) {
+      v += prizeValue(pc) * Math.min(1, l.damage / (pc.hp + (l.hpBonus ?? 0)));
+    }
+  }
+  return v;
+}
+
+// SIM_READY: weight of readiness (default 0.3 of a prize for a paid attack that Knocks Out the Active;
+// 0 turns it off). SIM_PROGRESS: weight of damage progress (default 0.3; 0 off).
+const READY_W = Number(process.env.SIM_READY ?? 0.3);
+const PROGRESS_W = Number(process.env.SIM_PROGRESS ?? 0.3);
+
 // SIM_MATERIAL: 'self' (default) counts only the mover's material; 'both' counts the mover's minus the
 // opponent's (so shrinking the opponent's hand or removing its Energy counts too); 'off' none
 const MATERIAL_MODE = process.env.SIM_NO_MATERIAL ? 'off' : (process.env.SIM_MATERIAL ?? 'self');
 const materialTerm = (s: Sim, me: number): number =>
-  MATERIAL_MODE === 'off' ? 0 : material(s, me) - (MATERIAL_MODE === 'both' ? material(s, 1 - me) : 0);
+  (MATERIAL_MODE === 'off' ? 0 : material(s, me) - (MATERIAL_MODE === 'both' ? material(s, 1 - me) : 0))
+  + (READY_W ? READY_W * readiness(s, me) : 0) + (PROGRESS_W ? PROGRESS_W * progress(s, me) : 0);
 
 export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, seed = 1): Evaluator {
   const po = new Predictor(off), pd = new Predictor(def);
@@ -197,6 +251,13 @@ export function benchGuard(ev: Evaluator, def: LinearModel, lose: number, floor 
   return { ...ev, afterTurn: guard(ev.afterTurn), quick: ev.quick ? guard(ev.quick) : undefined, adjust };
 }
 
+// SIM_DEEPEN: the share of a turn search's budget spent best-first (default 0.5; 0 = all
+// breadth-first, as before). Breadth-first at 100 children covers every first step and a few second
+// steps, so a line of four or five steps (find the Energy, attach it, play the Stadium, attack) was
+// never reached; following the best ending so far reaches it whenever each step looks better than
+// the last to the evaluator (which readiness and material make true for building an attack).
+const DEEPEN = Math.min(1, Math.max(0, Number(process.env.SIM_DEEPEN ?? 0.5)));
+
 interface TurnSearch {
   root: PNode;
   nodes: PNode[];
@@ -236,6 +297,20 @@ function searchTurn(root: Sim, full: Evaluator, budget: number, maxMs: number, s
   const queue: PNode[] = [rootNode];
   let head = 0, spent = 0;
   while (head < queue.length && spent < budget && Date.now() - t0 < maxMs) {
+    if (spent >= budget * (1 - DEEPEN)) {
+      // deepening: the rest of the budget goes to the best ending found so far, again and again
+      // (ties to the shallower, earlier position)
+      let bi = -1;
+      for (let i = head; i < queue.length; i++) {
+        const q = queue[i];
+        if (!q.expanded && q.sim && (bi < 0 || q.stop > queue[bi].stop)) {
+          bi = i;
+        }
+      }
+      if (bi > head) {
+        [queue[head], queue[bi]] = [queue[bi], queue[head]];
+      }
+    }
     const n = queue[head++];
     if (n.expanded || !n.sim) {
       continue;

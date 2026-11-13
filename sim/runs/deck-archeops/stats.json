@@ -1,0 +1,499 @@
+{
+ "name": "archeops (tested)",
+ "games": 118,
+ "wins": 70,
+ "winRate": 0.5932203389830508,
+ "ci": [
+  0.503005656466807,
+  0.677556647376872
+ ],
+ "byMatchup": [
+  {
+   "opponent": "Dragapult",
+   "games": 34,
+   "wins": 23,
+   "rate": 0.6764705882352942
+  },
+  {
+   "opponent": "Basic Box",
+   "games": 10,
+   "wins": 2,
+   "rate": 0.2
+  },
+  {
+   "opponent": "N's Zoroark",
+   "games": 10,
+   "wins": 6,
+   "rate": 0.6
+  },
+  {
+   "opponent": "Slowking",
+   "games": 7,
+   "wins": 6,
+   "rate": 0.8571428571428571
+  },
+  {
+   "opponent": "Hydrapple",
+   "games": 6,
+   "wins": 3,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Festival Lead",
+   "games": 6,
+   "wins": 4,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Alakazam Dudunsparce",
+   "games": 5,
+   "wins": 2,
+   "rate": 0.4
+  },
+  {
+   "opponent": "Dragapult Dusknoir",
+   "games": 4,
+   "wins": 4,
+   "rate": 1
+  },
+  {
+   "opponent": "Alakazam Dusknoir",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Dragapult Blaziken",
+   "games": 4,
+   "wins": 3,
+   "rate": 0.75
+  },
+  {
+   "opponent": "Dhelmise",
+   "games": 4,
+   "wins": 3,
+   "rate": 0.75
+  },
+  {
+   "opponent": "Crustle",
+   "games": 4,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Excadrill",
+   "games": 3,
+   "wins": 2,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Lopunny Dusknoir",
+   "games": 3,
+   "wins": 3,
+   "rate": 1
+  },
+  {
+   "opponent": "Dragapult Dudunsparce",
+   "games": 2,
+   "wins": 2,
+   "rate": 1
+  },
+  {
+   "opponent": "Rocket's Honchkrow",
+   "games": 2,
+   "wins": 2,
+   "rate": 1
+  },
+  {
+   "opponent": "Seaking Festival Lead",
+   "games": 2,
+   "wins": 2,
+   "rate": 1
+  },
+  {
+   "opponent": "Lucario Hariyama",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Clefairy Ogerpon",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Mewtwo",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Greninja",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Sharpedo Toxtricity",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Cynthia's Garchomp",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Lopunny Dudunsparce",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Lucario",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  }
+ ],
+ "endings": {
+  "won: no Pokémon in play": 12,
+  "won: prizes": 49,
+  "won: deck out": 9,
+  "lost: no Pokémon in play": 23,
+  "lost: prizes": 25
+ },
+ "turnsPerGame": 20.177966101694917,
+ "firstPrizeTurn": 5,
+ "prizesPerTurn": 0.30692243536280234,
+ "stuck": {
+  "idealShare": 0.20100083402835697,
+  "idealWin": 0.946058091286307,
+  "nonIdealShare": 0.274395329441201,
+  "stuckRate": 0.6124567474048442,
+  "entered": 69,
+  "enteredShare": 0.5847457627118644,
+  "recovered": 0.43478260869565216,
+  "expected": 0.32968550724637674,
+  "topStuck": [
+   {
+    "cat": "race:even ready:0-2 ko:no threat:no exposed:none",
+    "turns": 128,
+    "stuckRate": 0.671875
+   },
+   {
+    "cat": "race:behind ready:0-0 ko:no threat:no exposed:none",
+    "turns": 43,
+    "stuckRate": 0.9230769230769231
+   },
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:no exposed:none",
+    "turns": 36,
+    "stuckRate": 0.7
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:no exposed:none",
+    "turns": 30,
+    "stuckRate": 0.5217391304347826
+   }
+  ]
+ },
+ "attackers": [
+  {
+   "what": "attack Rapid-Fire Combo",
+   "who": "Mega Kangaskhan ex",
+   "prizes": 211,
+   "share": 0.5733695652173914,
+   "uses": 195
+  },
+  {
+   "what": "attack Eon Blade",
+   "who": "Latias ex",
+   "prizes": 66,
+   "share": 0.1793478260869565,
+   "uses": 72
+  },
+  {
+   "what": "attack Full Moon Rondo",
+   "who": "Lillie's Clefairy ex",
+   "prizes": 59,
+   "share": 0.16032608695652173,
+   "uses": 65
+  },
+  {
+   "what": "attack Cruel Arrow",
+   "who": "Fezandipiti ex",
+   "prizes": 21,
+   "share": 0.057065217391304345,
+   "uses": 22
+  },
+  {
+   "what": "attack Rock Throw",
+   "who": "Archeops",
+   "prizes": 11,
+   "share": 0.029891304347826088,
+   "uses": 13
+  },
+  {
+   "what": "attack Acrobatics",
+   "who": "Archen",
+   "prizes": 0,
+   "share": 0,
+   "uses": 1
+  }
+ ],
+ "opening": [
+  {
+   "action": "other end turn",
+   "share": 0.847457627118644
+  },
+  {
+   "action": "retreat",
+   "share": 0.4406779661016949
+  },
+  {
+   "action": "ability Run Errand (Mega Kangaskhan ex)",
+   "share": 0.4322033898305085
+  },
+  {
+   "action": "play Boss's Orders",
+   "share": 0.2542372881355932
+  },
+  {
+   "action": "play Antique Plume Fossil",
+   "share": 0.2457627118644068
+  },
+  {
+   "action": "play Poké Pad",
+   "share": 0.211864406779661
+  },
+  {
+   "action": "play Crispin",
+   "share": 0.211864406779661
+  },
+  {
+   "action": "bench Latias ex",
+   "share": 0.211864406779661
+  }
+ ],
+ "winCards": [
+  {
+   "card": "Fighting Energy",
+   "wins": 2.9857142857142858,
+   "losses": 1.625
+  },
+  {
+   "card": "Telepathic Psychic Energy",
+   "wins": 1.7142857142857142,
+   "losses": 1.0625
+  },
+  {
+   "card": "Lillie's Determination",
+   "wins": 1.4,
+   "losses": 1.0208333333333333
+  },
+  {
+   "card": "Psychic Energy",
+   "wins": 0.6285714285714286,
+   "losses": 0.2708333333333333
+  },
+  {
+   "card": "Crispin",
+   "wins": 0.8857142857142857,
+   "losses": 0.6458333333333334
+  },
+  {
+   "card": "Boss's Orders",
+   "wins": 1.2142857142857142,
+   "losses": 1
+  }
+ ],
+ "usage": [
+  {
+   "card": "Rosa's Encouragement",
+   "copies": 1,
+   "games": 0,
+   "perGame": 0,
+   "noEffect": 0
+  },
+  {
+   "card": "Archeops",
+   "copies": 4,
+   "games": 0.06779661016949153,
+   "perGame": 0.3050847457627119,
+   "noEffect": 0
+  },
+  {
+   "card": "Fezandipiti ex",
+   "copies": 1,
+   "games": 0.1016949152542373,
+   "perGame": 0.2627118644067797,
+   "noEffect": 0
+  },
+  {
+   "card": "Special Red Card",
+   "copies": 1,
+   "games": 0.1016949152542373,
+   "perGame": 0.1016949152542373,
+   "noEffect": 0
+  },
+  {
+   "card": "Archen",
+   "copies": 4,
+   "games": 0.11016949152542373,
+   "perGame": 0.211864406779661,
+   "noEffect": 0
+  },
+  {
+   "card": "Unfair Stamp",
+   "copies": 1,
+   "games": 0.11016949152542373,
+   "perGame": 0.11016949152542373,
+   "noEffect": 0
+  },
+  {
+   "card": "Risky Ruins",
+   "copies": 1,
+   "games": 0.16101694915254236,
+   "perGame": 0.16101694915254236,
+   "noEffect": 0
+  },
+  {
+   "card": "Lillie's Clefairy ex",
+   "copies": 1,
+   "games": 0.1864406779661017,
+   "perGame": 0.5508474576271186,
+   "noEffect": 0
+  },
+  {
+   "card": "Night Stretcher",
+   "copies": 2,
+   "games": 0.19491525423728814,
+   "perGame": 0.22033898305084745,
+   "noEffect": 5
+  },
+  {
+   "card": "Latias ex",
+   "copies": 2,
+   "games": 0.211864406779661,
+   "perGame": 0.6101694915254238,
+   "noEffect": 0
+  },
+  {
+   "card": "Lucky Helmet",
+   "copies": 2,
+   "games": 0.3728813559322034,
+   "perGame": 0.4576271186440678,
+   "noEffect": 0
+  },
+  {
+   "card": "Ultra Ball",
+   "copies": 1,
+   "games": 0.4406779661016949,
+   "perGame": 0.4406779661016949,
+   "noEffect": 0
+  },
+  {
+   "card": "Psychic Energy",
+   "copies": 1,
+   "games": 0.4661016949152542,
+   "perGame": 0.4830508474576271,
+   "noEffect": 0
+  },
+  {
+   "card": "Antique Plume Fossil",
+   "copies": 3,
+   "games": 0.5,
+   "perGame": 1.3644067796610169,
+   "noEffect": 0
+  },
+  {
+   "card": "Judge",
+   "copies": 2,
+   "games": 0.559322033898305,
+   "perGame": 0.6440677966101694,
+   "noEffect": 0
+  },
+  {
+   "card": "Crispin",
+   "copies": 2,
+   "games": 0.5932203389830508,
+   "perGame": 0.6610169491525424,
+   "noEffect": 15
+  },
+  {
+   "card": "Crushing Hammer",
+   "copies": 3,
+   "games": 0.635593220338983,
+   "perGame": 0.9830508474576272,
+   "noEffect": 0
+  },
+  {
+   "card": "Mega Kangaskhan ex",
+   "copies": 4,
+   "games": 0.6779661016949152,
+   "perGame": 3.016949152542373,
+   "noEffect": 0
+  },
+  {
+   "card": "Poké Pad",
+   "copies": 4,
+   "games": 0.6864406779661016,
+   "perGame": 1.1779661016949152,
+   "noEffect": 8
+  },
+  {
+   "card": "Lillie's Determination",
+   "copies": 4,
+   "games": 0.6949152542372882,
+   "perGame": 1.2457627118644068,
+   "noEffect": 0
+  },
+  {
+   "card": "Boss's Orders",
+   "copies": 3,
+   "games": 0.7203389830508474,
+   "perGame": 1.1271186440677967,
+   "noEffect": 0
+  },
+  {
+   "card": "Telepathic Psychic Energy",
+   "copies": 4,
+   "games": 0.7457627118644068,
+   "perGame": 1.4491525423728813,
+   "noEffect": 0
+  },
+  {
+   "card": "Fighting Energy",
+   "copies": 9,
+   "games": 0.847457627118644,
+   "perGame": 2.4322033898305087,
+   "noEffect": 0
+  }
+ ],
+ "lossCards": [
+  {
+   "card": "Crushing Hammer",
+   "wins": 0.8571428571428571,
+   "losses": 1.1666666666666667
+  },
+  {
+   "card": "Night Stretcher",
+   "wins": 0.21428571428571427,
+   "losses": 0.3333333333333333
+  },
+  {
+   "card": "Special Red Card",
+   "wins": 0.05714285714285714,
+   "losses": 0.16666666666666666
+  },
+  {
+   "card": "Unfair Stamp",
+   "wins": 0.07142857142857142,
+   "losses": 0.16666666666666666
+  }
+ ]
+}

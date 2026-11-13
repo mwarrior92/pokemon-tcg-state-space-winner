@@ -140,7 +140,11 @@ function groupByName(cards: Card[], idx: number[]): number[][] {
 }
 
 /** Raw candidate results for a decision prompt, at most `cap` (sampled when there are more). */
-export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64): Candidate[] {
+/** How a card-choice prompt's groups of interchangeable cards are ordered before answers are
+ *  enumerated (the first groups are tried first); see need.ts. */
+export type GroupOrder = (p: ChooseCardsPrompt, state: State, groups: number[][], cap: number) => number[][];
+
+export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64, order?: GroupOrder): Candidate[] {
   const out: Candidate[] = [];
   const add = (raw: any, label: string) => out.push({ raw, label });
   const cancel = (p as any).options?.allowCancel === true;
@@ -168,7 +172,8 @@ export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64):
     const ok = cards.map((_, i) => i).filter(i => !blocked.has(i) && matchesPromptFilter(cards[i], p.filter));
     const hi = Math.min(p.options.max, ok.length);
     const lo = Math.min(p.options.min, hi);
-    const groups = rng.shuffle(groupByName(cards, ok));
+    const shuffled = rng.shuffle(groupByName(cards, ok));
+    const groups = order ? order(p, state, shuffled, cap) : shuffled;
     // set-up: every Basic down, once with each distinct Basic as the Active (the first card chosen),
     // so a chooser can pick the starter instead of taking whichever name the shuffle put first
     if (p.message === GameMessage.CHOOSE_STARTING_POKEMONS && hi > 0) {
@@ -356,10 +361,10 @@ export function decodeValid(p: Prompt<any>, state: State, raw: any): { decoded: 
 }
 
 /** Valid, de-duplicated options for a decision prompt (at most `cap`). */
-export function promptOptions(p: Prompt<any>, state: State, rng: Rng, cap = 32): (Candidate & { decoded: any })[] {
+export function promptOptions(p: Prompt<any>, state: State, rng: Rng, cap = 32, order?: GroupOrder): (Candidate & { decoded: any })[] {
   const out: (Candidate & { decoded: any })[] = [];
   const seen = new Set<string>();
-  const raws = rawCandidates(p, state, rng, cap);
+  const raws = rawCandidates(p, state, rng, cap, order);
   // "Cancel" (a null answer) is the client's undo button, not a game choice: once an effect is
   // under way the rules let you decline only through the choices the card itself offers ("you
   // may", "up to"), which appear here as real options (e.g. choosing nothing). Many card

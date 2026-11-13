@@ -12,6 +12,7 @@
 //   race2     v2: the prize race tested against sampled opponent replies (disruption-aware)
 //   plan:F    one-turn planner on the win model in file F
 //   plan2:F   the win model tested against sampled replies
+import { TurnAudit, auditTurn } from './audit';
 import { categorize } from './categories';
 import { describeState } from './describe';
 import { CHEAP_GROUPS, features } from './features';
@@ -38,6 +39,7 @@ export interface GameSpec {
   seats: [string, string];        // policy of player 1 and player 2
   vectors?: boolean;              // record the cheap feature vector at every turn start
   log?: 'board' | 'lines';        // record each turn's moves (and the board before it)
+  audit?: boolean;                // record what each turn left undone (audit.ts)
 }
 
 export interface TurnRec {
@@ -51,6 +53,7 @@ export interface TurnRec {
   x?: number[];
   board?: string;
   line?: string[];
+  audit?: TurnAudit;
   /** with log 'board': the planner's finalists (line, score) and positions searched */
   plan?: { positions: number; candidates?: Plan['candidates'] };
 }
@@ -169,7 +172,16 @@ function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: Linear
     const o = playOffenseSearch(r.end, off, { budget: spec.budget, maxMs: 3000 });
     const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
     const pl = planTurn(r.end, race(), { budget: spec.budget, maxMs: 4000, seed, extra });
-    return { next: pl.end, line: [...r.line, ...pl.line], policy: 'plan', plan: pl };
+    const hybrid = { ...pl, line: [...r.line, ...pl.line] };
+    if (!r.line.length || process.env.SIM_NO_ARBITER) {
+      return { next: hybrid.end, line: hybrid.line, policy: 'plan', plan: hybrid };
+    }
+    // the imitation steps are not taken on trust: the race plan from the start of the turn is found
+    // too, and the evaluator picks between the two whole turns (ties go to the hybrid line). The
+    // imitation policy alone spent Boss's Orders with no attack to follow and put Energy on Pokémon
+    // that could not use it; the planner alone looks only a step or two deep.
+    const both = planTurn(sim, race(), { budget: spec.budget, maxMs: 4000, seed, extra: [...tactical().extra, { sim: hybrid.end, line: hybrid.line, ended: hybrid.ended }] });
+    return { next: both.end, line: both.line, policy: 'plan', plan: both };
   }
   if (seat.startsWith('plan:')) {
     const pl = planTurn(sim, win(seat.slice(5)), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra });
@@ -236,6 +248,14 @@ export function playGame(spec: GameSpec): GameRec {
     } catch {
       r = { next: sim.copy(rng.fork()), line: ['(policy failed: pass)'], policy: 'pass' };
     }
+    let audit: TurnAudit | undefined;
+    if (spec.audit) {
+      try {
+        audit = auditTurn(sim, r.next, r.line, mover);
+      } catch {
+        audit = undefined;
+      }
+    }
     sim = r.next;
     // pass only if the line did not end the turn itself (an attack ends it)
     if (!sim.finished && sim.state.activePlayer === mover && !passInPlace(sim, rng)) {
@@ -244,7 +264,7 @@ export function playGame(spec: GameSpec): GameRec {
     }
     turns.push({
       turn: sim.state.turn, mover, cat, prizes, took: before - prizesLeft(sim.state.players[mover]), policy: r.policy, ms: Date.now() - ts,
-      x, board, line: spec.log ? r.line : undefined,
+      x, board, line: spec.log ? r.line : undefined, audit,
       plan: board && r.plan ? { positions: r.plan.positions, candidates: r.plan.candidates } : undefined,
     });
   }

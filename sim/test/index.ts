@@ -20,7 +20,9 @@ import { checkInvariants } from '../src/invariants';
 import { ownedCards, prizesLeft } from '../src/rules';
 import { children, replayStep, stateHash } from '../src/search';
 import { Rng } from '../src/rng';
-import { buildScenario } from '../src/scenario';
+import { buildScenario, makeCard } from '../src/scenario';
+import { CHEAP_GROUPS, features } from '../src/features';
+import { progress, readiness } from '../src/planner';
 import { Sim, bugLog, bugStats, legalMainOptions, mainCandidates, randomChooser, resolvePrompts, runStep } from '../src/sim';
 import { generateState } from '../src/stategen';
 import { checkLegal, deckFromText, engineCard, formatDeckList, isBasicEnergy } from '../src/decklist';
@@ -602,4 +604,60 @@ test('usability: no card in a real meta list is flagged unusable (false-alarm ch
     unusableCards(cards).forEach(u => bad.push(`${engineCard(u.card)?.name}: ${u.reason}`));
   }
   assert.deepEqual([...new Set(bad)], []);
+});
+
+// ---------------------------------------------------------------- pilot: what the search looks at, and real damage
+
+const FL_BENCH = ['Applin TWM1', 'Applin TWM1', 'Grookey TWM', 'Goldeen TWM', 'Goldeen TWM'].map(card => ({ card }));
+const flBoard = (energy: string[], hand: string[] = [], deck: string[] = [W]) => buildScenario({
+  p1: { active: { card: 'Dipplin TWM1', under: ['Applin TWM1'], energy }, bench: FL_BENCH, hand, deck },
+  p2: { active: { card: 'Mega Kangaskhan ex M1S' }, deck: [W] },
+}, new Rng(1));
+
+test('reach: an attack whose damage depends on the board is measured, not read off the card (Do the Wave)', () => {
+  const reach = (s: Sim) => {
+    const fv = features(s, 0, CHEAP_GROUPS);
+    return fv.values[fv.names.indexOf('me.reach.bestDamageToActive')];
+  };
+  // printed 20; five Benched Pokémon make it 100
+  const s = flBoard(['Grass Energy SVE']);
+  assert.equal(reach(s), 100);
+  // with Festival Grounds in play Dipplin attacks twice
+  s.state.players[0].stadium.cards.push(makeCard('Festival Grounds TWM'));
+  assert.equal(reach(s), 200);
+  // the measurement leaves the position alone
+  assert.equal(s.state.players[1].active.damage, 0);
+  assert.equal(s.state.activePlayer, 0);
+});
+
+test('search: a deck search tries the cards the board needs first (the Energy an attacker lacks)', () => {
+  // 20 different cards in the deck, 6 answers tried: the one Grass Energy must be among them
+  const others = allCards().filter(c => c instanceof PokemonCard && c.stage === Stage.BASIC && ['H', 'I', 'J'].includes((c as any).regulationMark)
+    && !['Applin', 'Grookey', 'Goldeen'].includes(c.name)).slice(0, 19).map(c => c.fullName);
+  for (let seed = 1; seed <= 5; seed++) {
+    const s = flBoard([], [], [...others, 'Grass Energy SVE']);
+    s.state.players[0].bench[2].cards.push(makeCard('Thwackey TWM'));
+    const kids = children(s, 0, 6, { seed }).filter(c => c.label.startsWith('ability Boom Boom Groove'));
+    assert.ok(kids.length >= 2 && kids.length <= 6, `${kids.length} answers`);
+    assert.ok(kids.some(c => c.label.endsWith('| Grass Energy')), kids.map(c => c.label).join('; '));
+  }
+});
+
+test('evaluator: Energy counts for the attack it powers (readiness), damage before the Knock Out (progress)', () => {
+  // the same Grass Energy on the Benched Thwackey (Beat costs two) or on the Active Dipplin (Do the Wave costs one)
+  const onThwackey = flBoard([]);
+  onThwackey.state.players[0].bench[2].cards.push(makeCard('Thwackey TWM'));
+  const e = makeCard('Grass Energy SVE');
+  onThwackey.state.players[0].bench[2].cards.push(e);
+  onThwackey.state.players[0].bench[2].energies.cards.push(e as any);
+  const onDipplin = flBoard(['Grass Energy SVE']);
+  onDipplin.state.players[0].bench[2].cards.push(makeCard('Thwackey TWM'));
+  assert.ok(readiness(onDipplin, 0) > readiness(onThwackey, 0) + 0.1, `${readiness(onDipplin, 0)} vs ${readiness(onThwackey, 0)}`);
+  // Festival Grounds doubles what Dipplin does to a 300 HP Active
+  const before = readiness(onDipplin, 0);
+  onDipplin.state.players[0].stadium.cards.push(makeCard('Festival Grounds TWM'));
+  assert.ok(readiness(onDipplin, 0) > before * 1.8);
+  // half the HP of a three-prize Pokémon is a prize and a half of progress
+  onDipplin.state.players[1].active.damage = 150;
+  assert.equal(progress(onDipplin, 0), 1.5);
 });

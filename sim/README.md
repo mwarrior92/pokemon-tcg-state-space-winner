@@ -197,6 +197,22 @@ longer discard the Basic they just searched for or stall for 20 turns), but the 
 stayed within noise: the remaining gap is in long plans (Festival Lead's Thwackey engine, Dragapult
 ex's Phantom Dive set-up), not single blunders.
 
+## Pilot audit: what a pilot leaves undone
+
+```
+node dist/pilotaudit.js --pilot imitrace:runs/imit-v3/policy.json --name audit-all        # all pairings of the top 10 decks, 2 games each
+node dist/pilotaudit.js --pilot race --focus "Festival Lead" --games 4 --name audit-fl    # one deck against the other nine
+node dist/pilotaudit.js --compare audit-a,audit-b [--focus "Festival Lead"]               # runs side by side
+```
+
+Win rates need hundreds of games to move by more than their noise. The audit (`src/audit.ts`) counts
+things that are wrong whatever the result, per deck, as shares of its own turns: no attack although
+the Active could attack, a turn ended with no Pokémon able to pay for any attack, an Energy,
+Supporter, Stadium, Basic or Evolution left in hand that could have been played, an empty Bench;
+plus prizes per turn, the turn of the first attack and Energy in play. The same `--seeds` give every
+pilot the same games, so a change shows on a few dozen games. `runs/<name>/games.jsonl` keeps every
+turn's line (what was searched for, where Energy went) for a closer look.
+
 ## Alignment with real play (states from tournament games)
 
 ```

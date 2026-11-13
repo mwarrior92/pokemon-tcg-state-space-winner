@@ -11,6 +11,12 @@ import { Rng } from './rng';
 import { DeadEnd, MainOption, Sim, mainCandidates, promptOptions } from './sim';
 import { firstDifference, sameState } from './clone';
 import { energyGap } from './features';
+import { orderByNeed } from './need';
+import { GroupOrder } from './prompts';
+
+// The mover's card choices are tried by need first (need.ts): all but two of the options tried at a
+// prompt, the last two stay a random sample. SIM_NO_NEED=1 restores the purely random sample.
+const NEED_ORDER: GroupOrder | undefined = process.env.SIM_NO_NEED ? undefined : (p, state, groups, cap) => orderByNeed(p, state, groups, Math.max(1, cap - 2));
 
 // ---------------------------------------------------------------- canonical key
 
@@ -221,7 +227,7 @@ export function expandAction(sim: Sim, o: MainOption, mover: number, startPrizes
         break;
       }
       const mine = p.playerId === moverId;
-      const popts = promptOptions(p, t.state, new Rng(base + (mine ? 31 * path.length : 7919 + 97 * oppPrompts)), promptCap);
+      const popts = promptOptions(p, t.state, new Rng(base + (mine ? 31 * path.length : 7919 + 97 * oppPrompts)), promptCap, mine ? NEED_ORDER : undefined);
       if (!popts.length) {
         ok = false;
         break;

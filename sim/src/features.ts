@@ -158,7 +158,7 @@ function basicEnergyFor(t: CardType): string {
 /** Damage (capped at HP left, KO = full HP left) that `side`'s Pokémon at slot `a` does to each
  *  of the opponent's slots with attack `name`, measured in the engine. `topUp` attaches whatever
  *  energy the cost still needs (the "potential" version); otherwise only attached energy counts. */
-function probeAttack(sim: Sim, side: number, a: number, d: number, name: string, topUp: boolean, seeds: number): number[] | undefined {
+function probeAttack(sim: Sim, side: number, a: number, d: number, name: string, topUp: boolean, seeds: number, fresh = false): number[] | undefined {
   let best: number[] | undefined;
   for (let k = 0; k < seeds; k++) {
     const c = sim.copy(new Rng(7 + k));
@@ -172,6 +172,9 @@ function probeAttack(sim: Sim, side: number, a: number, d: number, name: string,
       st.turn = 3;   // first-turn attack ban is a timing rule, not a property of the board
     }
     me.active.specialConditions = [];
+    if (fresh) {
+      op.active.damage = 0;      // measure against the defender's full HP
+    }
     const atk = me.active.getPokemonCard()!.attacks.find(x => x.name === name);
     if (!atk) {
       return undefined;
@@ -194,7 +197,10 @@ function probeAttack(sim: Sim, side: number, a: number, d: number, name: string,
     const before = opSlots.map(l => ({ l, hpLeft: l.cards.length ? (l.getPokemonCard()!.hp + (l.hpBonus ?? 0) - l.damage) : 0, dmg: l.damage }));
     try {
       c.apply(new AttackAction(me.id, name));
-      resolvePrompts(c, randomChooser(new Rng(100 + k)), new Rng(200 + k));
+      // "you may" parts of an attack (attack again, discard for more damage) are taken when measuring
+      // what it can do
+      const rand = randomChooser(new Rng(100 + k));
+      resolvePrompts(c, fresh ? (s, p, o) => { const y = o.findIndex(x => x.label === 'yes'); return y >= 0 ? y : rand(s, p, o); } : rand, new Rng(200 + k));
     } catch (e) {
       if (k === 0 && !(e instanceof DeadEnd)) {
         return undefined;   // not usable (or engine refused): no measurement
@@ -323,13 +329,99 @@ export function estimateDamage(attacker: PokemonCard, base: number, defender: Po
   return Math.max(0, d);
 }
 
+// ---------------------------------------------------------------- measured damage for reach
+//
+// Printed damage is wrong for every attack whose damage depends on the board: Dipplin's Do the Wave
+// prints 20 and does 20 for each Benched Pokémon, twice with Festival Grounds in play - 200 on a full
+// Bench; Alakazam counts cards in hand, Hydrapple ex Energy in play. With the printed number the
+// reach features (and every model built on them) said such an attacker could Knock Out nothing, so
+// pilots never built towards its attack. For these attacks the damage is measured in the engine
+// instead: the attack is played on a copy, Energy topped up, against the opposing Active at full HP,
+// and its Weakness and Resistance are taken out again so the number can be applied to any target.
+// Plain attacks keep their printed damage (no engine call). SIM_NO_REACH_PROBE=1 turns it off.
+// damage that depends on the board: "20 damage for each ...", "... more damage", "... times ..."
+const VARIABLE_ATTACK = /for each|times|equal to|more damage|less damage/i;
+// an Ability of the attacker that changes its own attacks (Festival Lead: "may use an attack it has twice")
+const ATTACK_ABILITY = /attack.*(twice|again|more damage)|(twice|again|more damage).*attack/i;
+const REACH_PROBE = !process.env.SIM_NO_REACH_PROBE;
+const measured = new Map<string, number>();
+export const reachProbeStats = { probes: 0, hits: 0 };
+
+function slotSig(l: PokemonCardList | undefined, damage: boolean): string {
+  if (!l || !l.cards.length) {
+    return '-';
+  }
+  return `${l.getPokemons().map(c => c.fullName).join('<')}/${damage ? l.damage : ''}/${l.energies.cards.map(c => c.fullName).sort().join(',')}/${l.tools.map(t => t.fullName).sort().join(',')}`;
+}
+
+/** The board facts a measured damage may depend on: the Pokémon in play with what is attached and
+ *  the Stadium, plus what the attack's text (and the attacker's Abilities) mention - damage
+ *  counters, cards in hand, the discard piles, Prize cards. Never which cards are in a hand or deck,
+ *  so the many positions of a turn that differ only there share one measurement. */
+function boardSig(st: State, side: number, text: string): string {
+  const me = st.players[side], op = st.players[1 - side];
+  const stadium = st.players.map(p => p.stadium.cards[0]?.fullName ?? '').join('');
+  const dmg = /damage counter|damage on/i.test(text), hand = /hand/i.test(text), disc = /discard pile/i.test(text), prize = /prize/i.test(text);
+  const zone = (p: Player) => `${slotSig(p.active, dmg)}|${p.bench.map(l => slotSig(l, dmg)).sort().join(';')}|${hand ? p.hand.cards.length : ''}|${prize ? prizesLeft(p) : ''}|${disc ? p.discard.cards.length : ''}`;
+  return `${stadium}#${zone(me)}#${zone(op)}`;
+}
+
+/** Base damage (before the target's Weakness and Resistance) that `side`'s Pokémon in `list` does
+ *  with `atk` on this board, measured in the engine; undefined for a plain attack or when the
+ *  engine gives no measurement (then the printed damage stands). */
+function measuredBase(sim: Sim, side: number, list: PokemonCardList, atk: { name: string; text?: string; damage: number }): number | undefined {
+  const st = sim.state;
+  const pc = list.getPokemonCard();
+  const def = st.players[1 - side].active;
+  const dpc = def.getPokemonCard();
+  if (!REACH_PROBE || !pc || !dpc || !(VARIABLE_ATTACK.test(atk.text ?? '') || pc.powers.some(pw => ATTACK_ABILITY.test(pw.text ?? '')))) {
+    return undefined;
+  }
+  const text = `${atk.text ?? ''} ${pc.powers.map(pw => pw.text ?? '').join(' ')}`;
+  const key = `${side}|${slotSig(list, true)}|${atk.name}|${boardSig(st, side, text)}`;
+  const hit = measured.get(key);
+  if (hit !== undefined) {
+    reachProbeStats.hits++;
+    return hit < 0 ? undefined : hit;
+  }
+  reachProbeStats.probes++;
+  if (measured.size > 20000) {
+    measured.clear();
+  }
+  const me = st.players[side];
+  const a = list === me.active ? 0 : 1 + me.bench.indexOf(list);
+  const m = probeAttack(sim, side, a, 0, atk.name, true, 1, true)?.[0];
+  let base = -1;
+  if (m !== undefined) {
+    // undo the Active's Weakness / Resistance; a Knock Out only shows the damage was at least its HP
+    let b = m;
+    const r = dpc.resistance.find(x => pc.cardType.includes(x.type));
+    if (r && m > 0) {
+      b -= r.value;
+    }
+    if (dpc.weakness.some(w => pc.cardType.includes(w.type))) {
+      b /= 2;
+    }
+    base = m >= dpc.hp + (def.hpBonus ?? 0) ? Math.max(b, atk.damage) : b;
+  }
+  measured.set(key, base);
+  return base < 0 ? undefined : base;
+}
+
+/** Damage `side`'s Pokémon in `list` does to `target` with `atk` once its cost is paid: the engine's
+ *  measurement for board-dependent attacks, else the printed damage; Weakness and Resistance applied. */
+export function attackDamage(sim: Sim, side: number, list: PokemonCardList, atk: PokemonCard['attacks'][number], target: PokemonCardList): number {
+  const pc = list.getPokemonCard();
+  return pc ? estimateDamage(pc, measuredBase(sim, side, list, atk) ?? atk.damage, target.getPokemonCard()) : 0;
+}
+
 interface ReachSummary {
   maxPrize: number; count: number; oneShortMaxPrize: number; oneShortCount: number; potentialMaxPrize: number;
   perTarget: number[]; perTargetOneShort: number[]; bestDamageToActive: number;
 }
 
 function reachFor(st: State, side: number, mine: PokemonCardList[], theirs: PokemonCardList[], knowHand: boolean,
-  potential: number[][][] | undefined): ReachSummary {
+  potential: number[][][] | undefined, base?: (list: PokemonCardList, atk: PokemonCard['attacks'][number]) => number | undefined): ReachSummary {
   const p = st.players[side];
   const hand = knowHand ? p.hand.cards : [];
   const gust = hand.some(c => isTrainerCard(c) && GUST_TEXT.test(cardText(c)));
@@ -364,6 +456,8 @@ function reachFor(st: State, side: number, mine: PokemonCardList[], theirs: Poke
     const activeOk = isActive || canRetreat || sw;
     at.card.attacks.forEach((atk, j) => {
       const gap = Math.max(0, energyGap(atk.cost, at.list) - (attachOk ? 1 : 0) - accel);
+      // board-dependent attacks of a Pokémon in play: the engine's damage instead of the printed one
+      const real = base && at.card === at.list.getPokemonCard() ? base(at.list, atk) : undefined;
       theirs.forEach((dl, d) => {
         const dpc = dl?.getPokemonCard();
         if (!dpc) {
@@ -371,7 +465,7 @@ function reachFor(st: State, side: number, mine: PokemonCardList[], theirs: Poke
         }
         const hpLeft = dpc.hp + (dl.hpBonus ?? 0) - dl.damage;
         const probed = at.card === at.list.getPokemonCard() ? potential?.[at.slot]?.[j]?.[d] : undefined;
-        const dmg = probed ?? estimateDamage(at.card, atk.damage, dpc);
+        const dmg = probed ?? estimateDamage(at.card, real ?? atk.damage, dpc);
         if (d === 0 && isActive && gap === 0) {
           out.bestDamageToActive = Math.max(out.bestDamageToActive, dmg);
         }
@@ -555,10 +649,10 @@ export function features(sim: Sim, me: number, groups: Group[] = ALL_GROUPS, opt
   if (b.on('reach')) {
     sides.forEach((side, s) => {
       const tag = s === 0 ? 'me' : 'op';
-      // always the analytic damage estimate (not the probes): the reach group must mean the same
-      // with or without the probe groups, or a "cheap" model would be trained on probe-based values
-      // and played with estimated ones
-      const r = reachFor(st, side, ordered[s], ordered[1 - s], s === 0, undefined);
+      // printed damage with Weakness and Resistance (not the probe groups: the reach group must mean
+      // the same with or without them), except for attacks whose damage depends on the board, which
+      // are measured (measuredBase)
+      const r = reachFor(st, side, ordered[s], ordered[1 - s], s === 0, undefined, (list, atk) => measuredBase(sim, side, list, atk));
       b.add('reach', `${tag}.reach.maxPrize`, r.maxPrize);
       b.add('reach', `${tag}.reach.count`, r.count);
       b.add('reach', `${tag}.reach.oneShortMaxPrize`, r.oneShortMaxPrize);

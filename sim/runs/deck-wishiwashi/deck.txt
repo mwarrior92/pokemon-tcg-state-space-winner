@@ -1,0 +1,31 @@
+Pokémon: 13
+4 Mega Kangaskhan ex MEG 104
+4 Wishiwashi 30C 22
+2 Latias ex SSP 76
+1 Fezandipiti ex ASC 142
+1 Lillie's Clefairy ex JTG 56
+1 Meowth ex POR 62
+
+Trainer: 29
+4 Crushing Hammer POR 71
+4 Lillie's Determination MEG 119
+3 Buddy-Buddy Poffin TEF 144
+3 Poké Pad POR 81
+3 Ultra Ball MEG 131
+2 Crispin SCR 133
+2 Dawn PFL 87
+1 Battle Cage PFL 85
+1 Boss's Orders MEG 114
+1 Ciphermaniac's Codebreaking TEF 145
+1 Gladion's Final Battle PBL 77
+1 Judge POR 76
+1 Night Stretcher ASC 196
+1 Risky Ruins MEG 127
+1 Unfair Stamp TWM 165
+
+Energy: 18
+10 Water Energy MEE 11
+4 Psychic Energy MEE 13
+4 Telepathic Psychic Energy POR 88
+
+Total Cards: 60
