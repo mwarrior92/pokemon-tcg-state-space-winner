@@ -159,6 +159,18 @@ function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: Linear
     const r = imitationLine(sim, model(seat.slice(5)), seed);
     return { next: r.end, line: r.line, policy: 'plan' };
   }
+  if (seat.startsWith('imitrace:') && def) {
+    // hybrid: the imitation policy plays the turn's development steps; where it would attack or end
+    // the turn, the race planner takes over and finishes the turn from that position
+    // IMIT_TURNS=n: only in each player's first n turns (the match logs mostly cover openings)
+    const early = Number(process.env.IMIT_TURNS ?? 99);
+    const r = sim.state.turn <= 2 * early ? imitationLine(sim, model(seat.slice(9)), seed, 25, true) : { line: [] as string[], end: sim };
+    // the race stage as the race pilot runs it: its plan compared with the tactical attack line
+    const o = playOffenseSearch(r.end, off, { budget: spec.budget, maxMs: 3000 });
+    const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
+    const pl = planTurn(r.end, race(), { budget: spec.budget, maxMs: 4000, seed, extra });
+    return { next: pl.end, line: [...r.line, ...pl.line], policy: 'plan', plan: pl };
+  }
   if (seat.startsWith('plan:')) {
     const pl = planTurn(sim, win(seat.slice(5)), { budget: spec.budget, maxMs: 4000, seed, extra: tactical().extra });
     return { next: pl.end, line: pl.line, policy: 'plan', plan: pl };

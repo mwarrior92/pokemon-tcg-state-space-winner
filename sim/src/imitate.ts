@@ -215,7 +215,7 @@ export function bestCandidate(model: LinearModel, names: string[], x: number[][]
 
 /** The imitation pilot's line from `sim`: the top-scoring step, again and again, until the turn
  *  ends (at most `maxSteps` steps; then it passes). */
-export function imitationLine(sim: Sim, model: LinearModel, seed = 1, maxSteps = 25): { line: string[]; end: Sim } {
+export function imitationLine(sim: Sim, model: LinearModel, seed = 1, maxSteps = 25, stopBeforeEnd = false): { line: string[]; end: Sim } {
   const mover = sim.state.activePlayer;
   let cur = sim;
   const line: string[] = [];
@@ -225,6 +225,9 @@ export function imitationLine(sim: Sim, model: LinearModel, seed = 1, maxSteps =
       break;
     }
     const i = bestCandidate(model, names, cands.map(c => c.x));
+    if (stopBeforeEnd && (cands[i].child.terminal || cands[i].main === 'end turn')) {
+      break;                       // the caller finishes the turn (attack or pass) from here
+    }
     line.push(cands[i].label);
     if (cands[i].child.terminal || cands[i].main === 'end turn') {
       if (cands[i].main !== 'end turn') {
