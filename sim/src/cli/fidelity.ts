@@ -69,7 +69,8 @@ async function main(): Promise<void> {
   const name = arg('name', `fidelity-${pilot.replace(/^(plan2?):.*?([^/\\]+?)(?:\.json)?$/, '$1-$2').replace(/[^a-z0-9-]+/gi, '-')}`);
   const offense = path.join(REPO_ROOT, 'sim', arg('offense', 'runs/offense-r3b/model.json'));
   const defense = path.join(REPO_ROOT, 'sim', arg('defense', 'runs/defense-r1/model.json'));
-  const pilotSpec = pilot.startsWith('plan') ? pilot.replace(/^(plan2?):(.*)$/, (_m, k, f) => `${k}:${path.join(REPO_ROOT, 'sim', f)}`) : pilot;
+  // model paths in a pilot name are relative to sim/ (not to the folder the command runs from)
+  const pilotSpec = /^(plan2?|imit|imitrace):/.test(pilot) ? pilot.replace(/^(\w+):(.*)$/, (_m, k, f) => `${k}:${path.resolve(REPO_ROOT, 'sim', f)}`) : pilot;
   const realFile = path.join(REPO_ROOT, 'meta', arg('real', 'matchups_2026-09-19_to_10-31.json'));
   const real: Record<string, Record<string, [number, number, number]>> = JSON.parse(fs.readFileSync(realFile, 'utf8')).total;
 
