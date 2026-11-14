@@ -22,6 +22,7 @@ import { playDefense, playOffenseSearch } from './policy';
 import { Evaluator, Plan, benchGuard, planTurn, planTurn2, raceEvaluator, winEvaluator } from './planner';
 import { prizeValue, prizesLeft } from './rules';
 import { imitationLine } from './imitate';
+import { setVariant, splitSeat } from './variant';
 import { Rng } from './rng';
 import { PromptChooser, Sim, randomChooser, resolvePrompts } from './sim';
 import { generateState } from './stategen';
@@ -146,9 +147,14 @@ export function newGameStart(deckA: string[], deckB: string[], seed: number): Si
 
 /** Play the turn with the seat's policy; returns the position after the turn's line (not yet
  *  passed unless the line ended the turn) and the line. */
-function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: LinearModel, def: LinearModel | undefined): { next: Sim; line: string[]; policy: TurnRec['policy']; plan?: Plan } {
+function playTurn(sim: Sim, seatSpec: string, spec: GameSpec, t: number, off: LinearModel, def: LinearModel | undefined): { next: Sim; line: string[]; policy: TurnRec['policy']; plan?: Plan } {
+  // "<pilot>@a,b": the pilot with parts a and b off (variant.ts)
+  const [seat, parts] = splitSeat(seatSpec);
+  setVariant(parts);
   const mover = sim.state.activePlayer;
   const seed = spec.seed + t;
+  // SIM_DEBUG_TURN=n: the planner prints the endings it weighed at (engine) turn n
+  const debug = Number(process.env.SIM_DEBUG_TURN ?? -1) === sim.state.turn;
   // every planner's evaluator gets the bench-out guard (SIM_NO_GUARD=1 turns it off, for comparisons)
   const guard = (ev: Evaluator, lose: number) => (def && !process.env.SIM_NO_GUARD ? benchGuard(ev, def, lose) : ev);
   const win = (f: string) => guard(winEvaluator(winModel(f)), 0);
@@ -171,7 +177,7 @@ function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: Linear
     // the race stage as the race pilot runs it: its plan compared with the tactical attack line
     const o = playOffenseSearch(r.end, off, { budget: spec.budget, maxMs: 3000 });
     const extra = [{ sim: o.end, line: o.line, ended: o.end.finished || o.end.state.activePlayer !== mover }];
-    const pl = planTurn(r.end, race(), { budget: spec.budget, maxMs: 4000, seed, extra });
+    const pl = planTurn(r.end, race(), { budget: spec.budget, maxMs: 4000, seed, debug, extra });
     const hybrid = { ...pl, line: [...r.line, ...pl.line] };
     if (!r.line.length || process.env.SIM_NO_ARBITER) {
       return { next: hybrid.end, line: hybrid.line, policy: 'plan', plan: hybrid };
@@ -180,7 +186,7 @@ function playTurn(sim: Sim, seat: string, spec: GameSpec, t: number, off: Linear
     // too, and the evaluator picks between the two whole turns (ties go to the hybrid line). The
     // imitation policy alone spent Boss's Orders with no attack to follow and put Energy on Pokémon
     // that could not use it; the planner alone looks only a step or two deep.
-    const both = planTurn(sim, race(), { budget: spec.budget, maxMs: 4000, seed, extra: [...tactical().extra, { sim: hybrid.end, line: hybrid.line, ended: hybrid.ended }] });
+    const both = planTurn(sim, race(), { budget: spec.budget, maxMs: 4000, seed, debug, extra: [...tactical().extra, { sim: hybrid.end, line: hybrid.line, ended: hybrid.ended }] });
     return { next: both.end, line: both.line, policy: 'plan', plan: both };
   }
   if (seat.startsWith('plan:')) {

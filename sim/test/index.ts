@@ -652,7 +652,8 @@ test('evaluator: Energy counts for the attack it powers (readiness), damage befo
   onThwackey.state.players[0].bench[2].energies.cards.push(e as any);
   const onDipplin = flBoard(['Grass Energy SVE']);
   onDipplin.state.players[0].bench[2].cards.push(makeCard('Thwackey TWM'));
-  assert.ok(readiness(onDipplin, 0) > readiness(onThwackey, 0) + 0.1, `${readiness(onDipplin, 0)} vs ${readiness(onThwackey, 0)}`);
+  // (as a ratio: the board holds one Energy card in all, so costSupply halves both)
+  assert.ok(readiness(onDipplin, 0) > readiness(onThwackey, 0) * 1.5, `${readiness(onDipplin, 0)} vs ${readiness(onThwackey, 0)}`);
   // Festival Grounds doubles what Dipplin does to a 300 HP Active
   const before = readiness(onDipplin, 0);
   onDipplin.state.players[0].stadium.cards.push(makeCard('Festival Grounds TWM'));

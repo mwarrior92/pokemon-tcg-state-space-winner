@@ -340,7 +340,10 @@ export function estimateDamage(attacker: PokemonCard, base: number, defender: Po
 // and its Weakness and Resistance are taken out again so the number can be applied to any target.
 // Plain attacks keep their printed damage (no engine call). SIM_NO_REACH_PROBE=1 turns it off.
 // damage that depends on the board: "20 damage for each ...", "... more damage", "... times ..."
-const VARIABLE_ATTACK = /for each|times|equal to|more damage|less damage/i;
+// ... and attacks that are another card's attack: "discard the top card of your deck ... use it as
+// this attack" (Slowking's Seek Inspiration prints no damage at all, so nothing built towards it)
+const VARIABLE_ATTACK = /for each|times|equal to|more damage|less damage|as this attack/i;
+const DECK_TOP_TEXT = /top card of your deck/i;
 // an Ability of the attacker that changes its own attacks (Festival Lead: "may use an attack it has twice")
 const ATTACK_ABILITY = /attack.*(twice|again|more damage)|(twice|again|more damage).*attack/i;
 const REACH_PROBE = !process.env.SIM_NO_REACH_PROBE;
@@ -363,7 +366,9 @@ function boardSig(st: State, side: number, text: string): string {
   const stadium = st.players.map(p => p.stadium.cards[0]?.fullName ?? '').join('');
   const dmg = /damage counter|damage on/i.test(text), hand = /hand/i.test(text), disc = /discard pile/i.test(text), prize = /prize/i.test(text);
   const zone = (p: Player) => `${slotSig(p.active, dmg)}|${p.bench.map(l => slotSig(l, dmg)).sort().join(';')}|${hand ? p.hand.cards.length : ''}|${prize ? prizesLeft(p) : ''}|${disc ? p.discard.cards.length : ''}`;
-  return `${stadium}#${zone(me)}#${zone(op)}`;
+  // an attack that uses the top card of the deck depends on which card that is
+  const top = DECK_TOP_TEXT.test(text) ? me.deck.cards[0]?.fullName ?? '' : '';
+  return `${stadium}#${zone(me)}#${zone(op)}#${top}`;
 }
 
 /** Base damage (before the target's Weakness and Resistance) that `side`'s Pokémon in `list` does

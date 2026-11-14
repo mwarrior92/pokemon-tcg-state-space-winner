@@ -33,8 +33,7 @@ matches/choice_data_endturn.npz
 # sim/ (TypeScript simulator): dependencies, bundles, profiles, bulky run data
 sim/node_modules/
 sim/dist/
-sim/dist-tools/
-sim/dist-fid*/
+sim/dist-*/
 sim/prof/
 sim/prof.js
 sim/reports/*.txt
@@ -44,5 +43,15 @@ sim/runs/*/labels.jsonl
 sim/runs/*/games.jsonl
 sim/runs/*/feature-names.json
 sim/runs/smoke-*/
+sim/runs/*-smoke/
 sim/runs/*.out
 sim/data/
+sim/runs/*/steps.jsonl
+sim/runs/*/decisions.jsonl
+sim/runs/*/replay-*.md
+sim/runs/*/tests.txt
+sim/runs/*investigate*/
+sim/runs/w-inv/
+
+# working notes for switching chat sessions (rewritten after every step)
+HANDOFF.md

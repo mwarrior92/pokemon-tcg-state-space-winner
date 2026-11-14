@@ -144,7 +144,17 @@ function groupByName(cards: Card[], idx: number[]): number[][] {
  *  enumerated (the first groups are tried first); see need.ts. */
 export type GroupOrder = (p: ChooseCardsPrompt, state: State, groups: number[][], cap: number) => number[][];
 
-export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64, order?: GroupOrder): Candidate[] {
+/** What a search knows about which answers to try first (need.ts). Without it answers are a random
+ *  sample. */
+export interface Guide {
+  groups?: GroupOrder;
+  /** how much the prompt's player gains from Energy `e` on its own Pokémon `l`, counting `extra` as
+   *  attached to it already: the targets of an attachment are tried best first */
+  attach?: (player: Player, l: PokemonCardList, e: Card, extra: Card[]) => number;
+}
+
+export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64, guide?: Guide): Candidate[] {
+  const order = guide?.groups;
   const out: Candidate[] = [];
   const add = (raw: any, label: string) => out.push({ raw, label });
   const cancel = (p as any).options?.allowCancel === true;
@@ -200,10 +210,28 @@ export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64, 
     const ts = targets(state, p, p.playerType, p.slots, p.options.blockedTo);
     const hi = Math.min(p.options.max, en.length);
     const lo = Math.min(p.options.min, hi);
+    const me = side(state, p).player;
+    const own = !!guide?.attach && ts.length > 1 && ts.every(t => t.player === PlayerType.BOTTOM_PLAYER);
     // choose which energies (as multisets of names), then sample target assignments
     for (const sel of multisets(groupByName(cards, en), lo, hi, cap)) {
       const tries = sel.length === 0 ? 1 : Math.min(cap, Math.pow(ts.length, sel.length));
       const seen = new Set<string>();
+      if (own && sel.length) {
+        // guided: each Energy to the Pokémon that gains most from it, counting the ones given
+        // before it; with one Energy, the next best targets after that
+        const given = new Map<string, Card[]>();
+        const asg = sel.map(i => {
+          const best = ts.map(t => ({ t, v: guide!.attach!(me, slotOf(state, p, t), cards[i], given.get(key(t)) ?? []) })).reduce((a, b) => (b.v > a.v ? b : a));
+          given.set(key(best.t), [...(given.get(key(best.t)) ?? []), cards[i]]);
+          return { to: best.t, index: i };
+        });
+        seen.add(asg.map(a => `${cards[a.index].fullName}>${key(a.to)}`).sort().join('|'));
+        add(asg, asg.map(a => `${cards[a.index].name} -> ${tname(state, p, a.to)}`).join(', '));
+        if (sel.length === 1) {
+          const ranked = ts.map((t, i) => ({ t, i, v: guide!.attach!(me, slotOf(state, p, t), cards[sel[0]], []) })).sort((a, b) => b.v - a.v || a.i - b.i);
+          ts.splice(0, ts.length, ...ranked.map(x => x.t));
+        }
+      }
       for (let k = 0; k < tries * 2 && seen.size < tries; k++) {
         const asg = sel.map(i => ({ to: ts.length ? (sel.length === 1 && k < ts.length ? ts[k] : rng.pick(ts)) : undefined, index: i }));
         if (asg.some(a => !a.to)) {
@@ -327,6 +355,35 @@ export function rawCandidates(p: Prompt<any>, state: State, rng: Rng, cap = 64, 
     const min = (p as any).options.min ?? 0;
     const max = Math.min((p as any).options.max ?? singles.length, singles.length);
     const tos = all.filter(t => !blockedTo.has(key(t)));
+    if (isMove && guide?.attach && max >= 1 && min <= 1 && all.every(t => t.player === PlayerType.BOTTOM_PLAYER)) {
+      // guided: the single moves that gain most (what the Energy is worth where it goes, less what
+      // it is worth where it is)
+      const me = side(state, p).player;
+      const moves: { s: typeof singles[number]; to: CardTarget; v: number }[] = [];
+      for (const s of singles) {
+        const fromSlot = slotOf(state, p, s.from);
+        const card = fromSlot.cards[s.index];
+        const without = { energies: { cards: fromSlot.energies.cards.filter(c => c !== card) }, getPokemonCard: () => fromSlot.getPokemonCard(), damage: fromSlot.damage, hpBonus: fromSlot.hpBonus } as unknown as PokemonCardList;
+        const loss = guide.attach(me, without, card, []);
+        for (const to of tos) {
+          if (key(to) !== key(s.from)) {
+            moves.push({ s, to, v: guide.attach(me, slotOf(state, p, to), card, []) - loss });
+          }
+        }
+      }
+      moves.sort((a, b) => b.v - a.v);
+      const seen = new Set<string>();
+      for (const m of moves) {
+        const sig = `${m.s.name}|${key(m.s.from)}|${key(m.to)}`;
+        if (seen.size >= Math.max(2, cap >> 1) || m.v <= 0) {
+          break;
+        }
+        if (!seen.has(sig)) {
+          seen.add(sig);
+          add([{ from: m.s.from, to: m.to, index: m.s.index }], `${m.s.name} ${tname(state, p, m.s.from)} -> ${tname(state, p, m.to)}`);
+        }
+      }
+    }
     for (let k = 0; k < cap; k++) {
       const n = k === 0 ? max : rng.int(Math.min(min, max), max);
       const pick = rng.sample(singles, n);
@@ -361,10 +418,10 @@ export function decodeValid(p: Prompt<any>, state: State, raw: any): { decoded: 
 }
 
 /** Valid, de-duplicated options for a decision prompt (at most `cap`). */
-export function promptOptions(p: Prompt<any>, state: State, rng: Rng, cap = 32, order?: GroupOrder): (Candidate & { decoded: any })[] {
+export function promptOptions(p: Prompt<any>, state: State, rng: Rng, cap = 32, guide?: Guide): (Candidate & { decoded: any })[] {
   const out: (Candidate & { decoded: any })[] = [];
   const seen = new Set<string>();
-  const raws = rawCandidates(p, state, rng, cap, order);
+  const raws = rawCandidates(p, state, rng, cap, guide);
   // "Cancel" (a null answer) is the client's undo button, not a game choice: once an effect is
   // under way the rules let you decline only through the choices the card itself offers ("you
   // may", "up to"), which appear here as real options (e.g. choosing nothing). Many card

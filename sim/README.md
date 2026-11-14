@@ -203,7 +203,15 @@ ex's Phantom Dive set-up), not single blunders.
 node dist/pilotaudit.js --pilot imitrace:runs/imit-v3/policy.json --name audit-all        # all pairings of the top 10 decks, 2 games each
 node dist/pilotaudit.js --pilot race --focus "Festival Lead" --games 4 --name audit-fl    # one deck against the other nine
 node dist/pilotaudit.js --compare audit-a,audit-b [--focus "Festival Lead"]               # runs side by side
+node dist/pilotaudit.js --pilot imitrace:runs/imit-v3/policy.json --versus inplay --name vs-inplay   # the pilot against itself with a part off
 ```
+
+`--versus <parts>` is the direct test of a change: every game is played twice on the same seed, each
+deck once in the hands of the pilot as it is ("new") and once in the hands of the pilot with the
+named parts off ("old", see `src/variant.ts` for the parts). The report gives new's share of the
+decided games with a 95% interval, and both pilots' audit rates. A part of the pilot that can be
+switched per seat is tested this way; per-deck win rates of a pilot playing itself cannot show it
+(every game has one winner, and 36 games per deck move by 15 points on their own).
 
 Win rates need hundreds of games to move by more than their noise. The audit (`src/audit.ts`) counts
 things that are wrong whatever the result, per deck, as shares of its own turns: no attack although

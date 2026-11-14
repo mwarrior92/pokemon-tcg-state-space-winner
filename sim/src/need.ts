@@ -16,6 +16,7 @@
 // back) are tried in the opposite order: least needed first.
 import { Card, CardType, ChooseCardsPrompt, EnergyCard, GameMessage, Player, PokemonCard, PokemonCardList, Stage, State, TrainerCard, TrainerType } from './engine';
 import { energyGap } from './features';
+import { on } from './variant';
 
 function withEnergy(l: PokemonCardList, e: Card[]): PokemonCardList {
   return { energies: { cards: [...l.energies.cards, ...e] } } as unknown as PokemonCardList;
@@ -40,6 +41,55 @@ function paysSomething(p: Player, e: Card, held: Card[]): boolean {
   return false;
 }
 
+/** How well `p`'s own Energy cards (deck, hand, discard pile and in play; the player knows the list)
+ *  can pay `cost`: 1 if they pay it three times over, 0.75 twice, 0.5 once, 0.15 not even once. A
+ *  deck of many types holds attacks it can hardly ever pay for (Basic Box: Chien-Pao's needs two of
+ *  its one Water Energy, Latias ex's two of its three Psychic); Energy and searches spent on those
+ *  are spent on nothing. */
+export function costSupply(p: Player, cost: CardType[]): number {
+  if (!cost.length || !on('supply')) {
+    return 1;
+  }
+  const all: Card[] = [];
+  for (const list of [p.deck.cards, p.hand.cards, p.discard.cards, ...[p.active, ...p.bench].map(l => l.energies.cards)]) {
+    for (const c of list) {
+      if (c instanceof EnergyCard) {
+        all.push(c);
+      }
+    }
+  }
+  const pool = { energies: { cards: all } } as unknown as PokemonCardList;
+  const pays = (k: number) => energyGap(Array.from({ length: k }, () => cost).flat(), pool) === 0;
+  return pays(3) ? 1 : pays(2) ? 0.75 : pays(1) ? 0.5 : 0.15;
+}
+
+/** How much Energy `e` on `p`'s Pokémon `l` brings an attack nearer, counting `extra` as attached to
+ *  it already: for the attack it helps most, the attack's weight (its printed damage; attacks that
+ *  print little count as a modest one) over 1 + the Energy still missing afterwards. An attack of
+ *  its Evolution in hand counts a little less, one the deck's Energy can hardly pay less (costSupply), a damaged Pokémon less (its Energy goes with it), the
+ *  Active a little more. 0 if the Energy pays for nothing there. */
+export function attachNeed(p: Player, l: PokemonCardList, e: Card, extra: Card[] = []): number {
+  const pc = l.getPokemonCard();
+  if (!pc) {
+    return 0;
+  }
+  const before = withEnergy(l, extra), after = withEnergy(l, [...extra, e]);
+  const evos = p.hand.cards.filter((c): c is PokemonCard => c instanceof PokemonCard && c.evolvesFrom === pc.name);
+  let best = 0;
+  const consider = (attacks: PokemonCard['attacks'], k: number) => {
+    for (const a of attacks) {
+      const left = energyGap(a.cost, after);
+      if (left < energyGap(a.cost, before)) {
+        best = Math.max(best, k * costSupply(p, a.cost) * Math.min(3, Math.max(0.6, a.damage / 100)) / (1 + left));
+      }
+    }
+  };
+  consider(pc.attacks, 1);
+  evos.forEach(c => consider(c.attacks, 0.7));
+  const hp = pc.hp + (l.hpBonus ?? 0);
+  return best * (0.4 + 0.6 * Math.max(0, hp - l.damage) / Math.max(1, hp)) * (l === p.active ? 1.1 : 1);
+}
+
 /** How much `p`'s board can use `card` now (higher = tried first when searching for it). `inHand`:
  *  the card is one of the hand's (so one copy in hand is the card itself). */
 export function cardNeed(state: State, p: Player, card: Card, inHand = false): number {
@@ -50,7 +100,9 @@ export function cardNeed(state: State, p: Player, card: Card, inHand = false): n
   if (card instanceof PokemonCard) {
     if (card.stage === Stage.BASIC && !card.evolvesFrom) {
       const room = p.bench.some(b => !b.cards.length);
-      return (room ? (inPlay.length <= 2 ? 3 : 2) : 0.3) * dup;
+      // among Basics, those with an attack the deck's Energy can pay for come first
+      const fit = card.attacks.reduce((m, a) => Math.max(m, costSupply(p, a.cost) * Math.min(1, Math.max(0.3, a.damage / 150))), 0);
+      return (room ? (inPlay.length <= 2 ? 3 : 2) : 0.3) * dup * (0.6 + 0.4 * fit);
     }
     const targets = inPlay.filter(l => l.getPokemonCard()?.name === card.evolvesFrom).length;
     if (targets > 0) {

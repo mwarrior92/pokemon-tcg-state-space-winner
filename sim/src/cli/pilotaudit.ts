@@ -3,6 +3,11 @@
 //   node dist/pilotaudit.js --pilot race --name audit-race                       all pairings of the top 10 decks, 2 games each
 //   node dist/pilotaudit.js --pilot race --focus "Festival Lead" --games 6       one deck against the other nine
 //   node dist/pilotaudit.js --compare audit-race,audit-new [--focus "Festival Lead"]
+//   node dist/pilotaudit.js --pilot race --versus inplay --name vs-inplay        the pilot against itself with a part off
+//
+// --versus <parts> (variant.ts): every game is played twice with the same seed, once with each deck
+// in the hands of the pilot as it is ("new") against the pilot with those parts off ("old"). The
+// report gives the new pilot's share of the decided games and both pilots' audit rates.
 //
 // Every turn of every game is checked for free resources left unused (an attack not made, an Energy
 // or Supporter kept in hand, a Stadium not played, ...). The rates per deck go to
@@ -26,7 +31,7 @@ function arg(name: string, dflt: string): string {
   return i >= 0 ? process.argv[i + 1] : dflt;
 }
 
-interface Row { deck: string; opp: string; won: boolean; decided: boolean; turns: { n: number; took: number; audit?: TurnAudit; line?: string[] }[] }
+interface Row { variant?: string; deck: string; opp: string; won: boolean; decided: boolean; turns: { n: number; took: number; audit?: TurnAudit; line?: string[] }[] }
 
 const pct = (x: number) => `${(100 * x).toFixed(0)}%`;
 
@@ -105,6 +110,31 @@ async function main(): Promise<void> {
   const seedBase = 700000 + 1000000 * Number(arg('seeds', '0'));
   const dir = path.join(REPO_ROOT, 'sim', 'runs', name);
   fs.mkdirSync(dir, { recursive: true });
+  // --replay "deck a|deck b|k": one game of the run again, with the board before every turn
+  const rp = arg('replay', '');
+  if (rp) {
+    const [ra, rb, rk] = rp.split('|');
+    const a = decks.findIndex(d => d.archetype === ra), b = decks.findIndex(d => d.archetype === rb), k = Number(rk);
+    const x = k % 2 === 0 ? [a, b] : [b, a];
+    const spec: GameSpec = {
+      seed: seedBase + a * 10000 + b * 100 + k, decks: [decks[x[0]].cards, decks[x[1]].cards], names: [decks[x[0]].archetype, decks[x[1]].archetype],
+      start: 'full', offense, defense, budget: 100, maxTurns: 120, seats: [pilotSpec, pilotSpec], log: 'board', audit: true,
+    };
+    const g = playGame(spec);
+    const L = [`# Replay: ${spec.names[0]} (P1) vs ${spec.names[1]} (P2), seed ${spec.seed}, pilot ${pilot}`, '',
+      `Result: ${g.winner === 0 || g.winner === 1 ? `${g.decks[g.winner]} won` : 'undecided'} by ${g.reason} in ${g.turns.length} turns; P${(g.first ?? 0) + 1} went first.`, ''];
+    for (const t of g.turns) {
+      const flags = t.audit ? AUDIT_FLAGS.filter(f => f !== 'attacked' && t.audit![f]) : [];
+      L.push(`### Turn ${t.turn}: P${t.mover + 1} ${g.decks[t.mover]} (prizes left P1 ${t.prizes[0]}, P2 ${t.prizes[1]})`, '', '```', (t.board ?? '').trimEnd(), '```',
+        `Moves: ${(t.line ?? []).join(' -> ') || '(none)'}${t.took ? ` - took ${t.took}` : ''}`, ...(flags.length ? [`Left undone: ${flags.join(', ')}`] : []), '');
+    }
+    const out = path.join(dir, `replay-${[ra, rb, rk].join('-').replace(/[^a-z0-9-]+/gi, '_')}.md`);
+    fs.writeFileSync(out, L.join('\n') + '\n');
+    console.log(`${g.decks[g.winner] ?? 'nobody'} won by ${g.reason} in ${g.turns.length} turns: ${out}`);
+    return;
+  }
+  const versus = arg('versus', '');
+  const oldSpec = `${pilotSpec}@${versus}`;
   const gamesFile = path.join(dir, 'games.jsonl');
   const done: { key: string; rows: Row[] }[] = fs.existsSync(gamesFile) ? fs.readFileSync(gamesFile, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l)) : [];
   const have = new Set(done.map(d => d.key));
@@ -115,17 +145,21 @@ async function main(): Promise<void> {
         continue;
       }
       for (let k = 0; k < perPair; k++) {
-        const key = `${decks[a].archetype}|${decks[b].archetype}|${k}`;
-        if (have.has(key)) {
-          continue;
-        }
         const x = k % 2 === 0 ? [a, b] : [b, a];
-        jobs.push({
-          key, spec: {
-            seed: seedBase + a * 10000 + b * 100 + k, decks: [decks[x[0]].cards, decks[x[1]].cards], names: [decks[x[0]].archetype, decks[x[1]].archetype],
-            start: 'full', offense, defense, budget: 100, maxTurns: 120, seats: [pilotSpec, pilotSpec], log: 'lines', audit: true,
-          },
-        });
+        // versus: the game twice, the new pilot in either seat
+        for (const side of versus ? [0, 1] : [-1]) {
+          const key = `${decks[a].archetype}|${decks[b].archetype}|${k}${side < 0 ? '' : `|new${side}`}`;
+          if (have.has(key)) {
+            continue;
+          }
+          const seats: [string, string] = side < 0 ? [pilotSpec, pilotSpec] : side === 0 ? [pilotSpec, oldSpec] : [oldSpec, pilotSpec];
+          jobs.push({
+            key, spec: {
+              seed: seedBase + a * 10000 + b * 100 + k, decks: [decks[x[0]].cards, decks[x[1]].cards], names: [decks[x[0]].archetype, decks[x[1]].archetype],
+              start: 'full', offense, defense, budget: 100, maxTurns: 120, seats, log: 'lines', audit: true,
+            },
+          });
+        }
       }
     }
   }
@@ -139,6 +173,7 @@ async function main(): Promise<void> {
         n++;
         if (g) {
           const rows: Row[] = [0, 1].map(seat => ({
+            variant: versus ? (jobs[i].spec.seats[seat] === oldSpec ? 'old' : 'new') : undefined,
             deck: g.decks[seat], opp: g.decks[1 - seat], won: g.winner === seat, decided: g.winner === 0 || g.winner === 1,
             turns: g.turns.filter(t => t.mover === seat).map(t => ({ n: t.turn, took: t.took, audit: t.audit, line: t.line })),
           }));
@@ -155,6 +190,24 @@ async function main(): Promise<void> {
   const rows = done.flatMap(d => d.rows);
   const L = [`# Pilot audit: ${name}`, '', `Pilot \`${pilot}\`, ${done.length} games${focus ? ` (every game has ${focus})` : ''}. Rates are shares of the deck's own turns; see \`src/audit.ts\` for what each column counts.`, '',
     ...table(summarize(rows)), '', '## All decks together', '', ...table(summarize(rows.map(r => ({ ...r, deck: 'all decks' }))))];
+  if (versus) {
+    // the new pilot's share of the decided games, with a 95% interval (normal approximation), and
+    // how many same-seed pairs of games went 2-0, 1-1 and 0-2 for it
+    const mine = rows.filter(r => r.variant === 'new' && r.decided);
+    const w = mine.filter(r => r.won).length, n = mine.length, sh = w / Math.max(1, n), se = Math.sqrt(sh * (1 - sh) / Math.max(1, n));
+    const pairs = new Map<string, number[]>();
+    for (const d of done) {
+      const r = d.rows.find(x => x.variant === 'new');
+      if (r?.decided) {
+        const pk = d.key.replace(/\|new\d$/, '');
+        pairs.set(pk, [...(pairs.get(pk) ?? []), r.won ? 1 : 0]);
+      }
+    }
+    const full = [...pairs.values()].filter(v => v.length === 2).map(v => v[0] + v[1]);
+    L.push('', `## New against old (parts off: ${versus})`, '', `New won ${w} of ${n} decided games: ${pct(sh)} (95% interval ${pct(Math.max(0, sh - 1.96 * se))} to ${pct(Math.min(1, sh + 1.96 * se))}).`,
+      `Pairs of games on the same seed: new won both in ${full.filter(x => x === 2).length}, one each in ${full.filter(x => x === 1).length}, none in ${full.filter(x => x === 0).length}.`, '',
+      ...table(summarize(rows.map(r => ({ ...r, deck: r.variant ?? '?' })))));
+  }
   fs.writeFileSync(path.join(dir, 'report.md'), L.join('\n') + '\n');
   console.log(L.slice(4).join('\n'));
 }

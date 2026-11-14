@@ -17,10 +17,12 @@
 import { CHEAP_GROUPS, features } from './features';
 import { LinearModel, Predictor } from './model';
 import { groupsFor } from './policy';
-import { GameWinner, Stage, SuperType } from './engine';
+import { Card, GameWinner, PokemonCard, Stage, SuperType } from './engine';
+import { cardNeed, costSupply } from './need';
 import { passTurn } from './policy';
 import { prizeValue, prizesLeft } from './rules';
 import { Rng } from './rng';
+import { on } from './variant';
 import { Spare, Step, children, expandAction, replayStep, stateHash } from './search';
 import { attackDamage, energyGap } from './features';
 import { mainCandidates } from './sim';
@@ -33,6 +35,8 @@ export interface PlanOptions {
   seed?: number;
   /** other ways to end the turn to compare with the search's (e.g. the offense policy's line) */
   extra?: { sim: Sim; line: string[]; ended: boolean }[];
+  /** print the best endings found with the parts of their values (stderr) */
+  debug?: boolean;
 }
 
 export interface Plan {
@@ -84,6 +88,8 @@ export interface Evaluator {
   /** a correction for risks the evaluator knows the reply search can miss: given the position after
    *  `me`'s turn and a value for it, the corrected value (planTurn2 applies it to reply scores) */
   adjust?(after: Sim, me: number, v: number): number;
+  /** the parts of afterTurn's value, for debugging a decision (SIM_DEBUG_TURN) */
+  explain?(s: Sim, me: number, startPrizes: [number, number]): Record<string, number>;
 }
 
 export function winEvaluator(win: WinModel): Evaluator {
@@ -104,18 +110,69 @@ export function winEvaluator(win: WinModel): Evaluator {
  *  looked free: pilots discarded the Basic they had just searched for, retreated Energy away and
  *  played Pokémon Catcher with no attacker, then ran out of cards and stalled. A tie-break: a
  *  whole board of it is worth about one prize. */
+// SIM_HAND_NEED=0: cards in hand count flat again (0.03, Energy 0.06) and the deck's top not at all
+const HAND_NEED = process.env.SIM_HAND_NEED !== '0';
+
 export function material(s: Sim, me: number): number {
   const p = s.state.players[me];
   let m = 0;
+  // 'inplay' (variant.ts): what is put into play counts as in play. A Tool attached and the player's
+  // own Stadium count 0.05 each (a Trainer in hand counts 0.03, so playing either used to read as a
+  // loss: Stadiums stayed in hand on a third of all turns). Each of the first four Pokémon in play
+  // counts 0.05 more: with two or three in play one Knock Out leaves no attacker, and the defense
+  // model's dislike of every Benched Pokémon outweighed the 0.04 a Basic gained by leaving the hand.
+  const inplay = on('inplay');
+  let k = 0;
   for (const l of [p.active, ...p.bench]) {
     const pc = l.getPokemonCard();
     if (!pc) {
       continue;
     }
     m += 0.08 + (pc.stage === Stage.STAGE_1 ? 0.08 : pc.stage === Stage.STAGE_2 ? 0.16 : 0) + 0.12 * l.energies.cards.length;
+    if (inplay) {
+      m += (k++ < 4 ? 0.05 : 0) + 0.05 * (l.tools?.length ?? 0);
+    }
   }
+  if (inplay && p.stadium.cards.length) {
+    m += 0.05;
+  }
+  if (!HAND_NEED || !on('handneed')) {
+    for (const c of p.hand.cards) {
+      m += c.superType === SuperType.ENERGY ? 0.06 : 0.03;
+    }
+    return m;
+  }
+  // an Energy or a Pokémon in hand counts by how much the board can use it now (need.ts): the Energy
+  // an attacker is waiting for up to 0.085, one that pays for nothing 0.03; a Pokémon at most 0.04
+  // (never more than the same card is worth in play); Trainers 0.03 as before. A flat count made
+  // finding the card the board needed worth no more than keeping the card that found it, so search
+  // cards stayed in hand. The card on top of the deck is next turn's draw and counts almost as a
+  // card in hand, the one under it half of that (as the next-turn term of the race does, this looks
+  // at the deck's order, which the player knows only after putting cards there: Ciphermaniac's
+  // Codebreaking, Academy at Night).
+  const worth = (c: Card, inHand: boolean) => {
+    if (c.superType !== SuperType.ENERGY && c.superType !== SuperType.POKEMON) {
+      return 0.03;
+    }
+    const w = 0.015 + 0.023 * Math.min(3, cardNeed(s.state, p, c, inHand));
+    if (c.superType !== SuperType.POKEMON) {
+      return w;
+    }
+    // an Evolution with a Pokémon in play to go on is the card the board is waiting for: 0.07 (still
+    // less than the 0.08 it adds in play), any other Pokémon at most 0.04. At 0.04 for both, a search
+    // took a third Slowpoke over the Slowking the two in play needed.
+    const evo = inplay && (c as PokemonCard).evolvesFrom && [p.active, ...p.bench].some(l => l.getPokemonCard()?.name === (c as PokemonCard).evolvesFrom);
+    return evo ? Math.min(0.07, w) : Math.min(0.04, w);
+  };
   for (const c of p.hand.cards) {
-    m += c.superType === SuperType.ENERGY ? 0.06 : 0.03;
+    m += worth(c, true);
+  }
+  const deck = p.deck.cards;
+  if (deck.length > 0) {
+    m += 0.8 * worth(deck[0], false);
+  }
+  if (deck.length > 1) {
+    m += 0.4 * worth(deck[1], false);
   }
   return m;
 }
@@ -123,7 +180,8 @@ export function material(s: Sim, me: number): number {
  *  each Pokémon in play, its best attack by (share of the Active's remaining HP it removes) /
  *  (1 + Energy still missing), a Benched one a little less; the best counts in full and the second
  *  best for a third. Damage is the engine's for attacks that depend on the board (features.ts), so
- *  what feeds the attack counts too: a fuller Bench for Do the Wave, Festival Grounds in play.
+ *  what feeds the attack counts too: a fuller Bench for Do the Wave, Festival Grounds in play. An
+ *  attack the deck's Energy can hardly pay for counts less (costSupply).
  *  Material alone paid the same for an Energy on any Pokémon: pilots powered Pokémon whose attacks
  *  they could never afford and left their attacker without (runs/fl-investigate2). */
 export function readiness(s: Sim, me: number): number {
@@ -143,7 +201,7 @@ export function readiness(s: Sim, me: number): number {
     for (const a of pc.attacks) {
       const dmg = attackDamage(s, me, l, a, target);
       if (dmg > 0) {
-        best = Math.max(best, Math.min(1, dmg / hpLeft) / (1 + energyGap(a.cost, l)));
+        best = Math.max(best, costSupply(p, a.cost) * Math.min(1, dmg / hpLeft) / (1 + energyGap(a.cost, l)));
       }
     }
     scores.push(best * (l === p.active ? 1 : 0.8));
@@ -195,6 +253,22 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
   };
   return {
     quick,
+    explain: (s, me, start): Record<string, number> => {
+      if (s.finished) {
+        return {};
+      }
+      const fd = features(s, me, gd, { only: od });
+      const mine = passTurn(s, seed + 17);
+      let next = 0;
+      if (mine && !mine.finished && mine.state.activePlayer === me) {
+        const fo = features(mine, me, go, { only: oo });
+        next = Math.max(0, po.predict(fo.names, fo.values));
+      }
+      return {
+        taken: start[0] - prizesLeft(s.state.players[me]), lost: start[1] - prizesLeft(s.state.players[1 - me]), theirs: Math.max(0, pd.predict(fd.names, fd.values)),
+        next, material: material(s, me), ready: readiness(s, me), progress: progress(s, me),
+      };
+    },
     afterTurn: (s, me, start) => {
       if (s.finished) {
         const w = s.state.winner;
@@ -474,12 +548,31 @@ export function planTurn(root: Sim, ev: WinModel | Evaluator, opts: PlanOptions 
   let value = best.value;
   // compare with the given alternatives (ties go to the alternative: it is the tactical line)
   const startBoth: [number, number] = [start, prizesLeft(root.state.players[1 - mover])];
+  const show = (tag: string, v: number, line: string[], after: Sim | undefined) => {
+    const parts = after && e.explain ? Object.entries(e.explain(after, mover, startBoth)).map(([k, x]) => `${k} ${x.toFixed(2)}`).join('  ') : '';
+    console.error(`  ${tag} ${v.toFixed(3)}  [${parts}]
+      ${line.join(' -> ') || '(end turn)'}`);
+  };
+  if (opts.debug) {
+    console.error(`--- planTurn: ${ts.nodes.length} positions, ${ts.endings.length} endings`);
+    const seenLines = new Set<string>();
+    for (const en of ts.endings.slice().sort((a, b) => b.value - a.value).slice(0, 14)) {
+      const rr = replayEnding(root, en.node, en.terminal);
+      if (rr && !seenLines.has(rr.line.join('>'))) {
+        seenLines.add(rr.line.join('>'));
+        show('search', en.value, rr.line, rr.ended || rr.sim.finished ? rr.sim : passTurn(rr.sim, (opts.seed ?? 1) + 3));
+      }
+    }
+  }
   for (const x of opts.extra ?? []) {
     const after = x.ended || x.sim.finished ? x.sim : passTurn(x.sim, (opts.seed ?? 1) + 5);
     if (!after) {
       continue;
     }
     const v = e.afterTurn(after, mover, startBoth);
+    if (opts.debug) {
+      show('extra ', v, x.line, after);
+    }
     if (v >= value) {
       value = v;
       r = { sim: x.sim, line: x.line, ended: x.ended || x.sim.finished || x.sim.state.activePlayer !== mover };
