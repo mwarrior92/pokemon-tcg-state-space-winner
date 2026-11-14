@@ -22,6 +22,8 @@ import { children, replayStep, stateHash } from '../src/search';
 import { Rng } from '../src/rng';
 import { buildScenario, makeCard } from '../src/scenario';
 import { CHEAP_GROUPS, features } from '../src/features';
+import { clocks } from '../src/clock';
+import { optIn } from '../src/variant';
 import { progress, readiness } from '../src/planner';
 import { Sim, bugLog, bugStats, legalMainOptions, mainCandidates, randomChooser, resolvePrompts, runStep } from '../src/sim';
 import { generateState } from '../src/stategen';
@@ -661,4 +663,41 @@ test('evaluator: Energy counts for the attack it powers (readiness), damage befo
   // half the HP of a three-prize Pokémon is a prize and a half of progress
   onDipplin.state.players[1].active.damage = 150;
   assert.equal(progress(onDipplin, 0), 1.5);
+});
+
+test('clock: turns to the win follow the Energy the attacker has, holds, or has to draw', () => {
+  const others = Array.from({ length: 19 }, () => W);
+  const turns = (s: Sim) => clocks(s, 0, 1)[0].turns;
+  const paid = turns(flBoard(['Grass Energy SVE'], [], others));
+  const inHand = turns(flBoard([], ['Grass Energy SVE'], others));
+  const inDeck = turns(flBoard([], [], [...others, 'Grass Energy SVE', 'Grass Energy SVE', 'Grass Energy SVE', 'Grass Energy SVE']));
+  const never = turns(flBoard([], [], others));
+  assert.ok(paid < inHand && inHand < inDeck && inDeck < never, `${paid} ${inHand} ${inDeck} ${never}`);
+  // an Energy in hand costs a fraction of a turn, one still in the deck more than half a turn
+  assert.ok(inHand - paid < 0.5 && inDeck - inHand > 0.5, `${paid} ${inHand} ${inDeck}`);
+  // damage on the opposing Active brings the win nearer
+  const hurt = flBoard(['Grass Energy SVE'], [], others);
+  hurt.state.players[1].active.damage = 200;
+  assert.ok(turns(hurt) < paid, `${turns(hurt)} vs ${paid}`);
+});
+
+test('clock: a Benched attacker waits for the Energy the Active needs to retreat', () => {
+  const deck = [...Array.from({ length: 19 }, () => 'Goldeen TWM'), 'Grass Energy SVE', 'Grass Energy SVE', 'Grass Energy SVE', 'Grass Energy SVE'];
+  const board = (activeEnergy: string[], hand: string[] = []) => buildScenario({
+    p1: { active: { card: 'Goldeen TWM', energy: activeEnergy },
+      bench: [{ card: 'Dipplin TWM1', under: ['Applin TWM1'], energy: ['Grass Energy SVE'] }, ...FL_BENCH.slice(0, 4)], hand, deck },
+    p2: { active: { card: 'Mega Kangaskhan ex M1S' }, deck: [W] },
+  }, new Rng(1));
+  optIn('benchpos', true);
+  const best = (s: Sim) => clocks(s, 0, 0)[0].best!;
+  const stuck = board([]), paid = board([W]), held = board([], [W]);
+  assert.ok(stuck.state.players[0].active.getPokemonCard()!.retreat.length === 1);
+  // the same attacker with the same Energy: ready later while the Active cannot retreat
+  for (const s of [stuck, paid, held]) {
+    assert.equal(best(s).card.name, 'Dipplin');
+  }
+  assert.ok(best(stuck).ready > best(paid).ready + 0.3, `${best(stuck).ready} vs ${best(paid).ready}`);
+  // an Energy in hand for the retreat is nearly as good as one attached
+  assert.ok(best(held).ready < best(paid).ready + 0.3, `${best(held).ready} vs ${best(paid).ready}`);
+  optIn('benchpos', false);
 });

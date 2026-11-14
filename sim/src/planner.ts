@@ -18,6 +18,7 @@ import { CHEAP_GROUPS, features } from './features';
 import { LinearModel, Predictor } from './model';
 import { groupsFor } from './policy';
 import { Card, GameWinner, PokemonCard, Stage, SuperType } from './engine';
+import { clockLead, clocks, describeClock } from './clock';
 import { cardNeed, costSupply } from './need';
 import { passTurn } from './policy';
 import { prizeValue, prizesLeft } from './rules';
@@ -113,6 +114,9 @@ export function winEvaluator(win: WinModel): Evaluator {
 // SIM_HAND_NEED=0: cards in hand count flat again (0.03, Energy 0.06) and the deck's top not at all
 const HAND_NEED = process.env.SIM_HAND_NEED !== '0';
 
+// SIM_HAND_FLOOR="k,x": the first k cards in hand count x of a prize more each (part 'handsize')
+const [HAND_K, HAND_X] = (process.env.SIM_HAND_FLOOR ?? '3,0.04').split(',').map(Number);
+
 export function material(s: Sim, me: number): number {
   const p = s.state.players[me];
   let m = 0;
@@ -135,6 +139,14 @@ export function material(s: Sim, me: number): number {
   }
   if (inplay && p.stadium.cards.length) {
     m += 0.05;
+  }
+  // 'handsize' (variant.ts): each of the first HAND_K cards in hand counts HAND_X more, whatever it
+  // is. A hand is next turn's choices, and the per-card worths below fall at the same rate from the
+  // tenth card to the first, so emptying the hand cost no more than thinning a full one: on the first
+  // turn a pilot played Ultra Ball, discarding its two other cards for a fifth Basic, and then passed
+  // three turns with nothing to play (reviews/pilot-clock.md, game 3).
+  if (on('handsize')) {
+    m += HAND_X * Math.min(HAND_K, p.hand.cards.length);
   }
   if (!HAND_NEED || !on('handneed')) {
     for (const c of p.hand.cards) {
@@ -237,6 +249,11 @@ const materialTerm = (s: Sim, me: number): number =>
   (MATERIAL_MODE === 'off' ? 0 : material(s, me) - (MATERIAL_MODE === 'both' ? material(s, 1 - me) : 0))
   + (READY_W ? READY_W * readiness(s, me) : 0) + (PROGRESS_W ? PROGRESS_W * progress(s, me) : 0);
 
+// 'clock' (variant.ts): the lead on the clock (clock.ts: the opponent's turns to its win less the
+// mover's, each along its shortest likely path) takes the place of the next-turn term, and counts
+// while searching too. SIM_CLOCK: what a turn of lead is worth in prizes (default 0.5).
+const CLOCK_W = Number(process.env.SIM_CLOCK ?? 0.5);
+
 export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, seed = 1): Evaluator {
   const po = new Predictor(off), pd = new Predictor(def);
   const go = groupsFor(off), gd = groupsFor(def);
@@ -249,7 +266,7 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
     const taken = start[0] - prizesLeft(s.state.players[me]);
     const lost = start[1] - prizesLeft(s.state.players[1 - me]);
     const fd = features(s, me, gd, { only: od });
-    return taken - lost - Math.max(0, pd.predict(fd.names, fd.values)) + materialTerm(s, me);
+    return taken - lost - Math.max(0, pd.predict(fd.names, fd.values)) + materialTerm(s, me) + (on('clock') ? CLOCK_W * clockLead(s, me) : 0);
   };
   return {
     quick,
@@ -258,6 +275,14 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
         return {};
       }
       const fd = features(s, me, gd, { only: od });
+      if (on('clock')) {
+        const c = clocks(s, me, s.state.activePlayer);
+        return {
+          clock: clockLead(s, me),
+          taken: start[0] - prizesLeft(s.state.players[me]), lost: start[1] - prizesLeft(s.state.players[1 - me]), theirs: Math.max(0, pd.predict(fd.names, fd.values)),
+          myTurns: c[me].turns, theirTurns: c[1 - me].turns, material: material(s, me), ready: readiness(s, me), progress: progress(s, me),
+        };
+      }
       const mine = passTurn(s, seed + 17);
       let next = 0;
       if (mine && !mine.finished && mine.state.activePlayer === me) {
@@ -273,6 +298,9 @@ export function raceEvaluator(off: LinearModel, def: LinearModel, gamma = 0.8, s
       if (s.finished) {
         const w = s.state.winner;
         return w === GameWinner.DRAW ? 0 : (w === GameWinner.PLAYER_1 ? 0 : 1) === me ? 10 : -10;
+      }
+      if (on('clock')) {
+        return quick(s, me, start);
       }
       const taken = start[0] - prizesLeft(s.state.players[me]);
       const lost = start[1] - prizesLeft(s.state.players[1 - me]);
@@ -555,6 +583,10 @@ export function planTurn(root: Sim, ev: WinModel | Evaluator, opts: PlanOptions 
   };
   if (opts.debug) {
     console.error(`--- planTurn: ${ts.nodes.length} positions, ${ts.endings.length} endings`);
+    if (on('clock')) {
+      const c = clocks(root, mover, mover);
+      console.error(`  clock at the start: mine ${describeClock(c[mover])}; theirs ${describeClock(c[1 - mover])}`);
+    }
     const seenLines = new Set<string>();
     for (const en of ts.endings.slice().sort((a, b) => b.value - a.value).slice(0, 14)) {
       const rr = replayEnding(root, en.node, en.terminal);

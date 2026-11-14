@@ -302,9 +302,9 @@ function probeHand(sim: Sim, side: number, seeds: number): { damage: number; pri
 // The opponent's side uses public information only: their hand is unknown, so they are assumed to
 // have one attachment (if they hold any card) and no switch or gust card.
 const GUST_TEXT = /switch in 1 of your opponent's benched pok[eé]mon to the active spot/i;
-const SWITCH_TEXT = /switch your active pok[eé]mon with 1 of your benched pok[eé]mon/i;
+export const SWITCH_TEXT = /switch your active pok[eé]mon with 1 of your benched pok[eé]mon/i;
 // energy acceleration: a card or ability that attaches Energy (beyond the one attachment per turn)
-const ACCEL_TEXT = /attach (up to )?(an?|\d+|any amount of) .{0,60}energy/i;
+export const ACCEL_TEXT = /attach (up to )?(an?|\d+|any amount of) .{0,60}energy/i;
 // retreat helpers: tools / items / stadiums that change Retreat Cost
 const RETREAT_TEXT = /retreat cost/i;
 // abilities that put damage counters on the opponent's Pokémon
@@ -411,6 +411,12 @@ function measuredBase(sim: Sim, side: number, list: PokemonCardList, atk: { name
   }
   measured.set(key, base);
   return base < 0 ? undefined : base;
+}
+
+/** Damage before the target's Weakness and Resistance: the engine's measurement for board-dependent
+ *  attacks, else the printed damage (clock.ts applies it to several targets). */
+export function baseDamage(sim: Sim, side: number, list: PokemonCardList, atk: PokemonCard['attacks'][number]): number {
+  return measuredBase(sim, side, list, atk) ?? atk.damage;
 }
 
 /** Damage `side`'s Pokémon in `list` does to `target` with `atk` once its cost is paid: the engine's
