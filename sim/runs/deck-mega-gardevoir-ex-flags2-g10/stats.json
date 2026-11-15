@@ -1,0 +1,549 @@
+{
+ "name": "mega gardevoir ex families g10 (tested)",
+ "games": 120,
+ "wins": 36,
+ "winRate": 0.3,
+ "ci": [
+  0.2252550133867232,
+  0.3871530950356486
+ ],
+ "byMatchup": [
+  {
+   "opponent": "Dragapult",
+   "games": 34,
+   "wins": 7,
+   "rate": 0.20588235294117646
+  },
+  {
+   "opponent": "Basic Box",
+   "games": 10,
+   "wins": 4,
+   "rate": 0.4
+  },
+  {
+   "opponent": "N's Zoroark",
+   "games": 10,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Slowking",
+   "games": 9,
+   "wins": 7,
+   "rate": 0.7777777777777778
+  },
+  {
+   "opponent": "Hydrapple",
+   "games": 6,
+   "wins": 1,
+   "rate": 0.16666666666666666
+  },
+  {
+   "opponent": "Festival Lead",
+   "games": 6,
+   "wins": 1,
+   "rate": 0.16666666666666666
+  },
+  {
+   "opponent": "Alakazam Dudunsparce",
+   "games": 5,
+   "wins": 1,
+   "rate": 0.2
+  },
+  {
+   "opponent": "Dragapult Dusknoir",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Alakazam Dusknoir",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Dragapult Blaziken",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Dhelmise",
+   "games": 4,
+   "wins": 3,
+   "rate": 0.75
+  },
+  {
+   "opponent": "Crustle",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Mega Excadrill",
+   "games": 3,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Lopunny Dusknoir",
+   "games": 3,
+   "wins": 2,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Dragapult Dudunsparce",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Rocket's Honchkrow",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Seaking Festival Lead",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Lucario Hariyama",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Clefairy Ogerpon",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Mewtwo",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Greninja",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Sharpedo Toxtricity",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Cynthia's Garchomp",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Lopunny Dudunsparce",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Lucario",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  }
+ ],
+ "endings": {
+  "lost: prizes": 76,
+  "won: prizes": 32,
+  "lost: no Pokémon in play": 6,
+  "won: no Pokémon in play": 3,
+  "lost: deck out": 2,
+  "won: deck out": 1
+ },
+ "turnsPerGame": 14.766666666666667,
+ "firstPrizeTurn": 4,
+ "prizesPerTurn": 0.34942528735632183,
+ "stuck": {
+  "idealShare": 0.12413793103448276,
+  "idealWin": 0.7962962962962963,
+  "nonIdealShare": 0.3931034482758621,
+  "stuckRate": 0.31272727272727274,
+  "entered": 104,
+  "enteredShare": 0.8666666666666667,
+  "recovered": 0.23076923076923078,
+  "expected": 0.2843048076923078,
+  "topStuck": [
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:yes exposed:none",
+    "turns": 79,
+    "stuckRate": 0.6792452830188679
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:yes exposed:none",
+    "turns": 52,
+    "stuckRate": 0.3181818181818182
+   },
+   {
+    "cat": "race:behind ready:1-2 ko:no threat:yes exposed:no",
+    "turns": 30,
+    "stuckRate": 0.4090909090909091
+   },
+   {
+    "cat": "race:behind ready:1-1 ko:no threat:yes exposed:no",
+    "turns": 26,
+    "stuckRate": 0.45
+   }
+  ]
+ },
+ "attackers": [
+  {
+   "what": "attack Mega Symphonia",
+   "who": "Mega Gardevoir ex",
+   "prizes": 174,
+   "share": 0.5723684210526315,
+   "uses": 146
+  },
+  {
+   "what": "attack Eon Blade",
+   "who": "Latias ex",
+   "prizes": 77,
+   "share": 0.2532894736842105,
+   "uses": 74
+  },
+  {
+   "what": "attack Linear Attack",
+   "who": "Cacturne",
+   "prizes": 34,
+   "share": 0.1118421052631579,
+   "uses": 88
+  },
+  {
+   "what": "attack Take Down",
+   "who": "Minccino",
+   "prizes": 7,
+   "share": 0.023026315789473683,
+   "uses": 96
+  },
+  {
+   "what": "attack Psyshot",
+   "who": "Kirlia",
+   "prizes": 7,
+   "share": 0.023026315789473683,
+   "uses": 15
+  },
+  {
+   "what": "attack Everyone Explode Now",
+   "who": "Drifblim",
+   "prizes": 4,
+   "share": 0.013157894736842105,
+   "uses": 11
+  },
+  {
+   "what": "attack Knock Away",
+   "who": "Cacnea",
+   "prizes": 1,
+   "share": 0.003289473684210526,
+   "uses": 22
+  },
+  {
+   "what": "attack Overflowing Wishes",
+   "who": "Mega Gardevoir ex",
+   "prizes": 0,
+   "share": 0,
+   "uses": 33
+  },
+  {
+   "what": "attack Call Sign",
+   "who": "Kirlia",
+   "prizes": 0,
+   "share": 0,
+   "uses": 28
+  },
+  {
+   "what": "attack Float Up",
+   "who": "Drifloon",
+   "prizes": 0,
+   "share": 0,
+   "uses": 15
+  },
+  {
+   "what": "attack Headbutt",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 12
+  },
+  {
+   "what": "attack Collect",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 10
+  },
+  {
+   "what": "attack Waterfall",
+   "who": "Alomomola",
+   "prizes": 0,
+   "share": 0,
+   "uses": 1
+  }
+ ],
+ "opening": [
+  {
+   "action": "tool Lucky Helmet",
+   "share": 0.5583333333333333
+  },
+  {
+   "action": "retreat",
+   "share": 0.475
+  },
+  {
+   "action": "attach Psychic Energy to Latias ex",
+   "share": 0.4666666666666667
+  },
+  {
+   "action": "attach Psychic Energy to Minccino",
+   "share": 0.44166666666666665
+  },
+  {
+   "action": "bench Ralts",
+   "share": 0.43333333333333335
+  },
+  {
+   "action": "attack Take Down",
+   "share": 0.425
+  },
+  {
+   "action": "play Lillie's Determination",
+   "share": 0.4
+  },
+  {
+   "action": "bench Minccino",
+   "share": 0.39166666666666666
+  }
+ ],
+ "winCards": [
+  {
+   "card": "Psychic Energy",
+   "wins": 5.972222222222222,
+   "losses": 4.940476190476191
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "wins": 0.8611111111111112,
+   "losses": 0.34523809523809523
+  },
+  {
+   "card": "Gwynn",
+   "wins": 1.5833333333333333,
+   "losses": 1.0952380952380953
+  },
+  {
+   "card": "Lillie's Determination",
+   "wins": 1.4444444444444444,
+   "losses": 1.130952380952381
+  },
+  {
+   "card": "Lucky Helmet",
+   "wins": 1.8055555555555556,
+   "losses": 1.5357142857142858
+  },
+  {
+   "card": "Kirlia",
+   "wins": 1.1666666666666667,
+   "losses": 0.9047619047619048
+  }
+ ],
+ "usage": [
+  {
+   "card": "Ethan's Adventure",
+   "copies": 1,
+   "games": 0,
+   "perGame": 0,
+   "noEffect": 0
+  },
+  {
+   "card": "Firebreather",
+   "copies": 1,
+   "games": 0,
+   "perGame": 0,
+   "noEffect": 13
+  },
+  {
+   "card": "Enhanced Hammer",
+   "copies": 1,
+   "games": 0.125,
+   "perGame": 0.125,
+   "noEffect": 0
+  },
+  {
+   "card": "Rare Candy",
+   "copies": 1,
+   "games": 0.14166666666666666,
+   "perGame": 0.14166666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Drifblim",
+   "copies": 1,
+   "games": 0.16666666666666666,
+   "perGame": 0.25833333333333336,
+   "noEffect": 0
+  },
+  {
+   "card": "Drifloon",
+   "copies": 1,
+   "games": 0.21666666666666667,
+   "perGame": 0.2916666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Amarys",
+   "copies": 2,
+   "games": 0.2833333333333333,
+   "perGame": 0.3,
+   "noEffect": 0
+  },
+  {
+   "card": "Latias ex",
+   "copies": 2,
+   "games": 0.325,
+   "perGame": 0.6166666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Alomomola",
+   "copies": 3,
+   "games": 0.4166666666666667,
+   "perGame": 0.5333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Minccino",
+   "copies": 4,
+   "games": 0.4583333333333333,
+   "perGame": 0.8,
+   "noEffect": 0
+  },
+  {
+   "card": "Emma",
+   "copies": 2,
+   "games": 0.5083333333333333,
+   "perGame": 0.6583333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Max Rod",
+   "copies": 1,
+   "games": 0.5416666666666666,
+   "perGame": 0.5416666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "copies": 2,
+   "games": 0.55,
+   "perGame": 1.9916666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Prism Energy",
+   "copies": 1,
+   "games": 0.5666666666666667,
+   "perGame": 0.5666666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Lucian",
+   "copies": 3,
+   "games": 0.575,
+   "perGame": 0.8,
+   "noEffect": 0
+  },
+  {
+   "card": "Cacturne",
+   "copies": 3,
+   "games": 0.65,
+   "perGame": 1.5583333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Cacnea",
+   "copies": 3,
+   "games": 0.6916666666666667,
+   "perGame": 1.0083333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Lillie's Determination",
+   "copies": 4,
+   "games": 0.7583333333333333,
+   "perGame": 1.225,
+   "noEffect": 0
+  },
+  {
+   "card": "Gwynn",
+   "copies": 3,
+   "games": 0.775,
+   "perGame": 1.2416666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Kirlia",
+   "copies": 4,
+   "games": 0.7833333333333333,
+   "perGame": 1.8416666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Ralts",
+   "copies": 3,
+   "games": 0.8,
+   "perGame": 1.1666666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Lucky Helmet",
+   "copies": 3,
+   "games": 0.85,
+   "perGame": 1.6166666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Psychic Energy",
+   "copies": 11,
+   "games": 0.9916666666666667,
+   "perGame": 5.25,
+   "noEffect": 0
+  }
+ ],
+ "lossCards": [
+  {
+   "card": "Alomomola",
+   "wins": 0.9444444444444444,
+   "losses": 1.2142857142857142
+  },
+  {
+   "card": "Minccino",
+   "wins": 1.0555555555555556,
+   "losses": 1.2976190476190477
+  },
+  {
+   "card": "Cacturne",
+   "wins": 0.7222222222222222,
+   "losses": 0.8690476190476191
+  },
+  {
+   "card": "Cacnea",
+   "wins": 0.9722222222222222,
+   "losses": 1.1071428571428572
+  }
+ ]
+}

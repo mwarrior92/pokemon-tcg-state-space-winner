@@ -1,0 +1,31 @@
+Pokémon: 21
+4 Kirlia ASC 88
+4 Nincada MEG 16
+4 Ralts ASC 87
+2 Goldeen TWM 44
+2 Mega Gardevoir ex ASC 89
+1 Applin TWM 17
+1 Chi-Yu TWM 39
+1 Dipplin TWM 18
+1 Hydrapple ex PRE 11
+1 Maractus JTG 8
+
+Trainer: 26
+3 Counter Gain ASC 259
+3 Emcee's Hype DRI 163
+3 Gwynn PBL 78
+3 N's Plan BLK 83
+3 Pokémon Center Lady CPA 60
+2 Buddy-Buddy Poffin TEF 144
+2 Night Stretcher SSP 251
+2 Risky Ruins MEG 127
+2 Rust Syndicate Grunt PBL 81
+1 Rare Candy MEG 125
+1 Team Rocket's Petrel DRI 176
+1 Ultra Ball MEG 131
+
+Energy: 13
+11 Psychic Energy MEE 13
+2 Rocky Fighting Energy POR 87
+
+Total Cards: 60

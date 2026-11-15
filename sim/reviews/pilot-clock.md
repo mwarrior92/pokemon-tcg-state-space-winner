@@ -94,7 +94,16 @@ Ogerpon ex, Tapu Bulu) and none on an Active that then could not retreat.
 **Bench position** (part `benchpos`): a path on a Benched Pokémon also needs the Energy the Active
 lacks for its Retreat Cost. 178 of 359 (`runs/vs-benchpos` 88 of 179, `vs-benchpos-b` 90 of 180).
 It does bring the first attack forward where it was late (Slowking 3.81 against 5.08, N's Zoroark
-3.31 against 3.92, Hydrapple 2.69 against 3.03) and pushes it back for Dragapult Blaziken (3.69
-against 2.39, 19 wins against 24 of 36). Off by default; the Dragapult Blaziken games are the
-place to look before trying it again.
+3.31 against 3.92, Hydrapple 2.69 against 3.03). Off by default.
+
+Correction (2026-11-15): an earlier version said it pushes the first attack back for Dragapult
+Blaziken (3.69 against 2.39). That figure was one game: `Slowking|Dragapult Blaziken|1` in
+`runs/vs-benchpos` ran to the turn limit with both pilots only using Academy at Night every turn
+(Energy held, never attached), and a game without an attack counts as its length (60 own turns).
+Without that game Dragapult Blaziken first attacks on own turn 2.06 against 2.39, earlier as in the
+other decks; its 19 wins against 24 of 36 are within chance. It is the only turn-limit game in the
+ten runs from `vs-clock4` to `vs-copy-nz` (about 1,600 games), and it does not happen again with
+the present code (replayed with `SIM_PARTS=benchpos`: decided in 13 turns). So bench position
+brings the first attack forward everywhere and still wins 50%: an earlier first attack alone is
+not what these decks lack.
 

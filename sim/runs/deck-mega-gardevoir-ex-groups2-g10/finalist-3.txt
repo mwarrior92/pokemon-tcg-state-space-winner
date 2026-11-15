@@ -1,0 +1,32 @@
+Pokémon: 16
+4 Kirlia ASC 88
+4 Ralts ASC 87
+2 Mega Gardevoir ex ASC 89
+1 Applin TWM 17
+1 Dipplin TWM 18
+1 Hydrapple ex PRE 11
+1 Jirachi ex 30C 102
+1 Maractus JTG 8
+1 Nincada MEG 16
+
+Trainer: 30
+4 Emcee's Hype DRI 163
+4 Rust Syndicate Grunt PBL 81
+3 Counter Gain ASC 259
+3 Gwynn PBL 78
+3 N's Plan BLK 83
+3 Pokémon Center Lady CPA 60
+2 Battle Cage PFL 85
+2 Eri TEF 146
+2 Night Stretcher SSP 251
+1 Antique Plume Fossil WHT 79
+1 Brock's Scouting JTG 146
+1 Jamming Tower TWM 153
+1 Ultra Ball MEG 131
+
+Energy: 14
+11 Psychic Energy MEE 13
+2 Rocky Fighting Energy POR 87
+1 Prism Energy ASC 216
+
+Total Cards: 60

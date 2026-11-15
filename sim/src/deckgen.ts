@@ -628,7 +628,10 @@ export function swapGroup(cards: string[], pool: string[], core: Map<string, num
   const groupWeight = (g: Set<string>) => {
     const mine = distinct.filter(n => g.has(nameOf(n)));
     const w = mine.reduce((x, n) => x + cutWeight(n, cards), 0) / Math.max(1, mine.length);
-    return w * (mine.some(n => whyUnusable(n, facts0)) ? 20 : 1);
+    // by size as well: a four-card group is four times as likely to go as a single copy, which is
+    // no bigger a step than a one-card change
+    const size = cards.filter(n => g.has(nameOf(n))).length;
+    return w * size * (mine.some(n => whyUnusable(n, facts0)) ? 20 : 1);
   };
   const weights = new Map(groups.map(g => [g, groupWeight(g)]));
   for (let tries = 0; tries < 20; tries++) {

@@ -16,8 +16,9 @@
 import { CHEAP_GROUPS, features } from './features';
 import { LinearModel, Predictor } from './model';
 import { prizesLeft } from './rules';
-import { Child, children } from './search';
+import { Child, children, stateHash } from './search';
 import { Sim } from './sim';
+import { on } from './variant';
 import { TrainerCard, TrainerType } from './engine';
 
 const KINDS = ['play', 'attach', 'evolve', 'bench', 'tool', 'stadium', 'ability', 'retreat', 'attack', 'pass'] as const;
@@ -219,8 +220,15 @@ export function imitationLine(sim: Sim, model: LinearModel, seed = 1, maxSteps =
   const mover = sim.state.activePlayer;
   let cur = sim;
   const line: string[] = [];
+  const seen = new Set([stateHash(sim.state)]);
   for (let k = 0; k < maxSteps && !cur.finished && cur.state.activePlayer === mover; k++) {
-    const { names, cands } = candidates(cur, { seed: seed + k });
+    const all = candidates(cur, { seed: seed + k });
+    const names = all.names;
+    // a step that leads back to a position of this turn changes nothing and is not a step: without
+    // this the policy used Mew ex's Memory Helix and cancelled the choice 25 times in a row (no
+    // Benched attack could be paid for), and the turn's Supporter and Basics stayed in hand
+    // (part `norepeat`, variant.ts)
+    const cands = !on('norepeat') ? all.cands : all.cands.filter(c => c.child.terminal || c.main === 'end turn' || !seen.has(stateHash(c.child.sim.state)));
     if (!cands.length) {
       break;
     }
@@ -236,6 +244,7 @@ export function imitationLine(sim: Sim, model: LinearModel, seed = 1, maxSteps =
       break;
     }
     cur = cands[i].child.sim;
+    seen.add(stateHash(cur.state));
   }
   return { line, end: cur };
 }

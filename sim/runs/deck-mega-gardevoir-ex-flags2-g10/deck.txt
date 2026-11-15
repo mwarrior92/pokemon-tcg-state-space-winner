@@ -1,0 +1,30 @@
+Pokémon: 26
+4 Kirlia ASC 88
+4 Minccino CRI 72
+3 Alomomola BLK 24
+3 Cacnea DLR 4
+3 Cacturne DLR 5
+3 Ralts ASC 87
+2 Latias ex SSP 76
+2 Mega Gardevoir ex ASC 89
+1 Drifblim SCR 61
+1 Drifloon 30C 73
+
+Trainer: 22
+4 Lillie's Determination MEG 119
+3 Gwynn PBL 78
+3 Lucian TWM 157
+3 Lucky Helmet TWM 158
+2 Amarys PRE 170
+2 Emma CRI 77
+1 Enhanced Hammer TWM 148
+1 Ethan's Adventure DRI 236
+1 Firebreather PFL 119
+1 Max Rod PRE 116
+1 Rare Candy MEG 125
+
+Energy: 12
+11 Psychic Energy MEE 13
+1 Prism Energy BLK 86
+
+Total Cards: 60

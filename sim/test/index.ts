@@ -21,6 +21,8 @@ import { ownedCards, prizesLeft } from '../src/rules';
 import { children, replayStep, stateHash } from '../src/search';
 import { Rng } from '../src/rng';
 import { buildScenario, makeCard } from '../src/scenario';
+import { candidates, imitationLine } from '../src/imitate';
+import { loadModel } from '../src/model';
 import { CHEAP_GROUPS, features } from '../src/features';
 import { clocks, ownClock } from '../src/clock';
 import { optIn, setVariant } from '../src/variant';
@@ -833,6 +835,9 @@ test('deck flags: why a turn had no attack, dead hand, empty Bench; loss modes; 
   assert.ok(!turnIssues(held, held, [], 0).includes('noEnergy'));
   // attached this turn, still no attack paid for
   assert.ok(turnIssues(bare, bare, ['attach Grass Energy -> active Goldeen'], 0).includes('slowEnergy'));
+  // ... but not on the deck's first two turns, which is ordinary building up
+  const early = buildScenario({ p1: { active: { card: 'Goldeen TWM' }, deck }, p2: { active: { card: 'Mega Kangaskhan ex M1S' }, deck: [G] }, turn: 3 }, new Rng(1));
+  assert.ok(!turnIssues(early, early, ['attach Grass Energy -> active Goldeen'], 0).includes('slowEnergy'));
   // the Benched Pokémon is ready, the Active is not
   const stuck = board([], [G, G, G]);
   const flags = turnIssues(stuck, stuck, ['play Nest Ball'], 0);
@@ -870,6 +875,13 @@ test('deck flags: why a turn had no attack, dead hand, empty Bench; loss modes; 
   assert.ok(answers('noEnergy', 'Earthen Vessel'));
   assert.ok(answers('deckOut', 'Super Rod') || answers('deckOut', 'Night Stretcher') || answers('deckOut', 'Sacred Ash'));
   assert.ok(!answers('activeStuck', "Professor's Research") && !answers('deadHand', 'Switch') && !answers('noEnergy', 'Switch'));
+  // a draw that waits on the opponent or on another card, or that is the opponent's, is no answer to a dead hand
+  for (const n of ['Lucky Helmet', "Team Rocket's Factory", 'Special Red Card', 'Meddling Memo']) {
+    assert.ok(!answers('deadHand', n), n);
+  }
+  for (const n of ['Cheren', 'Judge', 'Harlequin', "Emcee's Hype"]) {
+    assert.ok(answers('deadHand', n), n);
+  }
 
   // a change aimed at a flag brings such a card in for the cards used least, and stays legal
   let made = 0;
@@ -895,4 +907,22 @@ test('deck flags: why a turn had no attack, dead hand, empty Bench; loss modes; 
     }
   }
   assert.ok(made >= 9, `${made} changes`);
+});
+
+test('imitation pilot: a step that changes nothing is not taken again (Memory Helix cancelled)', () => {
+  // Mew ex can use its Benched Pokémon's attacks; with none paid for, the choice can only be
+  // cancelled and the position is the same as before
+  const P = 'Psychic Energy SVE';
+  const sim = buildScenario({
+    p1: { active: { card: 'Mew ex 30C' }, bench: [{ card: 'Kyurem SFA' }, { card: 'Slowpoke SCR' }],
+      hand: ['Slowpoke SCR', 'Kyurem SFA'], deck: Array.from({ length: 20 }, () => P) },
+    p2: { active: { card: 'Mega Kangaskhan ex M1S' }, deck: [P] },
+  }, new Rng(1));
+  const { cands } = candidates(sim, { seed: 1 });
+  const back = cands.filter(c => !c.child.terminal && c.main !== 'end turn' && stateHash(c.child.sim.state) === stateHash(sim.state));
+  assert.ok(back.some(c => /Memory Helix/.test(c.label)), `Memory Helix leads back: ${cands.map(c => c.label).join('; ')}`);
+  const model = loadModel(path.join(REPO_ROOT, 'sim', 'runs', 'imit-v3', 'policy.json'));
+  const r = imitationLine(sim, model, 1, 25, true);
+  assert.ok(!r.line.some(l => /Memory Helix/.test(l)), r.line.join(' -> '));
+  assert.equal(new Set(r.line).size, r.line.length, r.line.join(' -> '));
 });

@@ -16,6 +16,8 @@
 //             cards that can be put on top of the deck, Night Joker by the N's Pokémon in play or to
 //             come), attacks that damage several Pokémon, and counts an attack that discards all its
 //             Energy or cannot be used the next turn as used every second turn
+//   norepeat  the imitation steps skip a step that leads back to a position of the same turn (an
+//             Ability used and its choice cancelled: Memory Helix, Teal Dance with nothing to attach)
 // cli/pilotaudit.ts --versus plays the two against each other.
 //
 // Measured that way (180 games each, runs/vs-*): inplay won 58% and handneed 56% of the games
@@ -25,7 +27,7 @@
 // handsize won 91 of 180 at "3,0.04" and 90 of 180 at "4,0.03" (runs/vs-hand-a, vs-hand-b; over 80 of
 // 90 same-seed pairs split): no difference, so it is off unless SIM_PARTS names it.
 // benchpos won 178 of 359 (runs/vs-benchpos, vs-benchpos-b): Hydrapple, N's Zoroark and Slowking attacked
-// 0.3 to 1.3 turns earlier, Dragapult Blaziken 1.3 turns later (19 wins against 24); off as well.
+// 0.3 to 1.3 turns earlier, Dragapult Blaziken 0.3 (reviews/pilot-clock.md, correction); off as well.
 // copy won 95 of 180 over all decks (runs/vs-copy), 38 of 72 in games with Slowking and 43 of 72 in
 // games with N's Zoroark (runs/vs-copy-sk, vs-copy-nz): 176 of 324 = 54%, same-seed pairs 25 against
 // 11. N's Zoroark itself won 27 of 54 with it against 18 of 54 without (prizes a turn 0.58 against

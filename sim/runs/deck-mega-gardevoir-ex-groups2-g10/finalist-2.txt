@@ -1,0 +1,33 @@
+Pokémon: 18
+4 Kirlia ASC 88
+4 Ralts ASC 87
+2 Mega Gardevoir ex ASC 89
+1 Finizen PBL 21
+1 Genesect SFA 40
+1 Incineroar ex TEF 34
+1 Lillie's Clefairy ex JTG 56
+1 Litten TEF 32
+1 Mega Kangaskhan ex MEG 104
+1 Palafin ex TWM 193
+1 Torracat TEF 33
+
+Trainer: 31
+4 Air Balloon ASC 181
+4 Carmine TWM 145
+4 Ciphermaniac's Codebreaking PRE 104
+3 Battle Cage PFL 85
+3 Legendary Trench DLR 99
+3 Ultra Ball MEG 131
+2 Fennel BLK 82
+2 Gwynn PBL 109
+2 Lana's Aid TWM 219
+1 Hilda WHT 84
+1 Kieran TWM 154
+1 Lucky Helmet TWM 158
+1 Rare Candy MEG 125
+
+Energy: 11
+9 Psychic Energy MEE 13
+2 Ignition Energy PFL 124
+
+Total Cards: 60

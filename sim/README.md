@@ -131,7 +131,7 @@ Output in `runs/deck-<name>/`:
   one or two). For random starts a change is also a **group swap** (`deckgen.ts` `swapGroup`; half
   of the changes in the first half of the generations, a quarter after): a partner Pokémon with its
   whole line, or every copy of one Trainer or Special Energy, leaves, and cards from the pool come
-  in, each in the number of copies meta lists play. The pool of a random start has basic Energy of
+  in, each in the number of copies meta lists play. A group is the likelier to leave the more cards it has. The pool of a random start has basic Energy of
   the types the seed's line pays with and no others. Before the finalists are taken, each family's
   best two play `--recheck 20` fresh games. A deck never moves to another family, so the run ends with different decks: the
   finalists are the best deck of each family, and `deck.txt`, `finalist-2.txt`, `finalist-3.txt`
@@ -146,7 +146,7 @@ Output in `runs/deck-<name>/`:
   | flag | counted when |
   |---|---|
   | could not attack, no Energy to attach | no attack, nothing in play can pay for one, nothing attached from hand, no Energy in hand |
-  | could not attack, Energy attached but no attack paid for yet | no attack and nothing in play can pay, although an Energy was attached |
+  | could not attack, Energy attached but no attack paid for yet | no attack and nothing in play can pay, although an Energy was attached; from the deck's third own turn on (the first two turns of attaching are ordinary building up) |
   | could not attack, a Benched Pokémon was ready and the Active was not | as it says |
   | dead hand | nothing played, put down, evolved or used but an Energy or a retreat, and no prize taken |
   | no Benched Pokémon | at the end of the turn |
@@ -156,7 +156,7 @@ Output in `runs/deck-<name>/`:
   (the pilot's choice). Half of the search's changes (`--fix 0.5`) are aimed at a flag of the
   parent deck, drawn by how often it came up in that deck's own games (a flag seen once is left
   alone): a card from the pool whose text answers it comes in (basic Energy or Energy search; a card
-  that attaches extra Energy; a switch card or a smaller Retreat Cost; a card that draws; Basic
+  that attaches extra Energy; a switch card or a smaller Retreat Cost; a card that draws on the player's own say (not a Tool, not a draw that waits on the opponent or on another card); Basic
   Pokémon or a card that finds them; a card that shuffles the discard pile back), in the number of
   copies meta lists play, and the cards the deck used in the fewest of its games leave. A loss on
   prize cards has no card change tied to it. The report has a section "Stuck causes and how games

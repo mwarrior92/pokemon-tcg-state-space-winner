@@ -6,6 +6,7 @@
 //   noEnergy      no attack, nothing in play can pay for one, no Energy attached from hand this turn
 //                 and none in hand
 //   slowEnergy    no attack and nothing in play can pay for one, although an Energy was attached
+//                 (from the deck's third own turn on: before that it is ordinary building up)
 //   activeStuck   no attack: a Benched Pokémon could pay for one, the Active could not
 //   deadHand      nothing played, put down, evolved or used but an Energy / a retreat, and no prize
 //   emptyBench    the turn ended with no Benched Pokémon
@@ -15,7 +16,7 @@
 //   boardWipe     lost with no Pokémon left in play
 //   deckOut       lost with no card left to draw
 //   prizes        the opponent took all its prize cards (no card change is tied to this one)
-import { Card, EnergyCard, PokemonCard, Stage, TrainerCard } from './engine';
+import { Card, EnergyCard, PokemonCard, Stage, TrainerCard, TrainerType } from './engine';
 import { isBasicEnergy } from './decklist';
 import { ACCEL_TEXT, SWITCH_TEXT, energyGap } from './features';
 import { prizesLeft } from './rules';
@@ -34,7 +35,9 @@ export const ISSUE_TEXT = {
 } as const;
 export type Issue = keyof typeof ISSUE_TEXT;
 const TURN_ISSUES: Issue[] = ['noEnergy', 'slowEnergy', 'activeStuck', 'deadHand', 'emptyBench'];
-const LOSS_OF: Record<string, Issue> = { 'no Pokémon in play': 'boardWipe', 'deck out': 'deckOut', prizes: 'prizes' };
+/** `slowEnergy` is flagged from the deck's third own turn on (game turns 5 and 6) */
+const SLOW_FROM_TURN = 5;
+const LOSS_OF:Record<string, Issue> = { 'no Pokémon in play': 'boardWipe', 'deck out': 'deckOut', prizes: 'prizes' };
 
 /** `before`: the position at the start of the turn; `after`: after the pilot's line; `line`: its steps */
 export function turnIssues(before: Sim, after: Sim, line: string[], mover: number): Issue[] {
@@ -50,7 +53,10 @@ export function turnIssues(before: Sim, after: Sim, line: string[], mover: numbe
     if (p.bench.some(l => l.cards.length && canPay(l))) {
       out.push('activeStuck');
     } else if (line.some(l => l.startsWith('attach '))) {
-      out.push('slowEnergy');
+      // the deck's first two turns of attaching are ordinary building up, not a fault
+      if (before.state.turn >= SLOW_FROM_TURN) {
+        out.push('slowEnergy');
+      }
     } else if (!p.hand.cards.some(c => c instanceof EnergyCard)) {
       out.push('noEnergy');
     }
@@ -123,6 +129,22 @@ export function fixable(d: Diagnosis): { issue: Issue; weight: number }[] {
   return d.issues.filter(i => i.issue !== 'prizes' && i.n >= 2).map(i => ({ issue: i.issue, weight: i.share }));
 }
 
+/** the player's own draw ("they draw", "your opponent draws" alone do not count) */
+const DRAW_TEXT = /(?<!\bthey )(?<!\bopponent )\bdraws? (a card|\d+ cards|cards)/i;
+/** A draw that waits on something else: the opponent's attack, a Knock Out, another card having been
+ *  played (the condition stands before the draw in its sentence) */
+const DRAW_WAITS = /\b(if|when|whenever|after|each time)\b(?:(?!\bdraws? )[^.])*\b(opponent|knocked out|damaged|played)\b[^.]*\bdraws? /i;
+
+/** Does the card draw cards on the player's own say? A Tool does not (Lucky Helmet draws when the
+ *  opponent attacks), nor a sentence whose draw waits on something else (Team Rocket's Factory
+ *  draws after a Team Rocket Supporter is played). */
+function draws(c: Card, text: string): boolean {
+  if (c instanceof TrainerCard && c.trainerType === TrainerType.TOOL) {
+    return false;
+  }
+  return text.split(/(?<=\.)\s+/).some(s => DRAW_TEXT.test(s) && !DRAW_WAITS.test(s));
+}
+
 /** Does this card answer the flag? Read from the card's own text (a Trainer's, or an Ability's). */
 export function remedies(issue: Issue, c: Card): boolean {
   const text = [c instanceof TrainerCard ? (c as { text?: string }).text ?? '' : '', ...(c instanceof PokemonCard ? c.powers.map(p => p.text ?? '') : [])].join(' ');
@@ -133,8 +155,8 @@ export function remedies(issue: Issue, c: Card): boolean {
       return ACCEL_TEXT.test(text);
     case 'activeStuck':     // switching, or a smaller Retreat Cost
       return SWITCH_TEXT.test(text) || /retreat cost[^.]{0,60}less|no retreat cost/i.test(text);
-    case 'deadHand':        // cards that draw
-      return /\bdraw (a card|\d+ cards|cards)/i.test(text);
+    case 'deadHand':        // cards that draw when the player wants them to
+      return draws(c, text);
     case 'emptyBench':
     case 'boardWipe':       // Basic Pokémon, or cards that find them
       return /search your deck for [^.]{0,80}basic pok[ée]mon/i.test(text) || (c instanceof PokemonCard && c.stage === Stage.BASIC);
