@@ -1,0 +1,31 @@
+Pokémon: 28
+6 Meltan SCR 103
+4 Hop's Phantump ASC 95
+4 Kirlia ASC 88
+4 Ralts ASC 87
+2 Mega Gardevoir ex ASC 89
+2 Melmetal SCR 104
+1 Eevee 30C 117
+1 Espeon ex PRE 34
+1 Espurr CRI 36
+1 Hoothoot SCR 114
+1 Meowstic CRI 37
+1 Noctowl PRE 78
+
+Trainer: 21
+4 Caretaker TWM 144
+3 Crushing Hammer PBL 105
+3 Legendary Summit DLR 96
+2 Grimsley's Move PFL 90
+2 Super Potion JTG 158
+2 Team Rocket's Factory ASC 203
+1 Fennel BLK 162
+1 Gravity Mountain SSP 177
+1 Hero's Cape TEF 152
+1 Rare Candy MEG 125
+1 Sacred Charm PFL 122
+
+Energy: 11
+11 Psychic Energy MEE 13
+
+Total Cards: 60

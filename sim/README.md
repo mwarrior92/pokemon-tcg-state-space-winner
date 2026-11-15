@@ -93,7 +93,10 @@ states per second.
 ## Deck builder and tester
 
 ```
-node dist/deckbuilder.js --seed "Mega Gardevoir ex"       # build a deck around a card, optimise it, test it
+node dist/deckbuilder.js --seed "Mega Gardevoir ex"       # three different decks around a card, optimised and tested
+node dist/deckbuilder.js --seed "Mega Gardevoir ex" --draw 1            # the same with other random starts
+node dist/deckbuilder.js --seed "Mega Gardevoir ex" --show-starts       # only print the starting decks
+node dist/deckbuilder.js --seed "Hydrapple ex" --start meta             # one start, from the meta lists (as before)
 node dist/deckbuilder.js --list my-deck.txt               # test a list (Pokémon TCG Live export format)
 node dist/deckbuilder.js --list my-deck.txt --optimize    # improve a list, then test it
 node dist/deckbuilder.js --export "Dragapult" --out dragapult.txt   # a meta deck's list to start from
@@ -109,18 +112,56 @@ Output in `runs/deck-<name>/`:
 - **Games:** full games from turn 1 against the meta decks, by their share of the decklists. Both
   sides are piloted by the same policy (`--pilot`, default v1 `race`; `plan2:<win model>` is
   stronger and slower).
-- **Building from a seed** (`deckgen.ts`), all from the 512 meta lists:
-  - if the card is played in the meta lists, start from the best-placed list that plays it;
-  - otherwise, its evolution line in the usual counts for its stage, basic Energy for its attack
-    costs, and the most common staples (Trainers, plus support Basics that stand alone).
-- **Searching** (`--seed`, or `--list ... --optimize`): a population of `--population 10` decks:
-  the start, other meta lists that play the seed, and bigger variations of the start. Each of
-  `--generations 4` generations, every deck plays the same `--screen 10` games; the top half
-  survives with its games and the rest are replaced by small changes to the survivors. Ranking uses
-  the win rate pulled towards 50% (four imaginary games), minus `--stuck-weight` × share of turns
-  stuck. The best `--finalists 3`, plus the starting list, then play the same half of the
-  `--games 120` final test; the best of them plays the other half, as does the starting list, for
-  a paired before/after. Runners-up are saved as `finalist-2.txt`, `finalist-3.txt`.
+- **Building from a seed** (`deckgen.ts` `randomStarts`): `--starts 3` starting decks that share
+  nothing but the seed's evolution line (usual counts for its stage) and basic Energy for its attack
+  costs (6 to 14, drawn). Every other card is drawn at random from all Standard cards, each as likely
+  as any other, in 1 to 4 copies, a Pokémon with the stages below it; a card is kept if the rules
+  check says the deck can use it, and no card is in two of the starts. Each start draws how many
+  other Pokémon cards it takes (8 to 20), the rest are Trainers and Special Energy (`--any-shape`:
+  no such split, about 40 Pokémon). Nothing looks at what the meta plays: the starts are wild and
+  mostly weak, and the search has to find what works. `--draw N` gives other starts; the starts are
+  saved as `start-1.txt` ...
+  - `--start meta` is the earlier way, one start: the best-placed meta list that plays the card, or
+    (card not in the meta lists) its line, Energy and the most common staples.
+- **Searching** (`--seed`, or `--list ... --optimize`): each start is the root of its own family.
+  The population (`--population 10`, split evenly, at least as many as that) is the starts and bigger
+  variations of them. Each of `--generations 4` generations, every deck plays the same `--screen 10`
+  games; in each family the top half survives with its games and the rest are replaced by changes
+  to that family's survivors (several cards at a time in the first half of the generations, then
+  one or two). For random starts a change is also a **group swap** (`deckgen.ts` `swapGroup`; half
+  of the changes in the first half of the generations, a quarter after): a partner Pokémon with its
+  whole line, or every copy of one Trainer or Special Energy, leaves, and cards from the pool come
+  in, each in the number of copies meta lists play. The pool of a random start has basic Energy of
+  the types the seed's line pays with and no others. Before the finalists are taken, each family's
+  best two play `--recheck 20` fresh games. A deck never moves to another family, so the run ends with different decks: the
+  finalists are the best deck of each family, and `deck.txt`, `finalist-2.txt`, `finalist-3.txt`
+  are one from each. `--out <name>` writes to another folder under the same `--name` (the starts
+  and the games depend on the name, so runs to compare share it). With one start (`--list`, `--start meta`) there is one family, as before. Ranking uses
+  the win rate pulled towards the win rate of all decks in the population together (four imaginary games), minus `--stuck-weight` × share of turns
+  stuck. The finalists (with one family: the best `--finalists 3` plus the starting list) then play
+  the same half of the `--games 120` final test; the best of them plays the other half, as does the
+  start of its family, for a paired before/after. Runners-up are saved as `finalist-2.txt`, `finalist-3.txt`.
+- **Flags, and changes aimed at them** (`diagnose.ts`, `deckgen.ts` `fixIssue`): every game records,
+  on each of the tested deck's turns, why it went nowhere, and how a lost game ended:
+  | flag | counted when |
+  |---|---|
+  | could not attack, no Energy to attach | no attack, nothing in play can pay for one, nothing attached from hand, no Energy in hand |
+  | could not attack, Energy attached but no attack paid for yet | no attack and nothing in play can pay, although an Energy was attached |
+  | could not attack, a Benched Pokémon was ready and the Active was not | as it says |
+  | dead hand | nothing played, put down, evolved or used but an Energy or a retreat, and no prize taken |
+  | no Benched Pokémon | at the end of the turn |
+  | lost with no Pokémon left in play / by running out of cards / on prize cards | how a lost game ended |
+
+  No attack flag is given on the first turn of the game, nor when the Active could have attacked
+  (the pilot's choice). Half of the search's changes (`--fix 0.5`) are aimed at a flag of the
+  parent deck, drawn by how often it came up in that deck's own games (a flag seen once is left
+  alone): a card from the pool whose text answers it comes in (basic Energy or Energy search; a card
+  that attaches extra Energy; a switch card or a smaller Retreat Cost; a card that draws; Basic
+  Pokémon or a card that finds them; a card that shuffles the discard pile back), in the number of
+  copies meta lists play, and the cards the deck used in the fewest of its games leave. A loss on
+  prize cards has no card change tied to it. The report has a section "Stuck causes and how games
+  were lost" for the final list and its starting list, and each generation line names the most
+  flagged issues over all decks.
 - **Which changes are tried** (`synergy.ts`): any legal one- or two-card swap, but the card added is
   weighted by how well it fits the deck and the card cut by how badly it fits the rest of it:
   co-occurrence in the meta lists, whether the deck's Energy pays its attacks (soft; abilities

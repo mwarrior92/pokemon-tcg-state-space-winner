@@ -1,0 +1,38 @@
+Pokémon: 23
+4 Kirlia ASC 88
+3 Ralts ASC 87
+2 Finizen PBL 21
+2 Mega Gardevoir ex ASC 89
+2 Serperior ex BLK 156
+2 Servine POR 5
+2 Snivy POR 4
+1 Incineroar ex TEF 34
+1 Litten TEF 32
+1 Mega Kangaskhan ex MEG 104
+1 Palafin ex TWM 193
+1 Shaymin DRI 10
+1 Torracat TEF 33
+
+Trainer: 17
+3 Air Balloon ASC 181
+3 Carmine TWM 145
+2 Hilda WHT 171
+2 Legendary Trench DLR 99
+1 Ciphermaniac's Codebreaking PRE 104
+1 Fennel BLK 82
+1 Gwynn PBL 109
+1 Lana's Aid TWM 219
+1 Rare Candy MEG 125
+1 Team Rocket's Petrel DRI 176
+1 Team Rocket's Watchtower DRI 180
+
+Energy: 20
+11 Psychic Energy MEE 13
+3 Water Energy MEE 11
+2 Grass Energy MEE 9
+1 Fire Energy MEE 10
+1 Growing [G] Energy POR 86
+1 Ignition Energy PFL 124
+1 Telepathic Psychic Energy POR 88
+
+Total Cards: 60

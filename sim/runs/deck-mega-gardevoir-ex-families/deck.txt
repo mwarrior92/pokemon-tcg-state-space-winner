@@ -1,0 +1,29 @@
+Pokémon: 24
+4 Kirlia ASC 88
+4 Ralts ASC 87
+3 Mega Audino ex ASC 253
+3 Mega Gardevoir ex ASC 89
+2 Scorbunny MEG 26
+2 Serperior POR 6
+2 Snivy POR 4
+1 Deino 30C 97
+1 Hydreigon 30C 99
+1 Mega Audino ex ASC 172
+1 Servine POR 5
+
+Trainer: 17
+4 Carmine TWM 145
+4 Team Rocket's Transceiver ASC 263
+2 Amarys PRE 93
+2 Cassiopeia SFA 94
+2 Kieran TWM 154
+1 Festival Grounds TWM 149
+1 Rare Candy MEG 125
+1 Tremendous Bomb PBL 113
+
+Energy: 19
+16 Psychic Energy MEE 13
+2 Jet Energy SSP 252
+1 Darkness Energy MEE 15
+
+Total Cards: 60

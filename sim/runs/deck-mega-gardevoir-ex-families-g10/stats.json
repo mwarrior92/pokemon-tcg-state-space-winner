@@ -1,0 +1,618 @@
+{
+ "name": "mega gardevoir ex families g10 (tested)",
+ "games": 120,
+ "wins": 15,
+ "winRate": 0.125,
+ "ci": [
+  0.07723428880969684,
+  0.19603091448225035
+ ],
+ "byMatchup": [
+  {
+   "opponent": "Dragapult",
+   "games": 34,
+   "wins": 1,
+   "rate": 0.029411764705882353
+  },
+  {
+   "opponent": "Basic Box",
+   "games": 10,
+   "wins": 2,
+   "rate": 0.2
+  },
+  {
+   "opponent": "N's Zoroark",
+   "games": 10,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Slowking",
+   "games": 9,
+   "wins": 3,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Hydrapple",
+   "games": 6,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Festival Lead",
+   "games": 6,
+   "wins": 2,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Alakazam Dudunsparce",
+   "games": 5,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Dragapult Dusknoir",
+   "games": 4,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Alakazam Dusknoir",
+   "games": 4,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Dragapult Blaziken",
+   "games": 4,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Dhelmise",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Crustle",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Mega Excadrill",
+   "games": 3,
+   "wins": 2,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Lopunny Dusknoir",
+   "games": 3,
+   "wins": 1,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Dragapult Dudunsparce",
+   "games": 2,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Honchkrow",
+   "games": 2,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Seaking Festival Lead",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Lucario Hariyama",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Clefairy Ogerpon",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Mewtwo",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Greninja",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Sharpedo Toxtricity",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Cynthia's Garchomp",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Lopunny Dudunsparce",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Lucario",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  }
+ ],
+ "endings": {
+  "lost: prizes": 44,
+  "lost: no Pokémon in play": 60,
+  "won: prizes": 14,
+  "won: deck out": 1,
+  "lost: deck out": 1
+ },
+ "turnsPerGame": 11.508333333333333,
+ "firstPrizeTurn": 4,
+ "prizesPerTurn": 0.24360902255639097,
+ "stuck": {
+  "idealShare": 0.0962406015037594,
+  "idealWin": 0.609375,
+  "nonIdealShare": 0.35789473684210527,
+  "stuckRate": 0.21301775147928995,
+  "entered": 90,
+  "enteredShare": 0.75,
+  "recovered": 0.1,
+  "expected": 0.2828255555555557,
+  "topStuck": [
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:yes exposed:none",
+    "turns": 49,
+    "stuckRate": 0.4583333333333333
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:yes exposed:none",
+    "turns": 29,
+    "stuckRate": 0.2857142857142857
+   },
+   {
+    "cat": "race:even ready:0-2 ko:no threat:no exposed:none",
+    "turns": 24,
+    "stuckRate": 0.20833333333333334
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:no exposed:none",
+    "turns": 13,
+    "stuckRate": 0.07692307692307693
+   }
+  ]
+ },
+ "attackers": [
+  {
+   "what": "attack Rapid-Fire Combo",
+   "who": "Mega Kangaskhan ex",
+   "prizes": 80,
+   "share": 0.49382716049382713,
+   "uses": 88
+  },
+  {
+   "what": "attack Mega Symphonia",
+   "who": "Mega Gardevoir ex",
+   "prizes": 66,
+   "share": 0.4074074074074074,
+   "uses": 78
+  },
+  {
+   "what": "attack Blaze Blast",
+   "who": "Incineroar ex",
+   "prizes": 4,
+   "share": 0.024691358024691357,
+   "uses": 4
+  },
+  {
+   "what": "attack Solar Cutter",
+   "who": "Servine",
+   "prizes": 3,
+   "share": 0.018518518518518517,
+   "uses": 18
+  },
+  {
+   "what": "attack Smash Kick",
+   "who": "Shaymin",
+   "prizes": 3,
+   "share": 0.018518518518518517,
+   "uses": 12
+  },
+  {
+   "what": "attack Bite",
+   "who": "Torracat",
+   "prizes": 2,
+   "share": 0.012345679012345678,
+   "uses": 11
+  },
+  {
+   "what": "attack Grass Order",
+   "who": "Serperior ex",
+   "prizes": 2,
+   "share": 0.012345679012345678,
+   "uses": 2
+  },
+  {
+   "what": "attack Reckless Charge",
+   "who": "Snivy",
+   "prizes": 1,
+   "share": 0.006172839506172839,
+   "uses": 12
+  },
+  {
+   "what": "attack Psyshot",
+   "who": "Kirlia",
+   "prizes": 1,
+   "share": 0.006172839506172839,
+   "uses": 6
+  },
+  {
+   "what": "attack Call Sign",
+   "who": "Kirlia",
+   "prizes": 0,
+   "share": 0,
+   "uses": 28
+  },
+  {
+   "what": "attack Collect",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 22
+  },
+  {
+   "what": "attack Overflowing Wishes",
+   "who": "Mega Gardevoir ex",
+   "prizes": 0,
+   "share": 0,
+   "uses": 19
+  },
+  {
+   "what": "attack Headbutt",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 11
+  },
+  {
+   "what": "attack Draining Fin",
+   "who": "Finizen",
+   "prizes": 0,
+   "share": 0,
+   "uses": 1
+  },
+  {
+   "what": "attack Fake Out",
+   "who": "Litten",
+   "prizes": 0,
+   "share": 0,
+   "uses": 1
+  }
+ ],
+ "opening": [
+  {
+   "action": "tool Air Balloon",
+   "share": 0.6
+  },
+  {
+   "action": "play Carmine",
+   "share": 0.39166666666666666
+  },
+  {
+   "action": "ability Run Errand (Mega Kangaskhan ex)",
+   "share": 0.325
+  },
+  {
+   "action": "attach Psychic Energy to Mega Kangaskhan ex",
+   "share": 0.2916666666666667
+  },
+  {
+   "action": "bench Ralts",
+   "share": 0.2916666666666667
+  },
+  {
+   "action": "evolve Kirlia",
+   "share": 0.2833333333333333
+  },
+  {
+   "action": "retreat",
+   "share": 0.25833333333333336
+  },
+  {
+   "action": "attach Psychic Energy to Ralts",
+   "share": 0.20833333333333334
+  }
+ ],
+ "winCards": [
+  {
+   "card": "Psychic Energy",
+   "wins": 4.866666666666666,
+   "losses": 2.419047619047619
+  },
+  {
+   "card": "Water Energy",
+   "wins": 1.6,
+   "losses": 0.5619047619047619
+  },
+  {
+   "card": "Kirlia",
+   "wins": 1.4,
+   "losses": 0.5904761904761905
+  },
+  {
+   "card": "Air Balloon",
+   "wins": 1.7333333333333334,
+   "losses": 1.0476190476190477
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "wins": 0.8666666666666667,
+   "losses": 0.20952380952380953
+  },
+  {
+   "card": "Ralts",
+   "wins": 1.2,
+   "losses": 0.6
+  }
+ ],
+ "usage": [
+  {
+   "card": "Legendary Trench",
+   "copies": 2,
+   "games": 0,
+   "perGame": 0,
+   "noEffect": 0
+  },
+  {
+   "card": "Palafin ex",
+   "copies": 1,
+   "games": 0,
+   "perGame": 0,
+   "noEffect": 0
+  },
+  {
+   "card": "Finizen",
+   "copies": 2,
+   "games": 0.008333333333333333,
+   "perGame": 0.008333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Incineroar ex",
+   "copies": 1,
+   "games": 0.016666666666666666,
+   "perGame": 0.05,
+   "noEffect": 0
+  },
+  {
+   "card": "Shaymin",
+   "copies": 1,
+   "games": 0.05,
+   "perGame": 0.1,
+   "noEffect": 0
+  },
+  {
+   "card": "Fennel",
+   "copies": 1,
+   "games": 0.1,
+   "perGame": 0.1,
+   "noEffect": 0
+  },
+  {
+   "card": "Torracat",
+   "copies": 1,
+   "games": 0.1,
+   "perGame": 0.20833333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Litten",
+   "copies": 1,
+   "games": 0.10833333333333334,
+   "perGame": 0.10833333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Serperior ex",
+   "copies": 2,
+   "games": 0.11666666666666667,
+   "perGame": 0.13333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Ignition Energy",
+   "copies": 1,
+   "games": 0.13333333333333333,
+   "perGame": 0.13333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Rare Candy",
+   "copies": 1,
+   "games": 0.13333333333333333,
+   "perGame": 0.13333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Fire Energy",
+   "copies": 1,
+   "games": 0.2,
+   "perGame": 0.2,
+   "noEffect": 0
+  },
+  {
+   "card": "Team Rocket's Watchtower",
+   "copies": 1,
+   "games": 0.20833333333333334,
+   "perGame": 0.20833333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Ciphermaniac's Codebreaking",
+   "copies": 1,
+   "games": 0.225,
+   "perGame": 0.225,
+   "noEffect": 0
+  },
+  {
+   "card": "Growing [G] Energy",
+   "copies": 1,
+   "games": 0.23333333333333334,
+   "perGame": 0.23333333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Lana's Aid",
+   "copies": 1,
+   "games": 0.25833333333333336,
+   "perGame": 0.25833333333333336,
+   "noEffect": 0
+  },
+  {
+   "card": "Telepathic Psychic Energy",
+   "copies": 1,
+   "games": 0.25833333333333336,
+   "perGame": 0.25833333333333336,
+   "noEffect": 0
+  },
+  {
+   "card": "Gwynn",
+   "copies": 1,
+   "games": 0.275,
+   "perGame": 0.275,
+   "noEffect": 0
+  },
+  {
+   "card": "Team Rocket's Petrel",
+   "copies": 1,
+   "games": 0.275,
+   "perGame": 0.275,
+   "noEffect": 0
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "copies": 2,
+   "games": 0.31666666666666665,
+   "perGame": 1.1,
+   "noEffect": 0
+  },
+  {
+   "card": "Hilda",
+   "copies": 2,
+   "games": 0.3416666666666667,
+   "perGame": 0.43333333333333335,
+   "noEffect": 0
+  },
+  {
+   "card": "Servine",
+   "copies": 2,
+   "games": 0.35,
+   "perGame": 0.6916666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Grass Energy",
+   "copies": 2,
+   "games": 0.35833333333333334,
+   "perGame": 0.4083333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Mega Kangaskhan ex",
+   "copies": 1,
+   "games": 0.36666666666666664,
+   "perGame": 1.9333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Snivy",
+   "copies": 2,
+   "games": 0.375,
+   "perGame": 0.525,
+   "noEffect": 0
+  },
+  {
+   "card": "Kirlia",
+   "copies": 4,
+   "games": 0.4583333333333333,
+   "perGame": 1.2666666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Water Energy",
+   "copies": 3,
+   "games": 0.48333333333333334,
+   "perGame": 0.6916666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Ralts",
+   "copies": 3,
+   "games": 0.5333333333333333,
+   "perGame": 0.9666666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Carmine",
+   "copies": 3,
+   "games": 0.6083333333333333,
+   "perGame": 0.7416666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Air Balloon",
+   "copies": 3,
+   "games": 0.75,
+   "perGame": 1.1333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Psychic Energy",
+   "copies": 11,
+   "games": 0.8,
+   "perGame": 2.725,
+   "noEffect": 0
+  }
+ ],
+ "lossCards": [
+  {
+   "card": "Snivy",
+   "wins": 0.4,
+   "losses": 0.5523809523809524
+  },
+  {
+   "card": "Growing [G] Energy",
+   "wins": 0.13333333333333333,
+   "losses": 0.24761904761904763
+  },
+  {
+   "card": "Ignition Energy",
+   "wins": 0.06666666666666667,
+   "losses": 0.14285714285714285
+  },
+  {
+   "card": "Finizen",
+   "wins": 0.3333333333333333,
+   "losses": 0.3904761904761905
+  }
+ ]
+}

@@ -1,0 +1,30 @@
+Pokémon: 21
+4 Kirlia ASC 88
+4 Ralts ASC 87
+4 Terapagos SSP 161
+3 Raging Bolt ex TEF 123
+2 Mega Gardevoir ex ASC 89
+1 Applin TWM 17
+1 Dipplin TWM 18
+1 Hydrapple ex PRE 11
+1 Nincada MEG 16
+
+Trainer: 26
+4 Emcee's Hype DRI 163
+4 Rust Syndicate Grunt PBL 81
+3 Counter Gain ASC 259
+3 N's Plan BLK 83
+3 Pokémon Center Lady CPA 60
+2 Night Stretcher SSP 251
+2 Rescue Board TEF 159
+1 Antique Plume Fossil WHT 79
+1 Brilliant Blender SSP 164
+1 Payapa Berry SCR 141
+1 Rare Candy MEG 125
+1 Ultra Ball MEG 131
+
+Energy: 13
+11 Psychic Energy MEE 13
+2 Rocky Fighting Energy POR 87
+
+Total Cards: 60

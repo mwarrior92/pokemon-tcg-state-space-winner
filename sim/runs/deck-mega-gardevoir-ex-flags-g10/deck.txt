@@ -1,0 +1,26 @@
+Pokémon: 17
+4 Kirlia ASC 88
+4 Mega Kangaskhan ex MEG 104
+4 Ralts ASC 87
+3 Mega Gardevoir ex ASC 89
+1 Applin TWM 17
+1 Dipplin TWM 18
+
+Trainer: 25
+4 Emcee's Hype DRI 163
+4 N's Plan BLK 83
+3 Pokémon Center Lady CPA 60
+3 Rust Syndicate Grunt PBL 81
+2 Air Balloon ASC 181
+2 Counter Gain ASC 259
+2 Night Stretcher SSP 251
+2 Rescue Board TEF 159
+1 Brock's Scouting JTG 146
+1 Crispin SCR 133
+1 Ultra Ball MEG 131
+
+Energy: 18
+15 Psychic Energy MEE 13
+3 Rocky Fighting Energy POR 87
+
+Total Cards: 60

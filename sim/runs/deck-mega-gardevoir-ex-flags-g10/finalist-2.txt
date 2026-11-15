@@ -1,0 +1,34 @@
+Pokémon: 26
+4 Kirlia ASC 88
+4 Ralts ASC 87
+3 Serperior ex BLK 156
+3 Servine POR 5
+3 Snivy POR 4
+2 Latias ex SSP 76
+2 Mega Gardevoir ex ASC 89
+1 Chi-Yu TWM 39
+1 Incineroar ex TEF 34
+1 Litten TEF 32
+1 Shaymin DRI 10
+1 Torracat TEF 33
+
+Trainer: 22
+4 Carmine TWM 145
+4 Ciphermaniac's Codebreaking PRE 104
+2 Battle Cage PFL 85
+2 Gwynn PBL 109
+2 Gwynn PBL 78
+2 Hilda WHT 171
+1 Fennel BLK 82
+1 Legendary Trench DLR 99
+1 Lucky Helmet TWM 158
+1 N's Plan BLK 83
+1 Rare Candy MEG 125
+1 Special Red Card CRI 82
+
+Energy: 12
+9 Psychic Energy MEE 13
+2 Ignition Energy PFL 124
+1 Telepathic Psychic Energy POR 88
+
+Total Cards: 60

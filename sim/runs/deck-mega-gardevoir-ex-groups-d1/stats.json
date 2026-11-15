@@ -1,0 +1,514 @@
+{
+ "name": "mega gardevoir ex groups d1 (tested)",
+ "games": 120,
+ "wins": 28,
+ "winRate": 0.23333333333333334,
+ "ci": [
+  0.16665469513089648,
+  0.31655611609893264
+ ],
+ "byMatchup": [
+  {
+   "opponent": "Dragapult",
+   "games": 34,
+   "wins": 6,
+   "rate": 0.17647058823529413
+  },
+  {
+   "opponent": "Basic Box",
+   "games": 10,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "N's Zoroark",
+   "games": 10,
+   "wins": 2,
+   "rate": 0.2
+  },
+  {
+   "opponent": "Slowking",
+   "games": 9,
+   "wins": 3,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Hydrapple",
+   "games": 6,
+   "wins": 1,
+   "rate": 0.16666666666666666
+  },
+  {
+   "opponent": "Festival Lead",
+   "games": 6,
+   "wins": 3,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Alakazam Dudunsparce",
+   "games": 5,
+   "wins": 1,
+   "rate": 0.2
+  },
+  {
+   "opponent": "Dragapult Dusknoir",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Alakazam Dusknoir",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Dragapult Blaziken",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Dhelmise",
+   "games": 4,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Crustle",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Mega Excadrill",
+   "games": 3,
+   "wins": 1,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Lopunny Dusknoir",
+   "games": 3,
+   "wins": 1,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Dragapult Dudunsparce",
+   "games": 2,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Honchkrow",
+   "games": 2,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Seaking Festival Lead",
+   "games": 2,
+   "wins": 2,
+   "rate": 1
+  },
+  {
+   "opponent": "Lucario Hariyama",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Clefairy Ogerpon",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Mewtwo",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Greninja",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Sharpedo Toxtricity",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Cynthia's Garchomp",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Lopunny Dudunsparce",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Lucario",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  }
+ ],
+ "endings": {
+  "won: prizes": 20,
+  "lost: prizes": 60,
+  "lost: no Pokémon in play": 32,
+  "won: deck out": 8
+ },
+ "turnsPerGame": 16.766666666666666,
+ "firstPrizeTurn": 5,
+ "prizesPerTurn": 0.1926977687626775,
+ "stuck": {
+  "idealShare": 0.09127789046653144,
+  "idealWin": 0.8222222222222222,
+  "nonIdealShare": 0.45030425963488846,
+  "stuckRate": 0.37637362637362637,
+  "entered": 104,
+  "enteredShare": 0.8666666666666667,
+  "recovered": 0.16346153846153846,
+  "expected": 0.27226346153846165,
+  "topStuck": [
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:yes exposed:none",
+    "turns": 80,
+    "stuckRate": 0.6888888888888889
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:yes exposed:none",
+    "turns": 65,
+    "stuckRate": 0.41818181818181815
+   },
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:no exposed:none",
+    "turns": 35,
+    "stuckRate": 0.6363636363636364
+   },
+   {
+    "cat": "race:even ready:1-2 ko:no threat:no exposed:no",
+    "turns": 25,
+    "stuckRate": 0.44
+   }
+  ]
+ },
+ "attackers": [
+  {
+   "what": "attack Mega Symphonia",
+   "who": "Mega Gardevoir ex",
+   "prizes": 142,
+   "share": 0.7473684210526316,
+   "uses": 146
+  },
+  {
+   "what": "attack Overwhelming Pain",
+   "who": "Trevenant",
+   "prizes": 37,
+   "share": 0.19473684210526315,
+   "uses": 63
+  },
+  {
+   "what": "attack Cursed Roots",
+   "who": "Trevenant",
+   "prizes": 8,
+   "share": 0.042105263157894736,
+   "uses": 43
+  },
+  {
+   "what": "attack Psyshot",
+   "who": "Kirlia",
+   "prizes": 3,
+   "share": 0.015789473684210527,
+   "uses": 9
+  },
+  {
+   "what": "attack Overflowing Wishes",
+   "who": "Mega Gardevoir ex",
+   "prizes": 0,
+   "share": 0,
+   "uses": 46
+  },
+  {
+   "what": "attack Call Sign",
+   "who": "Kirlia",
+   "prizes": 0,
+   "share": 0,
+   "uses": 33
+  },
+  {
+   "what": "attack Collect",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 24
+  },
+  {
+   "what": "attack Mumble",
+   "who": "Phantump",
+   "prizes": 0,
+   "share": 0,
+   "uses": 23
+  },
+  {
+   "what": "attack Headbutt",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 15
+  }
+ ],
+ "opening": [
+  {
+   "action": "play Poké Ball",
+   "share": 0.5166666666666667
+  },
+  {
+   "action": "evolve Kirlia",
+   "share": 0.48333333333333334
+  },
+  {
+   "action": "bench Tangela",
+   "share": 0.4666666666666667
+  },
+  {
+   "action": "evolve Tangrowth",
+   "share": 0.45
+  },
+  {
+   "action": "play Pokémon Catcher",
+   "share": 0.43333333333333335
+  },
+  {
+   "action": "bench Ralts",
+   "share": 0.43333333333333335
+  },
+  {
+   "action": "tool Handheld Fan",
+   "share": 0.4083333333333333
+  },
+  {
+   "action": "attach Psychic Energy to Ralts",
+   "share": 0.35833333333333334
+  }
+ ],
+ "winCards": [
+  {
+   "card": "Psychic Energy",
+   "wins": 3.9285714285714284,
+   "losses": 2.4347826086956523
+  },
+  {
+   "card": "Kirlia",
+   "wins": 2.142857142857143,
+   "losses": 1.184782608695652
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "wins": 1.2857142857142858,
+   "losses": 0.532608695652174
+  },
+  {
+   "card": "Pokémon Catcher",
+   "wins": 1.7142857142857142,
+   "losses": 1.1304347826086956
+  },
+  {
+   "card": "Switch",
+   "wins": 1.1071428571428572,
+   "losses": 0.5434782608695652
+  },
+  {
+   "card": "Dawn",
+   "wins": 1.1071428571428572,
+   "losses": 0.5543478260869565
+  }
+ ],
+ "usage": [
+  {
+   "card": "Strange Timepiece",
+   "copies": 1,
+   "games": 0.041666666666666664,
+   "perGame": 0.041666666666666664,
+   "noEffect": 0
+  },
+  {
+   "card": "Rare Candy",
+   "copies": 1,
+   "games": 0.11666666666666667,
+   "perGame": 0.11666666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Special Red Card",
+   "copies": 1,
+   "games": 0.15,
+   "perGame": 0.15,
+   "noEffect": 0
+  },
+  {
+   "card": "Battle Cage",
+   "copies": 1,
+   "games": 0.19166666666666668,
+   "perGame": 0.19166666666666668,
+   "noEffect": 0
+  },
+  {
+   "card": "Wondrous Patch",
+   "copies": 1,
+   "games": 0.2,
+   "perGame": 0.2,
+   "noEffect": 0
+  },
+  {
+   "card": "Kieran",
+   "copies": 1,
+   "games": 0.30833333333333335,
+   "perGame": 0.30833333333333335,
+   "noEffect": 0
+  },
+  {
+   "card": "Kofu",
+   "copies": 2,
+   "games": 0.5,
+   "perGame": 0.6333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Rescue Board",
+   "copies": 2,
+   "games": 0.5083333333333333,
+   "perGame": 0.6,
+   "noEffect": 0
+  },
+  {
+   "card": "Switch",
+   "copies": 3,
+   "games": 0.5166666666666667,
+   "perGame": 0.675,
+   "noEffect": 0
+  },
+  {
+   "card": "Telepathic Psychic Energy",
+   "copies": 2,
+   "games": 0.5166666666666667,
+   "perGame": 0.6166666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Dawn",
+   "copies": 2,
+   "games": 0.5416666666666666,
+   "perGame": 0.6833333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Trevenant",
+   "copies": 2,
+   "games": 0.575,
+   "perGame": 1.5416666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "copies": 2,
+   "games": 0.5916666666666667,
+   "perGame": 2.308333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Brock's Scouting",
+   "copies": 3,
+   "games": 0.6,
+   "perGame": 0.8333333333333334,
+   "noEffect": 2
+  },
+  {
+   "card": "Handheld Fan",
+   "copies": 3,
+   "games": 0.6833333333333333,
+   "perGame": 0.9916666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Phantump",
+   "copies": 2,
+   "games": 0.6833333333333333,
+   "perGame": 1.025,
+   "noEffect": 0
+  },
+  {
+   "card": "Poké Ball",
+   "copies": 4,
+   "games": 0.7583333333333333,
+   "perGame": 1.2,
+   "noEffect": 0
+  },
+  {
+   "card": "Kirlia",
+   "copies": 4,
+   "games": 0.7916666666666666,
+   "perGame": 2.466666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Pokémon Catcher",
+   "copies": 4,
+   "games": 0.7916666666666666,
+   "perGame": 1.2666666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Tangela",
+   "copies": 3,
+   "games": 0.8083333333333333,
+   "perGame": 1.1083333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Tangrowth",
+   "copies": 2,
+   "games": 0.8083333333333333,
+   "perGame": 1.1083333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Ralts",
+   "copies": 4,
+   "games": 0.8583333333333333,
+   "perGame": 1.7333333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Psychic Energy",
+   "copies": 10,
+   "games": 0.9333333333333333,
+   "perGame": 2.783333333333333,
+   "noEffect": 0
+  }
+ ],
+ "lossCards": [
+  {
+   "card": "Special Red Card",
+   "wins": 0.10714285714285714,
+   "losses": 0.16304347826086957
+  },
+  {
+   "card": "Wondrous Patch",
+   "wins": 0.17857142857142858,
+   "losses": 0.20652173913043478
+  },
+  {
+   "card": "Tangela",
+   "wins": 1.3214285714285714,
+   "losses": 1.3478260869565217
+  }
+ ]
+}

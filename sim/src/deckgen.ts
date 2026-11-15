@@ -7,6 +7,10 @@
 //     lines of that stage (Rare Candy for a Stage 2 as often as they do), basic Energy for the line's
 //     attack costs in the usual amount, then the staples (cards played across many archetypes) in
 //     their usual counts until 60 cards.
+// Random starts (randomStarts): several starting decks around the same seed that share nothing but
+// the seed's line and its Energy: every other card is drawn uniformly from all Standard cards and
+// kept if the rules check (usability.ts) says the deck can use it. Each start is the root of its
+// own family in the search (cli/deckbuilder.ts).
 // The optimiser's changes swap one copy for a card from a pool (staples, cards played next to the
 // deck's Pokémon in meta lists, the line's own cards, basic Energy of the line's types), move a
 // copy between two cards of the deck, or trade a Trainer for an Energy. The seed's line keeps at
@@ -14,6 +18,7 @@
 import { Card, CardTag, CardType, EnergyCard, PokemonCard, Stage, SuperType } from './engine';
 import { Deck, allCards, buildDeck, cardsNamed, loadCards, loadMetaLists, normName } from './cards';
 import { checkLegal, engineCard, isBasicEnergy, standardNames } from './decklist';
+import { ISSUE_TEXT, Issue, remedies } from './diagnose';
 import { Rng } from './rng';
 import { cutWeight, fit, profile } from './synergy';
 import { deckFacts, sideEffect, unusableCards, whyUnusable } from './usability';
@@ -142,7 +147,8 @@ function printingOf(name: string): Card | undefined {
 export function lineOf(seed: Card): Card[] {
   const out: Card[] = [seed];
   let cur = seed as PokemonCard;
-  for (let guard = 0; guard < 3 && cur instanceof PokemonCard && cur.evolvesFrom; guard++) {
+  // (a Basic is where the line starts, whatever its data says: the engine's Meltan SCR "evolves from Meltan")
+  for (let guard = 0; guard < 3 && cur instanceof PokemonCard && cur.evolvesFrom && cur.stage !== Stage.BASIC; guard++) {
     const prev = printingOf(cur.evolvesFrom);
     if (!prev) {
       break;
@@ -164,11 +170,38 @@ function basicEnergy(t: CardType): Card | undefined {
   return name ? cardsNamed(name).find(c => c instanceof EnergyCard && isBasicEnergy(c)) : undefined;
 }
 
+/** The seed's line in the counts meta lists use for lines of its stage (Rare Candy for a Stage 2). */
+function lineKit(seed: Card, line: Card[], s: MetaStats): [Card | undefined, number][] {
+  const stage = (seed as PokemonCard).stage;
+  if (stage === Stage.STAGE_2 && line.length === 3) {
+    const [b, m, t, candy] = s.lineCounts.stage2;
+    return [[line[0], b], [line[1], m], [line[2], t], [printingOf('Rare Candy'), candy]];
+  }
+  if (stage === Stage.STAGE_1 && line.length === 2) {
+    const [b, t] = s.lineCounts.stage1;
+    return [[line[0], b], [line[1], t]];
+  }
+  return line.map(c => [c, c === seed ? 4 : 3]);
+}
+
+/** basic Energy types the line's attacks cost, with how often each appears */
+function lineEnergy(line: Card[]): Map<CardType, number> {
+  const need = new Map<CardType, number>();
+  line.forEach(c => (c as PokemonCard).attacks?.forEach(a => a.cost.forEach(t => {
+    if (ENERGY_NAME[t]) {
+      need.set(t, (need.get(t) ?? 0) + 1);
+    }
+  })));
+  return need;
+}
+
 export interface SeedDeck {
   cards: string[];
   core: Map<string, number>;     // card -> minimum copies the optimiser keeps
   how: string;
   pool: string[];
+  /** random starts: the basic Energy types the seed's line pays with; the search adds no others */
+  energyTypes?: CardType[];
   /** other meta lists that play the seed (other archetypes first), as extra starting points */
   alternatives: { cards: string[]; what: string }[];
 }
@@ -190,8 +223,11 @@ export function findSeed(query: string): Card {
 }
 
 /** Cards the optimiser may add: staples, cards played next to the deck's Pokémon in meta lists, the
- *  deck's own cards, basic Energy of the types its attacks need. */
-export function candidatePool(cards: string[]): string[] {
+ *  deck's own cards, basic Energy of the types its attacks need.
+ *  `energyTypes` (random starts): the only basic Energy types allowed in the pool. Without it every
+ *  Pokémon in the list brings the Energy of its attack costs in, and so does every meta list that
+ *  shares a Pokémon with it: a random partner then pulls the deck towards three or four types. */
+export function candidatePool(cards: string[], energyTypes?: CardType[]): string[] {
   const s = metaStats();
   const mine = new Set(cards);
   const pokes = new Set(cards.filter(n => engineCard(n) instanceof PokemonCard).map(n => engineCard(n)!.name));
@@ -215,7 +251,11 @@ export function candidatePool(cards: string[]): string[] {
       }));
     }
   }
-  return [...pool].filter(n => standardNames().has(n) || isBasicEnergy(engineCard(n)));
+  const allowed = energyTypes?.length ? new Set(energyTypes.map(t => basicEnergy(t)?.name)) : undefined;
+  return [...pool].filter(n => {
+    const c = engineCard(n);
+    return isBasicEnergy(c) ? !allowed || allowed.has(c!.name) : standardNames().has(n);
+  });
 }
 
 export function seedDeck(seedQuery: string): SeedDeck {
@@ -256,27 +296,9 @@ export function seedDeck(seedQuery: string): SeedDeck {
       cards.push(c.fullName);
     }
   };
-  const stage = (seed as PokemonCard).stage;
-  if (stage === Stage.STAGE_2 && line.length === 3) {
-    const [b, m, t, candy] = s.lineCounts.stage2;
-    add(line[0], b);
-    add(line[1], m);
-    add(line[2], t);
-    add(printingOf('Rare Candy'), candy);
-  } else if (stage === Stage.STAGE_1 && line.length === 2) {
-    const [b, t] = s.lineCounts.stage1;
-    add(line[0], b);
-    add(line[1], t);
-  } else {
-    line.forEach(c => add(c, c === seed ? 4 : 3));
-  }
+  lineKit(seed, line, s).forEach(([c, k]) => add(c, k));
   // Energy for the line's attack costs
-  const need = new Map<CardType, number>();
-  line.forEach(c => (c as PokemonCard).attacks?.forEach(a => a.cost.forEach(t => {
-    if (ENERGY_NAME[t]) {
-      need.set(t, (need.get(t) ?? 0) + 1);
-    }
-  })));
+  const need = lineEnergy(line);
   const total = [...need.values()].reduce((x, y) => x + y, 0);
   const energyCount = total ? s.basicEnergyCount : 0;
   const energies: [Card | undefined, number][] = [...need].map(([t, k]) => [basicEnergy(t), Math.max(1, Math.round(energyCount * k / total))]);
@@ -352,6 +374,117 @@ export function seedDeck(seedQuery: string): SeedDeck {
     pool: candidatePool(cards),
     alternatives: [],
   };
+}
+
+/** `n` starting decks around the seed card that are as different as 60-card decks around one card
+ *  can be: each has the seed's line in its usual counts and basic Energy for the line's attack costs
+ *  (a random amount); every other card is drawn uniformly at random from all Standard cards - any
+ *  card the rules check says the deck can use, in a random number of copies, a Pokémon with the rest
+ *  of its line. No card outside the seed's line, Rare Candy and basic Energy is in two of the decks.
+ *  Nothing here looks at what the meta plays: most of these decks are weak, and the search is what
+ *  finds the good ones.
+ *  `shaped` (the default): two of three Standard cards are Pokémon, so a draw from all cards alike
+ *  gives 40 Pokémon and half a dozen Trainers. Shaped, each start first draws how many other Pokémon
+ *  cards it takes (8 to 20); the rest are Trainers and Special Energy. Within each kind every card
+ *  is as likely as any other. */
+export function randomStarts(seedQuery: string, n: number, rng: Rng, shaped = true): SeedDeck[] {
+  const s = metaStats();
+  const seed = findSeed(seedQuery);
+  const line = lineOf(seed);
+  const core = new Map<string, number>();
+  line.forEach(c => core.set(c.fullName, 1));
+  core.set(seed.fullName, 2);
+  const kit = lineKit(seed, line, s).filter((x): x is [Card, number] => !!x[0]);
+  const need = lineEnergy(line);
+  const needTotal = [...need.values()].reduce((x, y) => x + y, 0);
+  const everything = [...standardNames()].filter(nm => engineCard(nm) && !isBasicEnergy(engineCard(nm))).sort();
+  const pokemon = everything.filter(nm => engineCard(nm) instanceof PokemonCard), others = everything.filter(nm => !(engineCard(nm) instanceof PokemonCard));
+  const shared = new Set(kit.map(([c]) => c.name));     // card names every start has
+  const taken = new Set<string>();                      // card names another start has
+  const out: SeedDeck[] = [];
+  for (let d = 0; d < n; d++) {
+    const cards: string[] = [];
+    kit.forEach(([c, k]) => {
+      for (let i = 0; i < k; i++) {
+        cards.push(c.fullName);
+      }
+    });
+    // Energy first, so the rules check knows what the deck can pay for
+    const energyCount = needTotal ? rng.int(6, 14) : 0;
+    need.forEach((k, t) => {
+      const e = basicEnergy(t);
+      for (let i = 0; e && i < Math.max(1, Math.round(energyCount * k / needTotal)); i++) {
+        cards.push(e.fullName);
+      }
+    });
+    const picked: string[] = [];                        // what the draw added, by card name
+    const has = (name: string) => cards.some(x => engineCard(x)?.name === name);
+    const free = (name: string) => !shared.has(name) && !taken.has(name) && !has(name);
+    const budget = rng.int(8, 20);
+    let drawnPokemon = 0;
+    const draw = (): void => {
+      const c = engineCard(rng.pick(!shaped ? everything : drawnPokemon < budget && rng.chance(0.5) ? pokemon : others))!;
+      // a Pokémon comes with the stages below it, each in the same number of copies
+      const group = (c instanceof PokemonCard ? lineOf(c) : [c]).filter((g, i, a) => a.findIndex(x => x.name === g.name) === i);
+      if (!group.every(g => free(g.name)) || (c instanceof PokemonCard && c.evolvesFrom && group.length < 2)) {
+        return;
+      }
+      const aceSpec = c.tags.includes(CardTag.ACE_SPEC);
+      if (aceSpec && cards.some(x => engineCard(x)?.tags.includes(CardTag.ACE_SPEC))) {
+        return;
+      }
+      const room = Math.min(60 - cards.length, shaped && c instanceof PokemonCard ? budget - drawnPokemon : 60);
+      const k = Math.min(aceSpec ? 1 : rng.int(1, group.length > 1 ? 3 : 4), Math.floor(room / group.length));
+      if (k < 1) {
+        return;
+      }
+      const added = group.flatMap(g => Array.from({ length: k }, () => g.fullName));
+      const facts = deckFacts([...cards, ...added]);
+      if (group.some(g => whyUnusable(g.fullName, facts))) {
+        return;
+      }
+      cards.push(...added);
+      picked.push(c.name);
+      drawnPokemon += c instanceof PokemonCard ? added.length : 0;
+    };
+    // fill, then take out what the finished list cannot use after all (never the seed's line) and fill again
+    const kitNames = new Set(kit.map(([c]) => c.fullName));
+    for (let round = 0; round < 6; round++) {
+      for (let guard = 0; cards.length < 60 && guard < 4000; guard++) {
+        draw();
+      }
+      const bad = new Set(unusableCards(cards).filter(u => !kitNames.has(u.card)).map(u => u.card));
+      if (!bad.size) {
+        break;
+      }
+      for (let i = cards.length - 1; i >= 0; i--) {
+        if (bad.has(cards[i])) {
+          drawnPokemon -= engineCard(cards[i]) instanceof PokemonCard ? 1 : 0;
+          cards.splice(i, 1);
+        }
+      }
+    }
+    // a few cards short after all that: basic Energy
+    const spare = basicEnergy([...need.keys()][0] ?? CardType.GRASS);
+    while (cards.length < 60 && spare) {
+      cards.push(spare.fullName);
+    }
+    cards.forEach(x => {
+      const c = engineCard(x);
+      if (c && !shared.has(c.name) && !isBasicEnergy(c)) {
+        taken.add(c.name);
+      }
+    });
+    const kept = picked.filter(has);
+    out.push({
+      cards, core,
+      how: `random start ${d + 1}: ${line.map(c => c.name).join(' -> ')} with ${cards.filter(x => isBasicEnergy(engineCard(x))).length} basic Energy and ${kept.length} cards drawn at random from all of Standard (${kept.join(', ')})`,
+      pool: candidatePool(cards, [...need.keys()]),
+      energyTypes: [...need.keys()],
+      alternatives: [],
+    });
+  }
+  return out;
 }
 
 export interface Change {
@@ -453,6 +586,173 @@ export function mutateN(cards: string[], pool: string[], core: Map<string, numbe
     }
   }
   return cur;
+}
+
+/** A big change for a rough list (a random start): one whole group leaves the deck - a partner
+ *  Pokémon with the rest of its line, or every copy of one Trainer or Special Energy - and cards from
+ *  the pool take its place, each in the number of copies meta lists play (a Pokémon with its line).
+ *  A family can leave its thirty random cards in a few such steps; one copy at a time it cannot.
+ *  The group that leaves is more likely one that fits the rest badly or cannot be used; the cards
+ *  that come in are picked by fit, as in `mutate`. The seed's line (`core`) is never touched. */
+export function swapGroup(cards: string[], pool: string[], core: Map<string, number>, rng: Rng): Change | undefined {
+  const s = metaStats();
+  const nameOf = (n: string) => engineCard(n)?.name ?? n;
+  const coreNames = new Set([...core.keys()].map(nameOf));
+  const printings = new Map<string, number>();
+  new Set(pool).forEach(n => printings.set(nameOf(n), (printings.get(nameOf(n)) ?? 0) + 1));
+  const baseBad = unusableCards(cards).length;
+  const facts0 = deckFacts(cards);
+  // the groups, as sets of card names
+  const distinct = [...new Set(cards)];
+  const pokes = distinct.map(n => engineCard(n)).filter((c): c is PokemonCard => c instanceof PokemonCard);
+  const below = new Set(pokes.filter(c => c.stage !== Stage.BASIC).map(c => c.evolvesFrom).filter(Boolean));
+  const tops = pokes.filter(c => !below.has(c.name));
+  const lines = tops.map(c => new Set(lineOf(c).map(x => x.name)));
+  const groups: Set<string>[] = [];
+  lines.forEach((ln, i) => {
+    // not the seed's line, and not a stage another line of the deck also stands on
+    const own = new Set([...ln].filter(nm => !coreNames.has(nm) && !lines.some((o, j) => j !== i && o.has(nm))));
+    if (own.size && !coreNames.has(tops[i].name)) {
+      groups.push(own);
+    }
+  });
+  distinct.forEach(n => {
+    const c = engineCard(n);
+    if (c && !(c instanceof PokemonCard) && !isBasicEnergy(c) && !coreNames.has(c.name) && !groups.some(g => g.has(c.name))) {
+      groups.push(new Set([c.name]));
+    }
+  });
+  if (!groups.length) {
+    return undefined;
+  }
+  const groupWeight = (g: Set<string>) => {
+    const mine = distinct.filter(n => g.has(nameOf(n)));
+    const w = mine.reduce((x, n) => x + cutWeight(n, cards), 0) / Math.max(1, mine.length);
+    return w * (mine.some(n => whyUnusable(n, facts0)) ? 20 : 1);
+  };
+  const weights = new Map(groups.map(g => [g, groupWeight(g)]));
+  for (let tries = 0; tries < 20; tries++) {
+    const out = pickWeighted(rng, groups, g => weights.get(g)!)!;
+    const next = cards.filter(n => !out.has(nameOf(n)));
+    const gone = cards.length - next.length;
+    const prof = profile(next);
+    const facts = deckFacts(next);
+    const cands = [...new Set(pool)].filter(n => !out.has(nameOf(n)) && (isBasicEnergy(engineCard(n)) || !next.some(x => nameOf(x) === nameOf(n))));
+    const w = new Map(cands.map(n => [n, fit(n, prof) / (printings.get(nameOf(n)) ?? 1) * (whyUnusable(n, facts) ? 0.02 : sideEffect(n, facts) ? 0.3 : 1)]));
+    const added: string[] = [];
+    const steps: string[] = [];
+    for (let guard = 0; next.length < cards.length && guard < 200; guard++) {
+      const inn = pickWeighted(rng, cands, n => w.get(n)!);
+      const c = inn && engineCard(inn);
+      if (!inn || !c) {
+        continue;
+      }
+      const room = cards.length - next.length;
+      if (isBasicEnergy(c)) {
+        next.push(inn);
+        added.push(inn);
+        steps.push(`+1 ${c.name}`);
+        continue;
+      }
+      if (next.some(x => nameOf(x) === c.name) || (c.tags.includes(CardTag.ACE_SPEC) && next.some(x => engineCard(x)?.tags.includes(CardTag.ACE_SPEC)))) {
+        continue;
+      }
+      // a Pokémon comes with the stages below it that the deck does not have yet
+      const line = (c instanceof PokemonCard ? lineOf(c) : [c]).filter((g, i, a) => a.findIndex(x => x.name === g.name) === i);
+      const group = line.filter(g => g === c || !next.some(x => nameOf(x) === g.name));
+      if (line.some(g => out.has(g.name)) || (c instanceof PokemonCard && c.stage !== Stage.BASIC && line.length < 2)) {
+        continue;
+      }
+      const usual = c.tags.includes(CardTag.ACE_SPEC) ? 1 : median(s.byCard.get(inn)?.copies ?? [1]) || 1;
+      const k = Math.min(usual, 4, Math.floor(room / group.length));
+      if (k < 1) {
+        continue;
+      }
+      group.forEach(g => {
+        for (let i = 0; i < k; i++) {
+          next.push(g.fullName);
+          added.push(g.fullName);
+        }
+        steps.push(`+${k} ${g.name}`);
+      });
+    }
+    if (next.length !== cards.length) {
+      continue;
+    }
+    const bad = unusableCards(next);
+    if (bad.length > baseBad || bad.some(b => added.includes(b.card))) {
+      continue;
+    }
+    if (checkLegal({ id: 'x', archetype: 'x', cards: next, missing: [] }, engineCard).ok) {
+      return { cards: next.slice().sort(), what: `out ${[...out].join(', ')} (${gone} cards); in ${steps.join(', ')}` };
+    }
+  }
+  return undefined;
+}
+
+/** A change aimed at a flag from the deck's games (diagnose.ts): a card from the pool that answers
+ *  it comes in (basic Energy for "no Energy to attach", a switch card for "the Active was stuck",
+ *  a card that draws for "dead hand", ...), in up to the number of copies meta lists play, and as
+ *  many copies leave of the cards the deck used least. `used`: by card name, the share of the deck's
+ *  games the card was used in; without it the cut goes by fit alone. Cards that answer the flag
+ *  themselves are not cut for it, nor is the seed's line below `core`. */
+export function fixIssue(cards: string[], pool: string[], core: Map<string, number>, rng: Rng, issue: Issue, used?: Map<string, number>): Change | undefined {
+  const s = metaStats();
+  const nameOf = (n: string) => engineCard(n)?.name ?? n;
+  const count = (list: string[], name: string) => list.filter(x => nameOf(x) === name).length;
+  const baseBad = unusableCards(cards).length;
+  const prof = profile(cards);
+  const facts = deckFacts(cards);
+  const printings = new Map<string, number>();
+  new Set(pool).forEach(n => printings.set(nameOf(n), (printings.get(nameOf(n)) ?? 0) + 1));
+  const cands = [...new Set(pool)].filter(n => {
+    const c = engineCard(n);
+    return !!c && remedies(issue, c) && (isBasicEnergy(c) || count(cards, c.name) < 4)
+      && !(c.tags.includes(CardTag.ACE_SPEC) && cards.some(x => engineCard(x)?.tags.includes(CardTag.ACE_SPEC)))
+      // a Pokémon that needs a line below it is a job for the other changes
+      && !(c instanceof PokemonCard && c.stage !== Stage.BASIC);
+  });
+  if (!cands.length) {
+    return undefined;
+  }
+  const w = new Map(cands.map(n => [n, fit(n, prof) / (printings.get(nameOf(n)) ?? 1) * (whyUnusable(n, deckFacts([...cards, n])) ? 0.02 : sideEffect(n, facts) ? 0.3 : 1)]));
+  for (let tries = 0; tries < 30; tries++) {
+    const inn = pickWeighted(rng, cands, n => w.get(n)!)!;
+    const c = engineCard(inn)!;
+    const usual = isBasicEnergy(c) ? rng.int(1, 3) : c.tags.includes(CardTag.ACE_SPEC) ? 1 : median(s.byCard.get(inn)?.copies ?? [rng.int(1, 3)]) || 1;
+    const k = Math.max(1, Math.min(usual, isBasicEnergy(c) ? 3 : 4 - count(cards, c.name)));
+    const next = cards.slice();
+    const cut: string[] = [];
+    for (let i = 0; i < k; i++) {
+      const removable = [...new Set(next)].filter(n => {
+        const e = engineCard(n);
+        return next.filter(x => x === n).length > (core.get(n) ?? 0) && !(e && remedies(issue, e)) && nameOf(n) !== c.name;
+      });
+      if (!removable.length) {
+        break;
+      }
+      const nf = deckFacts(next);
+      // little used in the deck's own games: the likeliest cut (a card never used counts four times
+      // one used in every game); cards the list cannot use before any other
+      const out = pickWeighted(rng, removable, n => cutWeight(n, next) * (whyUnusable(n, nf) ? 20 : 1) * (used ? 1 + 3 * (1 - (used.get(nameOf(n)) ?? 0)) : 1))!;
+      next.splice(next.indexOf(out), 1);
+      cut.push(nameOf(out));
+    }
+    if (!cut.length) {
+      continue;
+    }
+    cut.forEach(() => next.push(inn));
+    const bad = unusableCards(next);
+    if (bad.length > baseBad || bad.some(b => b.card === inn)) {
+      continue;
+    }
+    if (checkLegal({ id: 'x', archetype: 'x', cards: next, missing: [] }, engineCard).ok) {
+      const tally = new Map<string, number>();
+      cut.forEach(n => tally.set(n, (tally.get(n) ?? 0) + 1));
+      return { cards: next.slice().sort(), what: `for "${ISSUE_TEXT[issue]}": ${[...tally].map(([n, x]) => `-${x} ${n}`).join(', ')}, +${cut.length} ${c.name}` };
+    }
+  }
+  return undefined;
 }
 
 void normName;

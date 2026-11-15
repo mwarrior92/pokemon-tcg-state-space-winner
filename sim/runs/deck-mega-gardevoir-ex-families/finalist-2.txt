@@ -1,0 +1,27 @@
+Pokémon: 20
+4 Bramblin TEF 20
+4 Kirlia ASC 88
+4 Ralts ASC 87
+2 Brambleghast TEF 21
+2 Mega Gardevoir ex ASC 89
+2 Pecharunt SVP 149
+1 Toxel PFL 67
+1 Toxtricity PFL 103
+
+Trainer: 23
+4 Accompanying Flute TWM 142
+4 Energy Recycler DRI 164
+4 Harlequin WHT 83
+4 Lively Stadium SSP 180
+2 Gladion's Final Battle PBL 118
+2 Iris's Fighting Spirit JTG 149
+2 Lacey PRE 175
+1 Brilliant Blender SSP 164
+
+Energy: 17
+8 Psychic Energy MEE 13
+4 Grass Energy MEE 9
+3 Boomerang Energy TWM 166
+2 Darkness Energy MEE 15
+
+Total Cards: 60

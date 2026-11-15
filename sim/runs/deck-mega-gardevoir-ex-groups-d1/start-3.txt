@@ -1,0 +1,29 @@
+Pokémon: 21
+4 Kirlia ASC 88
+4 Ralts ASC 87
+4 Sprigatito DLR 12
+3 Wimpod DLR 10
+2 Mega Gardevoir ex ASC 89
+1 Herdier WHT 75
+1 Lillipup WHT 74
+1 Stoutland WHT 76
+1 Team Rocket's Mimikyu ASC 238
+
+Trainer: 28
+4 Festival Grounds PRE 108
+4 Lacey SCR 172
+4 Pokémon Center Lady CPA 60
+4 Team Rocket's Transceiver DRI 178
+2 Carmine PRE 103
+2 Cheren WHT 81
+2 Lucky Helmet TWM 158
+2 Morty's Conviction TEF 155
+2 Redeemable Ticket JTG 156
+1 Rare Candy MEG 125
+1 Roxie's Performance CRI 121
+
+Energy: 11
+10 Psychic Energy MEE 13
+1 Neo Upper Energy TEF 162
+
+Total Cards: 60

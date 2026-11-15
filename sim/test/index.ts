@@ -22,13 +22,14 @@ import { children, replayStep, stateHash } from '../src/search';
 import { Rng } from '../src/rng';
 import { buildScenario, makeCard } from '../src/scenario';
 import { CHEAP_GROUPS, features } from '../src/features';
-import { clocks } from '../src/clock';
-import { optIn } from '../src/variant';
+import { clocks, ownClock } from '../src/clock';
+import { optIn, setVariant } from '../src/variant';
 import { progress, readiness } from '../src/planner';
 import { Sim, bugLog, bugStats, legalMainOptions, mainCandidates, randomChooser, resolvePrompts, runStep } from '../src/sim';
 import { generateState } from '../src/stategen';
 import { checkLegal, deckFromText, engineCard, formatDeckList, isBasicEnergy } from '../src/decklist';
-import { mutate, seedDeck } from '../src/deckgen';
+import { fixIssue, mutate, randomStarts, seedDeck, swapGroup } from '../src/deckgen';
+import { Issue, describeDiagnosis, diagnose, fixable, remedies, turnIssues } from '../src/diagnose';
 import { newGameStart, starterScore } from '../src/playgame';
 import { MatchLog, replayLog } from '../src/matchlog';
 
@@ -700,4 +701,198 @@ test('clock: a Benched attacker waits for the Energy the Active needs to retreat
   // an Energy in hand for the retreat is nearly as good as one attached
   assert.ok(best(held).ready < best(paid).ready + 0.3, `${best(held).ready} vs ${best(paid).ready}`);
   optIn('benchpos', false);
+});
+
+test('clock: an attack that is another card\'s attack follows the cards it can be (Seek Inspiration, Night Joker)', () => {
+  const P = 'Psychic Energy SVE', D = 'Darkness Energy SVE';
+  const foe = { active: { card: 'Goldeen TWM' }, bench: [{ card: 'Goldeen TWM' }, { card: 'Goldeen TWM' }, { card: 'Applin TWM1' }, { card: 'Applin TWM1' }, { card: 'Grookey TWM' }], deck: [W] };
+  const filler = Array.from({ length: 20 }, () => P);
+  // Slowking with its cost paid, Kyurem in hand, Academy at Night in play to put it on top
+  const sk = buildScenario({
+    p1: { active: { card: 'Slowking SCR', under: ['Slowpoke SCR'], energy: [P, P] }, hand: ['Kyurem SFA'], deck: [...filler, 'Kyurem SFA'] },
+    p2: foe,
+  }, new Rng(1));
+  sk.state.players[0].stadium.cards.push(makeCard('Academy at Night SFA'));
+  const best = (s: Sim) => clocks(s, 0, 0)[0].best!;
+  // Trifrost does 110 to three Pokémon: six small Pokémon are two attacks, with the Energy to pay again between
+  assert.match(best(sk).attack, /Kyurem: Trifrost/);
+  assert.equal(best(sk).spread, 3);
+  assert.equal(best(sk).every, 2);
+  assert.ok(best(sk).hits <= 2, `${best(sk).hits}`);
+  const withCopy = ownClock(sk, 0);
+  setVariant('copy');
+  // without the part: whatever lies on top of the deck (an Energy: nothing) or Super Psy Bolt
+  assert.ok(!/Trifrost/.test(clocks(sk, 0, 0)[0].best?.attack ?? ''));
+  assert.ok(ownClock(sk, 0) > withCopy + 0.5, `${ownClock(sk, 0)} vs ${withCopy}`);
+  setVariant('');
+  // N's Zorua with N's Reshiram on the Bench and N's Zoroark ex in hand: Night Joker is Virtuous Flame
+  const nz = buildScenario({
+    p1: { active: { card: "N's Zorua JTG", energy: [D, D] }, bench: [{ card: "N's Reshiram JTG" }], hand: ["N's Zoroark ex JTG"], deck: Array.from({ length: 20 }, () => D) },
+    p2: foe,
+  }, new Rng(1));
+  assert.match(best(nz).attack, /N's Reshiram: Virtuous Flame/);
+  assert.equal(best(nz).base, 170);
+  assert.ok(best(nz).ready < 1.5, `${best(nz).ready}`);
+});
+
+test('deck builder: random starts are legal, usable, repeatable, and share nothing but the seed\'s line and Energy', () => {
+  const names = (cards: string[]) => new Set(cards.map(c => engineCard(c)!).filter(c => !isBasicEnergy(c)).map(c => c.name));
+  const kit = new Set(['Ralts', 'Kirlia', 'Mega Gardevoir ex', 'Rare Candy']);
+  for (const shaped of [true, false]) {
+    const starts = randomStarts('Mega Gardevoir ex', 3, new Rng(5), shaped);
+    assert.equal(starts.length, 3);
+    for (const sd of starts) {
+      assert.equal(sd.cards.length, 60);
+      const legal = checkLegal({ id: 'r', archetype: 'r', cards: sd.cards, missing: [] }, engineCard);
+      assert.ok(legal.ok, legal.problems.join('; '));
+      assert.deepEqual(unusableCards(sd.cards), []);
+      for (const n of ['Ralts', 'Kirlia', 'Mega Gardevoir ex']) {
+        assert.ok(names(sd.cards).has(n), `${n} in the deck`);
+      }
+    }
+    for (let a = 0; a < 3; a++) {
+      for (let b = a + 1; b < 3; b++) {
+        const both = [...names(starts[a].cards)].filter(n => names(starts[b].cards).has(n) && !kit.has(n));
+        assert.deepEqual(both, [], `starts ${a + 1} and ${b + 1} share cards`);
+      }
+    }
+    if (shaped) {
+      // a start has room for Trainers: at most 20 Pokémon cards besides the seed's line
+      for (const sd of starts) {
+        const others = sd.cards.filter(c => engineCard(c) instanceof PokemonCard && !kit.has(engineCard(c)!.name)).length;
+        assert.ok(others <= 20, `${others} other Pokémon cards`);
+      }
+    }
+  }
+  const again = randomStarts('Mega Gardevoir ex', 3, new Rng(5)), other = randomStarts('Mega Gardevoir ex', 3, new Rng(6));
+  assert.deepEqual(again.map(x => x.cards), randomStarts('Mega Gardevoir ex', 3, new Rng(5)).map(x => x.cards));
+  assert.notDeepEqual(again[0].cards, other[0].cards);
+  // a seed the meta plays gets random starts too (not its meta list)
+  const meta = randomStarts('Hydrapple ex', 2, new Rng(1));
+  assert.ok(meta.every(x => x.cards.length === 60 && /random start/.test(x.how)));
+});
+
+test('deck builder: random starts stay legal over many draws (no card more than four times)', () => {
+  for (let seed = 0; seed < 40; seed++) {
+    for (const sd of randomStarts('Mega Gardevoir ex', 3, new Rng(1000 + seed))) {
+      const legal = checkLegal({ id: 'r', archetype: 'r', cards: sd.cards, missing: [] }, engineCard);
+      assert.ok(legal.ok, `seed ${seed}: ${legal.problems.join('; ')}`);
+    }
+  }
+});
+
+test('deck builder: a group swap takes a whole group out, keeps the deck legal and the seed\'s line, adds no off-type basic Energy', () => {
+  const kit = new Set(['Ralts', 'Kirlia', 'Mega Gardevoir ex']);
+  const count = (cards: string[], name: string) => cards.filter(c => engineCard(c)!.name === name).length;
+  let swaps = 0, lines = 0;
+  for (let seed = 0; seed < 6; seed++) {
+    for (const sd of randomStarts('Mega Gardevoir ex', 3, new Rng(300 + seed))) {
+      // the pool has basic Energy of the line's types only
+      const basics = new Set(sd.pool.filter(c => isBasicEnergy(engineCard(c))).map(c => engineCard(c)!.name));
+      assert.deepEqual([...basics], ['Psychic Energy']);
+      const rng = new Rng(seed);
+      let cur = sd.cards;
+      for (let i = 0; i < 4; i++) {
+        const m = swapGroup(cur, sd.pool, sd.core, rng);
+        if (!m) {
+          continue;
+        }
+        swaps++;
+        assert.equal(m.cards.length, 60);
+        const legal = checkLegal({ id: 'r', archetype: 'r', cards: m.cards, missing: [] }, engineCard);
+        assert.ok(legal.ok, legal.problems.join('; '));
+        assert.ok(unusableCards(m.cards).length <= unusableCards(cur).length, m.what);
+        kit.forEach(n => assert.equal(count(m.cards, n), count(cur, n), `${n} untouched`));
+        // every card named as out is gone altogether
+        const out = /^out (.*?) \(\d+ cards\)/.exec(m.what)![1].split(', ');
+        out.forEach(n => assert.equal(count(m.cards, n), 0, `${n} still in after: ${m.what}`));
+        lines += out.length > 1 ? 1 : 0;
+        const energy = new Set(m.cards.filter(c => isBasicEnergy(engineCard(c))).map(c => engineCard(c)!.name));
+        assert.deepEqual([...energy], ['Psychic Energy'], m.what);
+        cur = m.cards;
+      }
+    }
+  }
+  assert.ok(swaps > 40, `${swaps} swaps`);
+  assert.ok(lines > 0, 'a Pokémon line was swapped out at least once');
+});
+
+test('deck flags: why a turn had no attack, dead hand, empty Bench; loss modes; a change aimed at a flag', () => {
+  const G = 'Grass Energy SVE';
+  const deck = Array.from({ length: 20 }, () => 'Goldeen TWM');
+  const board = (activeEnergy: string[], benchEnergy: string[] | undefined, hand: string[] = []) => buildScenario({
+    p1: { active: { card: 'Goldeen TWM', energy: activeEnergy },
+      bench: benchEnergy ? [{ card: 'Dipplin TWM1', under: ['Applin TWM1'], energy: benchEnergy }] : [], hand, deck },
+    p2: { active: { card: 'Mega Kangaskhan ex M1S' }, deck: [G] },
+  }, new Rng(1));
+  // nothing in play can pay, nothing attached, no Energy in hand, nothing played, alone in play
+  const bare = board([], undefined);
+  assert.deepEqual(turnIssues(bare, bare, [], 0), ['noEnergy', 'deadHand', 'emptyBench']);
+  // an Energy in hand that was not attached is the pilot's doing, not the deck's
+  const held = board([], undefined, [G]);
+  assert.ok(!turnIssues(held, held, [], 0).includes('noEnergy'));
+  // attached this turn, still no attack paid for
+  assert.ok(turnIssues(bare, bare, ['attach Grass Energy -> active Goldeen'], 0).includes('slowEnergy'));
+  // the Benched Pokémon is ready, the Active is not
+  const stuck = board([], [G, G, G]);
+  const flags = turnIssues(stuck, stuck, ['play Nest Ball'], 0);
+  assert.deepEqual(flags, ['activeStuck']);
+  // an attack: no flag
+  assert.deepEqual(turnIssues(stuck, stuck, ['play Nest Ball', 'attack Something'], 0), []);
+  // no attack flag on the first turn of the game
+  const first = buildScenario({ p1: { active: { card: 'Goldeen TWM' }, bench: [{ card: 'Goldeen TWM' }], deck }, p2: { active: { card: 'Mega Kangaskhan ex M1S' }, deck: [G] }, turn: 1 }, new Rng(1));
+  assert.deepEqual(turnIssues(first, first, ['bench Goldeen'], 0), []);
+
+  // the summary over games
+  const turn = (mover: number, issues: string[], took = 0) => ({ turn: 1, mover, cat: '', prizes: [6, 6] as [number, number], took, policy: 'plan' as const, ms: 0, issues });
+  const game = (winner: number, reason: string, mine: string[][]) => ({ seed: 1, decks: ['me', 'them'] as [string, string], seats: ['race', 'race'] as [string, string], startTurn: 1, winner, reason, ms: 0,
+    turns: mine.flatMap(i => [turn(0, i), turn(1, ['noEnergy'])]) });
+  const d = diagnose('me', [game(1, 'no Pokémon in play', [['noEnergy', 'emptyBench'], ['noEnergy']]), game(1, 'deck out', [[], ['deadHand']]), game(0, 'prizes', [[], []]), game(1, 'prizes', [['noEnergy'], []])]);
+  assert.equal(d.games, 4);
+  assert.equal(d.lost, 3);
+  assert.equal(d.turns, 8);
+  const share = (i: string) => d.issues.find(x => x.issue === i)?.share;
+  assert.equal(share('noEnergy'), 3 / 8);
+  assert.equal(share('boardWipe'), 1 / 4);
+  assert.equal(share('deckOut'), 1 / 4);
+  assert.equal(d.issues[0].issue, 'noEnergy');
+  assert.match(describeDiagnosis(d), /no Energy to attach 38% of turns/);
+  // flags that came up once are not acted on, nor is a loss on prize cards
+  assert.deepEqual(fixable(d).map(x => x.issue), ['noEnergy']);
+
+  // which cards answer which flag (read from their texts)
+  const answers = (issue: Issue, name: string) => cardsNamed(name).some(c => remedies(issue, c));
+  assert.ok(answers('activeStuck', 'Switch'));
+  assert.ok(answers('deadHand', "Professor's Research"));
+  assert.ok(answers('emptyBench', 'Buddy-Buddy Poffin'));
+  assert.ok(answers('boardWipe', 'Nest Ball'));
+  assert.ok(answers('noEnergy', 'Psychic Energy'));
+  assert.ok(answers('noEnergy', 'Earthen Vessel'));
+  assert.ok(answers('deckOut', 'Super Rod') || answers('deckOut', 'Night Stretcher') || answers('deckOut', 'Sacred Ash'));
+  assert.ok(!answers('activeStuck', "Professor's Research") && !answers('deadHand', 'Switch') && !answers('noEnergy', 'Switch'));
+
+  // a change aimed at a flag brings such a card in for the cards used least, and stays legal
+  let made = 0;
+  for (const sd of randomStarts('Mega Gardevoir ex', 3, new Rng(77))) {
+    const names = [...new Set(sd.cards.map(c => engineCard(c)!.name))];
+    const used = new Map(names.map((n, i) => [n, i % 2 ? 1 : 0]));
+    for (const issue of ['noEnergy', 'activeStuck', 'deadHand', 'emptyBench'] as Issue[]) {
+      const rng = new Rng(3);
+      const m = fixIssue(sd.cards, sd.pool, sd.core, rng, issue, used);
+      if (!m) {
+        continue;
+      }
+      made++;
+      assert.equal(m.cards.length, 60);
+      const legal = checkLegal({ id: 'r', archetype: 'r', cards: m.cards, missing: [] }, engineCard);
+      assert.ok(legal.ok, legal.problems.join('; '));
+      assert.ok(unusableCards(m.cards).length <= unusableCards(sd.cards).length, m.what);
+      const inn = m.cards.filter(c => remedies(issue, engineCard(c)!)).length, was = sd.cards.filter(c => remedies(issue, engineCard(c)!)).length;
+      assert.ok(inn > was, `${issue}: ${m.what}`);
+      for (const n of ['Ralts', 'Kirlia', 'Mega Gardevoir ex']) {
+        assert.ok(m.cards.some(c => engineCard(c)!.name === n), `${n} kept`);
+      }
+    }
+  }
+  assert.ok(made >= 9, `${made} changes`);
 });

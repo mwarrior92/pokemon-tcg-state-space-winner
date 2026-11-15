@@ -1,0 +1,468 @@
+{
+ "name": "mega gardevoir ex families g10 (tested)",
+ "games": 120,
+ "wins": 33,
+ "winRate": 0.275,
+ "ci": [
+  0.20302779841476157,
+  0.36093132356040686
+ ],
+ "byMatchup": [
+  {
+   "opponent": "Dragapult",
+   "games": 34,
+   "wins": 6,
+   "rate": 0.17647058823529413
+  },
+  {
+   "opponent": "Basic Box",
+   "games": 10,
+   "wins": 2,
+   "rate": 0.2
+  },
+  {
+   "opponent": "N's Zoroark",
+   "games": 10,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Slowking",
+   "games": 9,
+   "wins": 5,
+   "rate": 0.5555555555555556
+  },
+  {
+   "opponent": "Hydrapple",
+   "games": 6,
+   "wins": 3,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Festival Lead",
+   "games": 6,
+   "wins": 2,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Alakazam Dudunsparce",
+   "games": 5,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Dragapult Dusknoir",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Alakazam Dusknoir",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Dragapult Blaziken",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Dhelmise",
+   "games": 4,
+   "wins": 2,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Crustle",
+   "games": 4,
+   "wins": 1,
+   "rate": 0.25
+  },
+  {
+   "opponent": "Mega Excadrill",
+   "games": 3,
+   "wins": 2,
+   "rate": 0.6666666666666666
+  },
+  {
+   "opponent": "Lopunny Dusknoir",
+   "games": 3,
+   "wins": 1,
+   "rate": 0.3333333333333333
+  },
+  {
+   "opponent": "Dragapult Dudunsparce",
+   "games": 2,
+   "wins": 1,
+   "rate": 0.5
+  },
+  {
+   "opponent": "Rocket's Honchkrow",
+   "games": 2,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Seaking Festival Lead",
+   "games": 2,
+   "wins": 2,
+   "rate": 1
+  },
+  {
+   "opponent": "Lucario Hariyama",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Clefairy Ogerpon",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Rocket's Mewtwo",
+   "games": 1,
+   "wins": 1,
+   "rate": 1
+  },
+  {
+   "opponent": "Greninja",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Sharpedo Toxtricity",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Cynthia's Garchomp",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Lopunny Dudunsparce",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  },
+  {
+   "opponent": "Mega Lucario",
+   "games": 1,
+   "wins": 0,
+   "rate": 0
+  }
+ ],
+ "endings": {
+  "lost: prizes": 60,
+  "won: prizes": 29,
+  "lost: no Pokémon in play": 27,
+  "won: no Pokémon in play": 2,
+  "won: deck out": 2
+ },
+ "turnsPerGame": 12.683333333333334,
+ "firstPrizeTurn": 3,
+ "prizesPerTurn": 0.3978494623655914,
+ "stuck": {
+  "idealShare": 0.16666666666666666,
+  "idealWin": 0.7580645161290323,
+  "nonIdealShare": 0.33736559139784944,
+  "stuckRate": 0.234375,
+  "entered": 90,
+  "enteredShare": 0.75,
+  "recovered": 0.18888888888888888,
+  "expected": 0.2931244444444446,
+  "topStuck": [
+   {
+    "cat": "race:even ready:0-2 ko:no threat:no exposed:none",
+    "turns": 42,
+    "stuckRate": 0.2682926829268293
+   },
+   {
+    "cat": "race:behind ready:0-1 ko:no threat:yes exposed:none",
+    "turns": 41,
+    "stuckRate": 0.4230769230769231
+   },
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:yes exposed:none",
+    "turns": 34,
+    "stuckRate": 0.35
+   },
+   {
+    "cat": "race:behind ready:0-2 ko:no threat:no exposed:none",
+    "turns": 28,
+    "stuckRate": 0.13636363636363635
+   }
+  ]
+ },
+ "attackers": [
+  {
+   "what": "attack Rapid-Fire Combo",
+   "who": "Mega Kangaskhan ex",
+   "prizes": 238,
+   "share": 0.8040540540540541,
+   "uses": 262
+  },
+  {
+   "what": "attack Mega Symphonia",
+   "who": "Mega Gardevoir ex",
+   "prizes": 49,
+   "share": 0.16554054054054054,
+   "uses": 49
+  },
+  {
+   "what": "attack Psyshot",
+   "who": "Kirlia",
+   "prizes": 5,
+   "share": 0.016891891891891893,
+   "uses": 8
+  },
+  {
+   "what": "attack Headbutt",
+   "who": "Ralts",
+   "prizes": 4,
+   "share": 0.013513513513513514,
+   "uses": 12
+  },
+  {
+   "what": "attack Collect",
+   "who": "Ralts",
+   "prizes": 0,
+   "share": 0,
+   "uses": 15
+  },
+  {
+   "what": "attack Call Sign",
+   "who": "Kirlia",
+   "prizes": 0,
+   "share": 0,
+   "uses": 14
+  },
+  {
+   "what": "attack Overflowing Wishes",
+   "who": "Mega Gardevoir ex",
+   "prizes": 0,
+   "share": 0,
+   "uses": 13
+  }
+ ],
+ "opening": [
+  {
+   "action": "attach Psychic Energy to Mega Kangaskhan ex",
+   "share": 1.3166666666666667
+  },
+  {
+   "action": "ability Run Errand (Mega Kangaskhan ex)",
+   "share": 0.9833333333333333
+  },
+  {
+   "action": "play Emcee's Hype",
+   "share": 0.525
+  },
+  {
+   "action": "bench Mega Kangaskhan ex",
+   "share": 0.475
+  },
+  {
+   "action": "bench Ralts",
+   "share": 0.4583333333333333
+  },
+  {
+   "action": "evolve Kirlia",
+   "share": 0.35833333333333334
+  },
+  {
+   "action": "tool Counter Gain",
+   "share": 0.35
+  },
+  {
+   "action": "tool Rescue Board",
+   "share": 0.3416666666666667
+  }
+ ],
+ "winCards": [
+  {
+   "card": "Psychic Energy",
+   "wins": 5.909090909090909,
+   "losses": 4.218390804597701
+  },
+  {
+   "card": "Mega Kangaskhan ex",
+   "wins": 1.9696969696969697,
+   "losses": 1.2873563218390804
+  },
+  {
+   "card": "Rocky Fighting Energy",
+   "wins": 1.0909090909090908,
+   "losses": 0.42528735632183906
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "wins": 1,
+   "losses": 0.4827586206896552
+  },
+  {
+   "card": "Emcee's Hype",
+   "wins": 1.7575757575757576,
+   "losses": 1.2758620689655173
+  },
+  {
+   "card": "Ralts",
+   "wins": 1.8484848484848484,
+   "losses": 1.4137931034482758
+  }
+ ],
+ "usage": [
+  {
+   "card": "Rust Syndicate Grunt",
+   "copies": 3,
+   "games": 0.016666666666666666,
+   "perGame": 0.016666666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Applin",
+   "copies": 1,
+   "games": 0.14166666666666666,
+   "perGame": 0.14166666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Dipplin",
+   "copies": 1,
+   "games": 0.14166666666666666,
+   "perGame": 0.14166666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Crispin",
+   "copies": 1,
+   "games": 0.26666666666666666,
+   "perGame": 0.26666666666666666,
+   "noEffect": 1
+  },
+  {
+   "card": "Pokémon Center Lady",
+   "copies": 3,
+   "games": 0.31666666666666665,
+   "perGame": 0.39166666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Ultra Ball",
+   "copies": 1,
+   "games": 0.35,
+   "perGame": 0.35,
+   "noEffect": 0
+  },
+  {
+   "card": "Brock's Scouting",
+   "copies": 1,
+   "games": 0.36666666666666664,
+   "perGame": 0.36666666666666664,
+   "noEffect": 0
+  },
+  {
+   "card": "N's Plan",
+   "copies": 4,
+   "games": 0.4166666666666667,
+   "perGame": 0.525,
+   "noEffect": 0
+  },
+  {
+   "card": "Night Stretcher",
+   "copies": 2,
+   "games": 0.44166666666666665,
+   "perGame": 0.525,
+   "noEffect": 2
+  },
+  {
+   "card": "Rocky Fighting Energy",
+   "copies": 3,
+   "games": 0.475,
+   "perGame": 0.6083333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Mega Gardevoir ex",
+   "copies": 3,
+   "games": 0.49166666666666664,
+   "perGame": 1.1416666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Counter Gain",
+   "copies": 2,
+   "games": 0.5416666666666666,
+   "perGame": 0.7333333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Air Balloon",
+   "copies": 2,
+   "games": 0.5916666666666667,
+   "perGame": 0.725,
+   "noEffect": 0
+  },
+  {
+   "card": "Rescue Board",
+   "copies": 2,
+   "games": 0.5916666666666667,
+   "perGame": 0.7416666666666667,
+   "noEffect": 0
+  },
+  {
+   "card": "Kirlia",
+   "copies": 4,
+   "games": 0.7333333333333333,
+   "perGame": 1.9583333333333333,
+   "noEffect": 0
+  },
+  {
+   "card": "Emcee's Hype",
+   "copies": 4,
+   "games": 0.7916666666666666,
+   "perGame": 1.4083333333333334,
+   "noEffect": 0
+  },
+  {
+   "card": "Mega Kangaskhan ex",
+   "copies": 4,
+   "games": 0.7916666666666666,
+   "perGame": 5.616666666666666,
+   "noEffect": 0
+  },
+  {
+   "card": "Ralts",
+   "copies": 4,
+   "games": 0.7916666666666666,
+   "perGame": 1.375,
+   "noEffect": 0
+  },
+  {
+   "card": "Psychic Energy",
+   "copies": 15,
+   "games": 0.9166666666666666,
+   "perGame": 4.683333333333334,
+   "noEffect": 0
+  }
+ ],
+ "lossCards": [
+  {
+   "card": "Applin",
+   "wins": 0.2727272727272727,
+   "losses": 0.367816091954023
+  },
+  {
+   "card": "Dipplin",
+   "wins": 0.12121212121212122,
+   "losses": 0.14942528735632185
+  }
+ ]
+}

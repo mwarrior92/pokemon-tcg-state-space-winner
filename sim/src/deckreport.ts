@@ -284,7 +284,7 @@ function advice(s: DeckStats): string[] {
   return out;
 }
 
-export function renderReport(s: DeckStats, cards: string[], extra: { title: string; how: string[]; changes?: string[]; changesTitle?: string; cardIssues?: string[] }): string {
+export function renderReport(s: DeckStats, cards: string[], extra: { title: string; how: string[]; changes?: string[]; changesTitle?: string; cardIssues?: string[]; diagnosis?: string[] }): string {
   const L: string[] = [];
   L.push(`# ${extra.title}`);
   L.push('');
@@ -328,6 +328,14 @@ export function renderReport(s: DeckStats, cards: string[], extra: { title: stri
     L.push('| most frequent non-ideal spots | turns | stuck next turn |');
     L.push('|---|---|---|');
     st.topStuck.forEach(t => L.push(`| ${t.cat} | ${t.turns} | ${pct(t.stuckRate)} |`));
+  }
+  if (extra.diagnosis?.length) {
+    L.push('');
+    L.push('## Stuck causes and how games were lost');
+    L.push('');
+    L.push('Flags from the deck\'s own turns (`src/diagnose.ts`): a turn without an attack counts when the Active could not pay for one (by cause), a dead hand is a turn with nothing played but an Energy and no prize taken. The search aims card changes at the most flagged ones.');
+    L.push('');
+    extra.diagnosis.forEach(d => L.push(`- ${d}`));
   }
   L.push('');
   L.push('## How it takes prizes');

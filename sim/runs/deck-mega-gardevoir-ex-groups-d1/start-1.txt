@@ -1,0 +1,30 @@
+Pokémon: 25
+4 Kirlia ASC 88
+4 Ralts ASC 87
+2 Cosmoem 30C 79
+2 Cosmog 30C 78
+2 Eelektrik ASC 60
+2 Lunala 30C 80
+2 Mega Eelektross ex ASC 266
+2 Mega Gardevoir ex ASC 89
+2 Tynamo ASC 59
+1 Serperior ex BLK 164
+1 Servine POR 5
+1 Snivy POR 4
+
+Trainer: 24
+4 Counter Gain SSP 169
+4 Kieran PRE 113
+3 Buddy-Buddy Poffin ASC 184
+3 Emma CRI 107
+3 Grimsley's Move PFL 120
+3 Poké Pad POR 113
+2 Chill Teaser Toy SSP 166
+1 Rare Candy MEG 125
+1 Wondrous Patch PFL 94
+
+Energy: 11
+10 Psychic Energy MEE 13
+1 Enriching Energy SSP 191
+
+Total Cards: 60

@@ -18,7 +18,7 @@ import { CHEAP_GROUPS, features } from './features';
 import { LinearModel, Predictor } from './model';
 import { groupsFor } from './policy';
 import { Card, GameWinner, PokemonCard, Stage, SuperType } from './engine';
-import { clockLead, clocks, describeClock } from './clock';
+import { clockLead, clocks, describeClock, describePaths } from './clock';
 import { cardNeed, costSupply } from './need';
 import { passTurn } from './policy';
 import { prizeValue, prizesLeft } from './rules';
@@ -586,6 +586,7 @@ export function planTurn(root: Sim, ev: WinModel | Evaluator, opts: PlanOptions 
     if (on('clock')) {
       const c = clocks(root, mover, mover);
       console.error(`  clock at the start: mine ${describeClock(c[mover])}; theirs ${describeClock(c[1 - mover])}`);
+      describePaths(root, mover).slice(0, 8).forEach(l => console.error(`    path ${l}`));
     }
     const seenLines = new Set<string>();
     for (const en of ts.endings.slice().sort((a, b) => b.value - a.value).slice(0, 14)) {

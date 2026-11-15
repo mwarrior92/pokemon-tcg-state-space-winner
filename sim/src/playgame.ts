@@ -12,6 +12,7 @@
 //   race2     v2: the prize race tested against sampled opponent replies (disruption-aware)
 //   plan:F    one-turn planner on the win model in file F
 //   plan2:F   the win model tested against sampled replies
+import { turnIssues } from './diagnose';
 import { TurnAudit, auditTurn } from './audit';
 import { categorize } from './categories';
 import { describeState } from './describe';
@@ -41,6 +42,7 @@ export interface GameSpec {
   vectors?: boolean;              // record the cheap feature vector at every turn start
   log?: 'board' | 'lines';        // record each turn's moves (and the board before it)
   audit?: boolean;                // record what each turn left undone (audit.ts)
+  diagnose?: boolean;             // record each turn's deck flags (diagnose.ts)
 }
 
 export interface TurnRec {
@@ -55,6 +57,8 @@ export interface TurnRec {
   board?: string;
   line?: string[];
   audit?: TurnAudit;
+  /** deck flags of the turn: could not attack and why, dead hand, empty Bench (diagnose.ts) */
+  issues?: string[];
   /** with log 'board': the planner's finalists (line, score) and positions searched */
   plan?: { positions: number; candidates?: Plan['candidates'] };
 }
@@ -262,6 +266,14 @@ export function playGame(spec: GameSpec): GameRec {
         audit = undefined;
       }
     }
+    let issues: string[] | undefined;
+    if (spec.diagnose) {
+      try {
+        issues = turnIssues(sim, r.next, r.line, mover);
+      } catch {
+        issues = undefined;
+      }
+    }
     sim = r.next;
     // pass only if the line did not end the turn itself (an attack ends it)
     if (!sim.finished && sim.state.activePlayer === mover && !passInPlace(sim, rng)) {
@@ -270,7 +282,7 @@ export function playGame(spec: GameSpec): GameRec {
     }
     turns.push({
       turn: sim.state.turn, mover, cat, prizes, took: before - prizesLeft(sim.state.players[mover]), policy: r.policy, ms: Date.now() - ts,
-      x, board, line: spec.log ? r.line : undefined, audit,
+      x, board, line: spec.log ? r.line : undefined, audit, issues,
       plan: board && r.plan ? { positions: r.plan.positions, candidates: r.plan.candidates } : undefined,
     });
   }

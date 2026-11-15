@@ -25,7 +25,7 @@
 //     A card in hand counts for one path only: the second path gets what the first leaves.
 //
 // Not modelled: Energy acceleration from Trainers, Rare Candy, gust cards, effects of attacks other
-// than damage to the Active, the opponent's Energy for attacks that count both Active Pokémon's. The turn search plays those for real when they are within reach.
+// than damage (to the Active, or to several Pokémon at once), the opponent's Energy for attacks that count both Active Pokémon's. The turn search plays those for real when they are within reach.
 import { Card, EnergyCard, CardType, Player, PokemonCard, PokemonCardList, Stage } from './engine';
 import { ACCEL_TEXT, SWITCH_TEXT, baseDamage, energyGap, estimateDamage } from './features';
 import { prizeValue, prizesLeft } from './rules';
@@ -46,6 +46,9 @@ interface PathOption {
   hits: number;             // attacks needed to take every remaining Prize card
   turns: number;            // ready + hits - 1
   uses: Card[];             // the cards in hand it counts on
+  spread: number;           // Pokémon of the opponent's one attack damages (1: the Active only)
+  every: number;            // own turns from one use to the next (2: the attack discards its Energy)
+  copies: number;           // times the attack can be used at all (a copied card is used up); Infinity
 }
 
 export interface Clock {
@@ -60,6 +63,34 @@ const perEnergy = (text: string): number => {
   const m = /(\d+) (?:more )?damage (?:for each|times the (?:amount|number) of) (?:[^.]{0,30}?)Energy (?:cards? )?attached to (?:this Pok[ée]mon|both Active)/i.exec(text);
   return m ? Number(m[1]) : 0;
 };
+
+// 'copy' (variant.ts): an attack that is another card's attack. Slowking's Seek Inspiration prints no
+// damage: it discards the top card of the deck and uses an attack of that Pokémon (Kyurem's Trifrost,
+// Metagross's Metallic Hammer), with Academy at Night or Ciphermaniac's Codebreaking putting the card
+// there; N's Zoroark ex's Night Joker uses an attack of a Benched N's Pokémon. Measured on the board
+// as it is, Seek Inspiration was worth whatever card lay on top of the deck and nothing from a
+// Slowpoke, and Night Joker nothing before Zoroark and its partner were both in play: the clock
+// followed Super Psy Bolt (six attacks to the win) and Mega Kangaskhan ex instead.
+const COPY_TEXT = /use it as this attack/i;
+const TOP_TEXT = /top card of your deck/i;
+const PUT_TOP = /card from (?:their|your) hand on top of (?:their|your) deck/i;   // Academy at Night
+const FIND_TOP = /search your deck[^.]*put (?:them|those cards|it) on top/i;       // Ciphermaniac's Codebreaking
+const OWNER = /Benched ([A-Z]\w*'s) Pok[ée]mon's attacks/;
+const DISCARD_ALL = /discard all energy from this pok[ée]mon/i;
+const NOT_NEXT = /during your next turn, this pok[ée]mon can't (?:attack|use attacks)/i;
+// a Trainer that finds the Pokémon wanted (Ultra Ball, Poké Pad): counts like a copy of it in the deck
+const FINDS_POKEMON = /search your deck for (?:a|an|1|up to \d+) (?:[^.]{0,40})?Pok[ée]mon/i;
+/** an attack that damages several of the opponent's Pokémon: the damage and how many */
+const spreadOf = (text: string): { dmg: number; n: number } | undefined => {
+  const m = /does (\d+) damage to (\d+|each) of your opponent's Pok[ée]mon/i.exec(text);
+  return m ? { dmg: Number(m[1]), n: m[2] === 'each' ? 6 : Number(m[2]) } : undefined;
+};
+const textOf = (c: Card): string => (c as { text?: string }).text ?? '';
+
+/** own turns the path needs: ready, then an attack every `every` turns; past the copies there are,
+ *  each further attack counts half a turn more (a weaker card on top, or one brought back first) */
+const pathTurns = (o: PathOption, hits: number): number =>
+  o.ready + (hits - 1) * o.every + 0.5 * Math.max(0, Math.ceil(hits) - o.copies);
 
 const withEnergy = (l: PokemonCardList, e: Card[]): PokemonCardList =>
   (e.length ? { energies: { cards: [...l.energies.cards, ...e] } } as unknown as PokemonCardList : l);
@@ -135,6 +166,72 @@ function paths(s: Sim, side: number, known: boolean, spent: Card[] = []): PathOp
     const k = pool.filter(c => c.name === name).length;
     return { held: [] as Card[], by: (t: number) => seenBy(seen(t), k, pool.length) };
   };
+  const copy = on('copy');
+  type Use = { label: string; text: string; base: number; spread: number; copies: number; held: Card[]; avail: (t: number) => number };
+  // the attacks a copying attack of the Pokémon in `l` is likely to be: the best two by damage a turn
+  const stadium = s.state.players.map(x => x.stadium.cards[0]).find(c => c);
+  const copyUses = (l: PokemonCardList, a: { name: string; text?: string; cost: CardType[] }): Use[] => {
+    const text = a.text ?? '';
+    const found: (Use & { score: number })[] = [];
+    const add = (c: PokemonCard, copies: number, held: Card[], avail: (t: number) => number) => {
+      for (const x of c.attacks) {
+        const sp = spreadOf(x.text ?? '');
+        const base = sp ? sp.dmg : x.damage, spread = sp ? sp.n : 1;
+        if (base > 0 && !COPY_TEXT.test(x.text ?? '')) {
+          const rate = DISCARD_ALL.test(x.text ?? '') ? Math.max(1, a.cost.length) : NOT_NEXT.test(x.text ?? '') ? 2 : 1;
+          found.push({ label: `${a.name} (${c.name}: ${x.name})`, text: x.text ?? '', base, spread, copies, held, avail,
+            score: base * Math.min(spread, 3) / rate * Math.min(1, avail(3)) });
+        }
+      }
+    };
+    const names = new Map<string, PokemonCard>();
+    const finders = pool.filter(c => !(c instanceof PokemonCard) && !(c instanceof EnergyCard) && FINDS_POKEMON.test(textOf(c))).length
+      + hand.filter(c => !(c instanceof PokemonCard) && !(c instanceof EnergyCard) && FINDS_POKEMON.test(textOf(c))).length;
+    if (TOP_TEXT.test(text)) {
+      // the top card of the deck: a Pokémon without a Rule Box, put there from the hand (a Stadium
+      // or card that does that) or found in the deck (a card that searches and puts on top); with
+      // neither, the chance it lies there
+      for (const c of [...hand, ...pool]) {
+        if (c instanceof PokemonCard && !c.hasRuleBox() && !names.has(c.name)) {
+          names.set(c.name, c);
+        }
+      }
+      const cardsBy = (re: RegExp) => {
+        const inHand = hand.find(c => !(c instanceof PokemonCard) && re.test(textOf(c)));
+        const n = pool.filter(c => !(c instanceof PokemonCard) && re.test(textOf(c))).length;
+        return { held: inHand ? [inHand] : [], by: (t: number) => (inHand ? 1 : seenBy(seen(t), n, pool.length)) };
+      };
+      const put = stadium && PUT_TOP.test(textOf(stadium)) ? { held: [] as Card[], by: () => 1 } : cardsBy(PUT_TOP);
+      const find = cardsBy(FIND_TOP);
+      names.forEach(c => {
+        const inHand = hand.find(x => x.name === c.name);
+        const kPool = pool.filter(x => x.name === c.name).length;
+        const got = (t: number) => (inHand ? 1 : kPool ? seenBy(seen(t), kPool + finders, pool.length) : 0);
+        const blind = kPool / Math.max(1, pool.length);
+        add(c, kPool + (inHand ? 1 : 0), [...(inHand ? [inHand] : []), ...put.held, ...find.held],
+          t => Math.max(blind, put.by(t) * got(t), kPool > 0 ? find.by(t) : 0));
+      });
+    } else {
+      // an attack of a Benched Pokémon of the owner named ("N's"): one in play, or a Basic to come
+      const owner = OWNER.exec(text)?.[1];
+      const fits = (c: PokemonCard) => !owner || c.name.startsWith(owner);
+      for (const o of [p.active, ...p.bench]) {
+        const c = o.getPokemonCard();
+        if (c && o !== l && fits(c) && !names.has(c.name)) {
+          names.set(c.name, c);
+          add(c, Infinity, [], () => 1);
+        }
+      }
+      for (const c of [...hand, ...pool]) {
+        if (c instanceof PokemonCard && c.stage === Stage.BASIC && fits(c) && !names.has(c.name)) {
+          names.set(c.name, c);
+          const h = cardBy(c.name), n = pool.filter(x => x.name === c.name).length;
+          add(c, Infinity, h.held, h.held.length ? h.by : t => (n ? seenBy(seen(t), n + finders, pool.length) : 0));
+        }
+      }
+    }
+    return found.sort((x, y) => y.score - x.score).slice(0, 2);
+  };
   for (const l of [p.active, ...p.bench]) {
     const pc = l.getPokemonCard();
     if (!pc) {
@@ -161,10 +258,14 @@ function paths(s: Sim, side: number, known: boolean, spent: Card[] = []): PathOp
         const now = l.energies.cards.length, then = Math.max(now, a.cost.length) + perTurn;
         const inc = perEnergy(a.text ?? '');
         const printed = (a as { damageCalculation?: string }).damageCalculation === 'x' ? 0 : a.damage;
-        const base = f.card === pc ? baseDamage(s, side, l, a) + inc * (then - now) : (inc ? printed + inc * then : a.damage);
-        if (!(base > 0)) {
-          continue;
-        }
+        // what the attack does: itself, or (a copied attack) each of the attacks it is likely to be
+        const whole: Omit<Use, 'base'> = { label: a.name, text: a.text ?? '', spread: 1, copies: Infinity, held: [], avail: () => 1 };
+        const copied = copy && COPY_TEXT.test(a.text ?? '');
+        const own = copied && TOP_TEXT.test(a.text ?? '') ? 0
+          : f.card === pc ? baseDamage(s, side, l, a) + inc * (then - now) : (inc ? printed + inc * then : a.damage);
+        const sp = copy ? spreadOf(a.text ?? '') : undefined;
+        const uses: Use[] = [sp && !(own > 0) ? { ...whole, base: sp.dmg, spread: sp.n } : { ...whole, base: own },
+          ...(copied ? copyUses(l, a) : [])];
         // Energy: what is attached, then what the hand holds, then what has to be drawn
         const gap = energyGap(a.cost, l);
         const held: Card[] = [];
@@ -181,18 +282,25 @@ function paths(s: Sim, side: number, known: boolean, spent: Card[] = []): PathOp
         const spare = away ? hand.filter(c => c instanceof EnergyCard && !held.includes(c)).slice(0, away) : [];
         const outLack = away - spare.length, anyEnergy = outLack > 0 ? pool.filter(c => c instanceof EnergyCard).length : 0;
         const energy = (t: number) => (lack > 0 ? seenBy(seen(t), k, pool.length, lack) : 1) * (outLack > 0 ? seenBy(seen(t), anyEnergy, pool.length, outLack) : 1);
-        const at = (t: number) => (t < first ? 0 : f.have(t) * energy(t));
-        if (at(first + 2) < MIN_P) {
-          continue;
+        for (const u of uses) {
+          if (!(u.base > 0)) {
+            continue;
+          }
+          const at = (t: number) => (t < first ? 0 : f.have(t) * energy(t) * u.avail(t));
+          if (at(first + 2) < MIN_P) {
+            continue;
+          }
+          // expected turn = sum over t of the chance it is not ready by t
+          // (each card it needs from the hand may be gone by then: a turn's delay with chance 1 - HELD)
+          let ready = (1 - HELD) * (f.held.length + held.length + spare.length + u.held.length), sofar = 0;
+          for (let t = 0; t < HORIZON; t++) {
+            sofar = Math.max(sofar, at(t));
+            ready += 1 - sofar;
+          }
+          // an attack that discards all its Energy is used again when the cost is paid again
+          const every = !copy ? 1 : DISCARD_ALL.test(u.text) ? Math.max(1, Math.ceil(a.cost.length / perTurn)) : NOT_NEXT.test(u.text) ? 2 : 1;
+          out.push({ list: l, card: f.card, attack: u.label, base: u.base, ready, hits: 0, turns: 0, uses: [...f.held, ...held, ...u.held], spread: u.spread, every, copies: u.copies });
         }
-        // expected turn = sum over t of the chance it is not ready by t
-        // (each card it needs from the hand may be gone by then: a turn's delay with chance 1 - HELD)
-        let ready = (1 - HELD) * (f.held.length + held.length + spare.length), sofar = 0;
-        for (let t = 0; t < HORIZON; t++) {
-          sofar = Math.max(sofar, at(t));
-          ready += 1 - sofar;
-        }
-        out.push({ list: l, card: f.card, attack: a.name, base, ready, hits: 0, turns: 0, uses: [...f.held, ...held] });
       }
     }
   }
@@ -220,6 +328,21 @@ function hitsToWin(s: Sim, o: PathOption, defender: number, prizes: number, defe
   const all = [act, ...bench].sort((x, y) => x.hits / x.prize - y.hits / y.prize);
   const mean = { hits: all.reduce((x, b) => x + b.hits, 0) / all.length, prize: all.reduce((x, b) => x + b.prize, 0) / all.length };
   let full = 0, left = prizes;
+  if (o.spread > 1) {
+    // an attack on several Pokémon at once: no Weakness on the Bench; the cheapest prizes go together
+    const flat = [d.active, ...d.bench].map(l => l.getPokemonCard()).map((pc, i) => pc && {
+      hits: Math.min(HORIZON, Math.ceil(hpLeft([d.active, ...d.bench][i], pc) / o.base)), prize: prizeValue(pc) })
+      .filter((x): x is { hits: number; prize: number } => !!x).sort((x, y) => x.hits / x.prize - y.hits / y.prize);
+    for (let i = 0; i < flat.length && left > 0; i += o.spread) {
+      const group = flat.slice(i, i + o.spread);
+      full += Math.max(...group.map(g => g.hits));
+      left -= group.reduce((x, g) => x + g.prize, 0);
+    }
+    if (left > 0) {
+      full += Math.ceil(left / mean.prize - 1e-9) * mean.hits / Math.min(o.spread, 2);
+      left = 0;
+    }
+  }
   for (const t of all) {
     if (left <= 0) {
       break;
@@ -249,7 +372,7 @@ export function clocks(s: Sim, me: number, toMove: number): [Clock, Clock] {
     const opts = paths(s, side, side === me, spent);
     for (const o of opts) {
       o.hits = hitsToWin(s, o, 1 - side, prizes, 1 - side === me);
-      o.turns = o.ready + o.hits - 1;
+      o.turns = pathTurns(o, o.hits);
     }
     opts.sort((a, b) => a.turns - b.turns);
     return opts;
@@ -294,7 +417,7 @@ export function ownClock(s: Sim, me: number): number {
   }
   let best = HORIZON + 4;
   for (const o of paths(s, me, true)) {
-    best = Math.min(best, o.ready + hitsToWin(s, o, 1 - me, prizes, false) - 1);
+    best = Math.min(best, pathTurns(o, hitsToWin(s, o, 1 - me, prizes, false)));
   }
   return best;
 }
@@ -313,6 +436,16 @@ export function clockLead(s: Sim, me: number): number {
   }
   const c = clocks(s, me, s.state.activePlayer);
   return c[1 - me].turns - c[me].turns;
+}
+
+/** every path of `me` the clock weighs, quickest first (SIM_DEBUG_TURN) */
+export function describePaths(s: Sim, me: number): string[] {
+  const prizes = prizesLeft(s.state.players[me]);
+  return paths(s, me, true).map(o => {
+    const hits = hitsToWin(s, o, 1 - me, prizes, false);
+    return { o, hits, turns: pathTurns(o, hits) };
+  }).sort((a, b) => a.turns - b.turns)
+    .map(x => `${x.turns.toFixed(1)} turns: ${x.o.card.name} ${x.o.attack} ${x.o.base}${x.o.spread > 1 ? ` x${x.o.spread}` : ''} ready ${x.o.ready.toFixed(1)} hits ${x.hits.toFixed(1)}${x.o.every > 1 ? ` every ${x.o.every}` : ''}`);
 }
 
 export function describeClock(c: Clock): string {

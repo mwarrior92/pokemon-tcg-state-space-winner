@@ -12,6 +12,10 @@
 //   handsize  each of the first few cards in hand counts more, so emptying the hand has a price
 //             (planner.ts material)
 //   benchpos  the clock counts the Energy the Active lacks to retreat for a path on a Benched Pokémon
+//   copy      the clock follows attacks that are another card's attack (Seek Inspiration by the best
+//             cards that can be put on top of the deck, Night Joker by the N's Pokémon in play or to
+//             come), attacks that damage several Pokémon, and counts an attack that discards all its
+//             Energy or cannot be used the next turn as used every second turn
 // cli/pilotaudit.ts --versus plays the two against each other.
 //
 // Measured that way (180 games each, runs/vs-*): inplay won 58% and handneed 56% of the games
@@ -22,6 +26,10 @@
 // 90 same-seed pairs split): no difference, so it is off unless SIM_PARTS names it.
 // benchpos won 178 of 359 (runs/vs-benchpos, vs-benchpos-b): Hydrapple, N's Zoroark and Slowking attacked
 // 0.3 to 1.3 turns earlier, Dragapult Blaziken 1.3 turns later (19 wins against 24); off as well.
+// copy won 95 of 180 over all decks (runs/vs-copy), 38 of 72 in games with Slowking and 43 of 72 in
+// games with N's Zoroark (runs/vs-copy-sk, vs-copy-nz): 176 of 324 = 54%, same-seed pairs 25 against
+// 11. N's Zoroark itself won 27 of 54 with it against 18 of 54 without (prizes a turn 0.58 against
+// 0.43), Slowking 18 of 54 against 14 of 54; on.
 const OPT_IN = new Set(['supply', 'targets', 'handsize', 'benchpos']);
 const enabled = new Set((process.env.SIM_PARTS ?? '').split(',').filter(Boolean));
 let off = new Set<string>();

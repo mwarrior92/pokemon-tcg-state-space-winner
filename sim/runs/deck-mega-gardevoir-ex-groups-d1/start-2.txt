@@ -1,0 +1,32 @@
+Pokémon: 25
+4 Kirlia ASC 88
+4 Ralts ASC 87
+3 Tangela MEG 6
+3 Tangrowth TWM 2
+2 Deino 30C 97
+2 Mega Gardevoir ex ASC 89
+2 Phantump CRI 38
+2 Trevenant CRI 39
+2 Zweilous WHT 147
+1 Kyogre 30C 19
+
+Trainer: 28
+4 Poké Ball POR 80
+4 Pokémon Catcher DLR 129
+3 Brock's Scouting JTG 146
+3 Handheld Fan TWM 150
+3 Switch 30C 127
+2 Dawn PFL 129
+2 Kofu SCR 138
+2 Rescue Board TEF 159
+1 Antique Armor Fossil PBL 72
+1 Hilda WHT 164
+1 Prime Catcher PRE 119
+1 Rare Candy MEG 125
+1 Strange Timepiece MEG 128
+
+Energy: 7
+6 Psychic Energy MEE 13
+1 Prism Energy BLK 86
+
+Total Cards: 60

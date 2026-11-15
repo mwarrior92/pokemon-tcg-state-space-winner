@@ -1,0 +1,32 @@
+Pokémon: 23
+4 Kirlia ASC 88
+4 Ralts ASC 87
+3 Cosmoem 30C 79
+2 Eelektrik ASC 60
+2 Mega Gardevoir ex ASC 89
+2 Tynamo ASC 59
+1 Cosmog 30C 78
+1 Lunala 30C 80
+1 Mega Eelektross ex ASC 266
+1 Serperior ex BLK 164
+1 Servine POR 5
+1 Snivy POR 4
+
+Trainer: 25
+4 Counter Gain SSP 169
+3 Emma CRI 107
+3 Grimsley's Move PFL 120
+3 Kieran PRE 113
+3 Lillie's Determination MEG 119
+3 Poké Pad POR 113
+2 Risky Ruins MEG 127
+1 Festival Grounds TWM 149
+1 Rare Candy MEG 125
+1 Sacred Ash DRI 168
+1 Wondrous Patch PFL 94
+
+Energy: 12
+11 Psychic Energy MEE 13
+1 Enriching Energy SSP 191
+
+Total Cards: 60
