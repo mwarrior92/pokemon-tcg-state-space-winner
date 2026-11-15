@@ -32,6 +32,8 @@
 // games with N's Zoroark (runs/vs-copy-sk, vs-copy-nz): 176 of 324 = 54%, same-seed pairs 25 against
 // 11. N's Zoroark itself won 27 of 54 with it against 18 of 54 without (prizes a turn 0.58 against
 // 0.43), Slowking 18 of 54 against 14 of 54; on.
+// norepeat won 72 of 144 Slowking games (runs/vs-norepeat-sk), the same deck winning both games of
+// every pair; a step repeated three times or more in 0 of 959 turns against 10 of 959. A plain fix; on.
 const OPT_IN = new Set(['supply', 'targets', 'handsize', 'benchpos']);
 const enabled = new Set((process.env.SIM_PARTS ?? '').split(',').filter(Boolean));
 let off = new Set<string>();
